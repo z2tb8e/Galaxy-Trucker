@@ -1,0 +1,197 @@
+﻿{
+  "Cockpit": [ 5, 5 ],
+  "Small": [
+    {
+      "Row": 3,
+      "Start": 5,
+      "End": 5
+    },
+    {
+      "Row": 4,
+      "Start": 4,
+      "End": 6
+    },
+    {
+      "Row": 5,
+      "Start": 3,
+      "End": 7
+    },
+    {
+      "Row": 6,
+      "Start": 3,
+      "End": 7
+    },
+    {
+      "Row": 7,
+      "Start": 3,
+      "End": 4
+    },
+    {
+      "Row": 7,
+      "Start": 6,
+      "End": 7
+    }
+  ],
+  "Medium": [
+    {
+      "Row": 2,
+      "Start": 5,
+      "End": 5
+    },
+    {
+      "Row": 3,
+      "Start": 4,
+      "End": 6
+    },
+    {
+      "Row": 4,
+      "Start": 3,
+      "End": 7
+    },
+    {
+      "Row": 5,
+      "Start": 3,
+      "End": 7
+    },
+    {
+      "Row": 6,
+      "Start": 2,
+      "End": 8
+    },
+    {
+      "Row": 7,
+      "Start": 2,
+      "End": 4
+    },
+    {
+      "Row": 7,
+      "Start": 6,
+      "End": 8
+    }
+  ],
+  "BigWide": [
+    {
+      "Row": 2,
+      "Start": 5,
+      "End": 5
+    },
+    {
+      "Row": 3,
+      "Start": 4,
+      "End": 6
+    },
+    {
+      "Row": 4,
+      "Start": 1,
+      "End": 1
+    },
+    {
+      "Row": 4,
+      "Start": 3,
+      "End": 7
+    },
+    {
+      "Row": 4,
+      "Start": 9,
+      "End": 9
+    },
+    {
+      "Row": 5,
+      "Start": 1,
+      "End": 9
+    },
+    {
+      "Row": 6,
+      "Start": 1,
+      "End": 9
+    },
+    {
+      "Row": 7,
+      "Start": 1,
+      "End": 2
+    },
+    {
+      "Row": 7,
+      "Start": 4,
+      "End": 6
+    },
+    {
+      "Row": 7,
+      "Start": 8,
+      "End": 9
+    }
+  ],
+  "BigLong": [
+    {
+      "Row": 1,
+      "Start": 4,
+      "End": 6
+    },
+    {
+      "Row": 2,
+      "Start": 3,
+      "End": 7
+    },
+    {
+      "Row": 3,
+      "Start": 3,
+      "End": 4
+    },
+    {
+      "Row": 3,
+      "Start": 6,
+      "End": 7
+    },
+    {
+      "Row": 4,
+      "Start": 3,
+      "End": 7
+    },
+    {
+      "Row": 5,
+      "Start": 4,
+      "End": 6
+    },
+    {
+      "Row": 6,
+      "Start": 3,
+      "End": 3
+    },
+    {
+      "Row": 6,
+      "Start": 5,
+      "End": 5
+    },
+    {
+      "Row": 6,
+      "Start": 7,
+      "End": 7
+    },
+    {
+      "Row": 7,
+      "Start": 3,
+      "End": 7
+    },
+    {
+      "Row": 8,
+      "Start": 3,
+      "End": 7
+    },
+    {
+      "Row": 9,
+      "Start": 3,
+      "End": 3
+    },
+    {
+      "Row": 9,
+      "Start": 5,
+      "End": 5
+    },
+    {
+      "Row": 9,
+      "Start": 7,
+      "End": 7
+    }
+
+  ]
+}
