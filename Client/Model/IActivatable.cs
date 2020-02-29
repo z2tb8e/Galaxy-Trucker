@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Client.Model
+﻿namespace Client.Model
 {
     interface IActivatable
     {
