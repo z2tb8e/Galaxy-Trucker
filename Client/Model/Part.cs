@@ -6,15 +6,15 @@ namespace Client.Model
     {
         private readonly Connector[] _connectors;
 
-        private List<Part> _path;
+        private Stack<Part> _path;
 
         public Direction Rotation { get; private set; }
 
-        public List<Part> Path { get { return new List<Part>(_path); } }
+        public Stack<Part> Path { get { return new Stack<Part>(_path); } set { _path = value; } }
 
         protected Part(Connector Top, Connector Right, Connector Bottom, Connector Left)
         {
-            _path = new List<Part>();
+            _path = new Stack<Part>();
             _connectors = new Connector[4];
             (_connectors[0], _connectors[1], _connectors[2], _connectors[3], this.Rotation) = (Top, Right, Bottom, Left, default);
         }
@@ -23,7 +23,7 @@ namespace Client.Model
 
         public void Rotate(Direction dir) => this.Rotation = (Direction)((int)Rotation + (int)dir % 4);
 
-        public void AppendPath(Part p) => _path.Add(p);
+        public void AddToPath(Part p) => _path.Push(p);
 
         public bool IsInPath(Part p) => _path.Contains(p);
     }

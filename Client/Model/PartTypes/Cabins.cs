@@ -6,14 +6,10 @@
 
         public bool Filled { get; private set; }
 
+        public Personnel Personnel { get { return _personnel; } set { _personnel = value; } }
+
         public Cabin(Connector Top, Connector Right, Connector Bottom, Connector Left) : base(Top, Right, Bottom, Left)
             => Filled = false;
-
-        public void AddPersonnel(Personnel p)
-        {
-            _personnel = p;
-            Filled = true;
-        }
 
         public bool RemoveSinglePersonnel()
         {
@@ -34,7 +30,7 @@
     public class Cockpit : Cabin
     {
         public Cockpit() : base(Connector.Universal, Connector.Universal, Connector.Universal, Connector.Universal)
-            => AppendPath(this);
+            => AddToPath(this);
 
         public new void Rotate(Direction _) { }
     }
