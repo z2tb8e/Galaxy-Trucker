@@ -9,7 +9,6 @@ namespace Client.Model
         private readonly bool[,] _movableFields;
         private Part[,] _parts;
         private readonly int _penaltyCap;
-        private Part _cockpit;
 
         public List<Part> Penalty { get; set; }
 
@@ -29,7 +28,7 @@ namespace Client.Model
             (int, int) cockpit;
             (cockpit, _movableFields) = LayoutReader.GetLayout(layout);
             _parts = new Part[11, 11];
-            _cockpit = _parts[cockpit.Item1, cockpit.Item2] = new Cockpit();
+            _parts[cockpit.Item1, cockpit.Item2] = new Cockpit();
             Penalty = new List<Part>();
             _penaltyCap = layout switch
             {
@@ -41,26 +40,33 @@ namespace Client.Model
 
         public void ApplyPandemic()
         {
-            List<(int, int)> alreadyApplied = new List<(int,int)>();
+            List<Part> alreadyApplied = new List<Part>();
             for (int i = 0; i < _parts.GetLength(1); ++i)
             {
                 for (int j = 0; j < _parts.GetLength(2); ++j)
                 {
-                    if(_parts[i,j] is Cabin && (_parts[i,j] as Cabin).Personnel != Personnel.None && !alreadyApplied.Contains((i,j)))
+                    Part top = _parts[i - 1, j];
+                    Part right = _parts[i, j + 1];
+                    Part bottom = _parts[i + 1, j];
+                    Part left = _parts[i, j - 1];
+                    Part current = _parts[i, j];
+
+                    if (current is Cabin && (current as Cabin).Personnel != Personnel.None && !alreadyApplied.Contains(current))
                     {
+
                         bool getsInfected =
-                            (_parts[i - 1, j] is Cabin && alreadyApplied.Contains((i - 1, j))
-                                    && 1 == ConnectorsMatch(_parts[i, j].GetConnector(Direction.Top), _parts[i - 1, j].GetConnector(Direction.Bottom)))
-                            || (_parts[i, j + 1] is Cabin && (_parts[i, j + 1] as Cabin).Personnel != Personnel.None
-                                    && 1 == ConnectorsMatch(_parts[i, j].GetConnector(Direction.Right), _parts[i, j + 1].GetConnector(Direction.Left)))
-                            || (_parts[i + 1, j] is Cabin && (_parts[i + 1, j] as Cabin).Personnel != Personnel.None
-                                    && 1 == ConnectorsMatch(_parts[i, j].GetConnector(Direction.Bottom), _parts[i + 1, j].GetConnector(Direction.Top)))
-                            || (_parts[i, j - 1] is Cabin && alreadyApplied.Contains((i, j - 1))
-                                    && 1 == ConnectorsMatch(_parts[i, j].GetConnector(Direction.Left), _parts[i, j - 1].GetConnector(Direction.Right)));
+                            (top is Cabin && alreadyApplied.Contains(top)
+                                    && 1 == ConnectorsMatch(current.GetConnector(Direction.Top), top.GetConnector(Direction.Bottom)))
+                            || (right is Cabin && (right as Cabin).Personnel != Personnel.None
+                                    && 1 == ConnectorsMatch(current.GetConnector(Direction.Right), right.GetConnector(Direction.Left)))
+                            || (bottom is Cabin && (bottom as Cabin).Personnel != Personnel.None
+                                    && 1 == ConnectorsMatch(current.GetConnector(Direction.Bottom), bottom.GetConnector(Direction.Top)))
+                            || (left is Cabin && alreadyApplied.Contains(left)
+                                    && 1 == ConnectorsMatch(current.GetConnector(Direction.Left), left.GetConnector(Direction.Right)));
                         if (getsInfected)
                         {
-                            alreadyApplied.Add((i, j));
-                            (_parts[i, j] as Cabin).RemoveSinglePersonnel();
+                            alreadyApplied.Add(current);
+                            (current as Cabin).RemoveSinglePersonnel();
                         }
                     }
                 }
@@ -73,29 +79,34 @@ namespace Client.Model
                 return false;
 
             Part matchingPart = null;
+            Part top = _parts[pos1 - 1, pos2];
+            Part right = _parts[pos1, pos2 + 1];
+            Part bottom = _parts[pos1 + 1, pos2];
+            Part left = _parts[pos1, pos2 - 1];
+
             bool isMismatched = false;
-            if (_parts[pos1 - 1, pos2] != null)
+            if (top != null)
             {
-                int match = ConnectorsMatch(part.GetConnector(Direction.Top), _parts[pos1 - 1, pos2].GetConnector(Direction.Bottom));
-                if (matchingPart == null && match == 1) matchingPart = _parts[pos1 - 1, pos2];
+                int match = ConnectorsMatch(part.GetConnector(Direction.Top), top.GetConnector(Direction.Bottom));
+                if (matchingPart == null && match == 1) matchingPart = top;
                 else if (match == -1) isMismatched = true;
             }
-            if (_parts[pos1, pos2 + 1] != null)
+            if (right != null)
             {
-                int match = ConnectorsMatch(part.GetConnector(Direction.Right), _parts[pos1, pos2 + 1].GetConnector(Direction.Left));
-                if (matchingPart == null && match == 1) matchingPart = _parts[pos1, pos2 + 1];
+                int match = ConnectorsMatch(part.GetConnector(Direction.Right), right.GetConnector(Direction.Left));
+                if (matchingPart == null && match == 1) matchingPart = right;
                 else if (match == -1) isMismatched = true;
             }
-            if (_parts[pos1 + 1, pos2] != null)
+            if (bottom != null)
             {
-                int match = ConnectorsMatch(part.GetConnector(Direction.Bottom), _parts[pos1 + 1, pos2].GetConnector(Direction.Top));
-                if (matchingPart == null && match == 1) matchingPart = _parts[pos1 - 1, pos2];
+                int match = ConnectorsMatch(part.GetConnector(Direction.Bottom), bottom.GetConnector(Direction.Top));
+                if (matchingPart == null && match == 1) matchingPart = bottom;
                 else if (match == -1) isMismatched = true;
             }
-            if (_parts[pos1, pos2 - 1] != null)
+            if (left != null)
             {
-                int match = ConnectorsMatch(part.GetConnector(Direction.Left), _parts[pos1, pos2 - 1].GetConnector(Direction.Right));
-                if (matchingPart == null && match == 1) matchingPart = _parts[pos1, pos2 - 1];
+                int match = ConnectorsMatch(part.GetConnector(Direction.Left), left.GetConnector(Direction.Right));
+                if (matchingPart == null && match == 1) matchingPart = left;
                 else if (match == -1) isMismatched = true;
             }
 
@@ -115,6 +126,7 @@ namespace Client.Model
                 return;
 
             Part removedPart = _parts[pos1, pos2];
+            Penalty.Add(removedPart);
             _parts[pos1, pos2] = null;
 
             if (_parts[pos1 - 1, pos2] != null && _parts[pos1 - 1, pos2].Path.Contains(removedPart))
@@ -137,81 +149,89 @@ namespace Client.Model
 
         private bool RemovePartsRecursive(int pos1, int pos2)
         {
+            Part top = _parts[pos1 - 1, pos2];
+            Part right = _parts[pos1, pos2 + 1];
+            Part bottom = _parts[pos1 + 1, pos2];
+            Part left = _parts[pos1, pos2 - 1];
             Part current = _parts[pos1, pos2];
             //In each direction check if
-            if (_parts[pos1 - 1, pos2] != null)
+            if (top != null)
             {
                 //we find a part which is connected through the current element, then check deeper down the path if there is an alternative
-                if(_parts[pos1 - 1, pos2].Path.Contains(current))
+                if (top.Path.Contains(current))
                 {
-                    if(RemovePartsRecursive(pos1 - 1, pos2))
+                    if (RemovePartsRecursive(pos1 - 1, pos2))
                     {
-                        current.Path = _parts[pos1 - 1, pos2].Path;
-                        current.AddToPath(_parts[pos1 - 1, pos2]);
+                        current.Path = top.Path;
+                        current.AddToPath(top);
                         return true;
                     }
                 }
                 //we find a part which is not connected through the current element, but has a connection to it, then rebind to that path
-                else if (1 == ConnectorsMatch(current.GetConnector(Direction.Top), _parts[pos1 - 1, pos2].GetConnector(Direction.Bottom)))
+                else if (1 == ConnectorsMatch(current.GetConnector(Direction.Top), top.GetConnector(Direction.Bottom)))
                 {
-                    current.Path = _parts[pos1 - 1, pos2].Path;
-                    current.AddToPath(_parts[pos1 - 1, pos2]);
+                    current.Path = top.Path;
+                    current.AddToPath(top);
                     return true;
                 }
             }
-            if (_parts[pos1, pos2 + 1] != null)
+            if (right != null)
             {
-                if (_parts[pos1, pos2 + 1].Path.Contains(current))
+                if (right.Path.Contains(current))
                 {
                     if(RemovePartsRecursive(pos1, pos2 + 1))
                     {
-                        current.Path = _parts[pos1, pos2 + 1].Path;
-                        current.AddToPath(_parts[pos1, pos2 + 1]);
+                        current.Path = right.Path;
+                        current.AddToPath(right);
                         return true;
                     }
                 }
-                else if (1 == ConnectorsMatch(current.GetConnector(Direction.Right), _parts[pos1, pos2 + 1].GetConnector(Direction.Left)))
+                else if (1 == ConnectorsMatch(current.GetConnector(Direction.Right), right.GetConnector(Direction.Left)))
                 {
-                    current.Path = _parts[pos1, pos2 + 1].Path;
-                    current.AddToPath(_parts[pos1, pos2 + 1]);
+                    current.Path = right.Path;
+                    current.AddToPath(right);
                     return true;
                 }
             }
-            if (_parts[pos1 + 1, pos2] != null)
+            if (bottom != null)
             {
-                if (_parts[pos1 + 1, pos2].Path.Contains(current))
+                if (bottom.Path.Contains(current))
                 {
                     if(RemovePartsRecursive(pos1 + 1, pos2))
                     {
-                        current.Path = _parts[pos1 + 1, pos2].Path;
-                        current.AddToPath(_parts[pos1 + 1, pos2]);
+                        current.Path = bottom.Path;
+                        current.AddToPath(bottom);
                         return true;
                     }
                 }
-                else if (1 == ConnectorsMatch(current.GetConnector(Direction.Bottom), _parts[pos1 + 1, pos2].GetConnector(Direction.Top)))
+                else if (1 == ConnectorsMatch(current.GetConnector(Direction.Bottom), bottom.GetConnector(Direction.Top)))
                 {
-                    current.Path = _parts[pos1 + 1, pos2].Path;
-                    current.AddToPath(_parts[pos1 + 1, pos2]);
+                    current.Path = bottom.Path;
+                    current.AddToPath(bottom);
                     return true;
                 }
             }
-            if (_parts[pos1, pos2 - 1] != null)
+            if (left != null)
             {
 
-                if (_parts[pos1, pos2 - 1].Path.Contains(current))
+                if (left.Path.Contains(current))
                 {
-                    current.Path = _parts[pos1, pos2 - 1].Path;
-                    current.AddToPath(_parts[pos1, pos2 - 1]);
-                    return true;
+                    if(RemovePartsRecursive(pos1, pos2 - 2))
+                    {
+                        current.Path = left.Path;
+                        current.AddToPath(left);
+                        return true;
+                    }
                 }
-                else if (1 == ConnectorsMatch(current.GetConnector(Direction.Left), _parts[pos1, pos2 - 1].GetConnector(Direction.Right)))
+                else if (1 == ConnectorsMatch(current.GetConnector(Direction.Left), left.GetConnector(Direction.Right)))
                 {
-                    current.Path = _parts[pos1, pos2 - 1].Path;
-                    current.AddToPath(_parts[pos1, pos2 - 1]);
+                    current.Path = left.Path;
+                    current.AddToPath(left);
                     return true;
                 }
             }
             //if no alternative path is found, remove the part
+            Penalty.Add(current);
             _parts[pos1, pos2] = null;
             return false;
         }
