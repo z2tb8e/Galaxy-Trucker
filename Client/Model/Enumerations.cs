@@ -42,11 +42,19 @@
         BigLong
     };
 
-    public enum Projectiles
+    public enum Projectile
     {
         AsteroidSmall,
         AsteroidLarge,
         ShotSmall,
         ShotLarge
+    };
+
+    public enum PlayerColor
+    {
+        Yellow,
+        Red,
+        Blue,
+        Green
     }
 }

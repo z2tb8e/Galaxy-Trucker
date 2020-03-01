@@ -29,8 +29,13 @@
 
     public class Cockpit : Cabin
     {
-        public Cockpit() : base(Connector.Universal, Connector.Universal, Connector.Universal, Connector.Universal)
-            => AddToPath(this);
+        public PlayerColor Player { get; private set; }
+
+        public Cockpit(PlayerColor pc) : base(Connector.Universal, Connector.Universal, Connector.Universal, Connector.Universal)
+        {
+            AddToPath(this);
+            Player = pc;
+        }
 
         public new void Rotate(Direction _) { }
     }

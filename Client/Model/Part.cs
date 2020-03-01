@@ -10,6 +10,8 @@ namespace Client.Model
 
         public Direction Rotation { get; private set; }
 
+        public Connector[] Connectors => _connectors;
+
         public Stack<Part> Path { get { return new Stack<Part>(_path); } set { _path = value; } }
 
         protected Part(Connector Top, Connector Right, Connector Bottom, Connector Left)

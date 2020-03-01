@@ -4,7 +4,11 @@
     {
         public virtual int Firepower => Rotation == Direction.Top ? 2 : 1;
 
-        public Laser(Connector Top, Connector Right, Connector Bottom, Connector Left) : base(Top, Right, Bottom, Left) { }
+        public Laser(Connector Top, Connector Right, Connector Bottom, Connector Left) : base(Top, Right, Bottom, Left)
+        {
+            if (Top != Connector.None)
+                throw new System.ArgumentException("Parameter can only be Connector.None for lasers", "Top");
+        }
     }
 
     public class LaserDouble : Laser, IActivatable

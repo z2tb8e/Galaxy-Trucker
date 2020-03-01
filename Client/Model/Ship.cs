@@ -23,12 +23,12 @@ namespace Client.Model
             _ => 1
         });
 
-        public Ship(ShipLayout layout)
+        public Ship(ShipLayout layout, PlayerColor pc)
         {
             (int, int) cockpit;
             (cockpit, _movableFields) = LayoutReader.GetLayout(layout);
             _parts = new Part[11, 11];
-            _parts[cockpit.Item1, cockpit.Item2] = new Cockpit();
+            _parts[cockpit.Item1, cockpit.Item2] = new Cockpit(pc);
             Penalty = new List<Part>();
             _penaltyCap = layout switch
             {

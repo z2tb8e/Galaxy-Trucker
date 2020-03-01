@@ -1,10 +1,16 @@
-﻿namespace Client.Model.PartTypes
+﻿using Client.Exceptions;
+
+namespace Client.Model.PartTypes
 {
     public class Engine : Part
     {
         public virtual int Enginepower => 1;
 
-        public Engine(Connector Top, Connector Right, Connector Bottom, Connector Left) : base(Top, Right, Bottom, Left) { }
+        public Engine(Connector Top, Connector Right, Connector Bottom, Connector Left) : base(Top, Right, Bottom, Left)
+        {
+            if (Bottom != Connector.None)
+                throw new System.ArgumentException("Parameter can only be Connector.None for engines", "Bottom");
+        }
 
         public new void Rotate(Direction _) { }
     };

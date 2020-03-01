@@ -6,6 +6,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using Client.Model;
+using Client.Model.PartTypes;
+using Client.ViewModels;
 
 namespace Client
 {
@@ -14,6 +16,10 @@ namespace Client
     /// </summary>
     public partial class App : Application
     {
-        Ship _ship = new Ship(ShipLayout.BigLong);
+        public App()
+        {
+            Part p = new LaserDouble(Connector.None, Connector.Universal, Connector.Double, Connector.Single);
+            PartBuilder.GetPartImage(p);
+        }
     }
 }
