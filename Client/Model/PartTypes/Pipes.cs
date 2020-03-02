@@ -7,11 +7,15 @@
 
     public class LaserCabin : Part
     {
-        public LaserCabin(Connector Top, Connector Right, Connector Bottom, Connector Left) : base(Top, Right, Bottom, Left) { }
+        public bool EffectUsed { get; set; }
+
+        public LaserCabin(Connector Top, Connector Right, Connector Bottom, Connector Left) : base(Top, Right, Bottom, Left) => EffectUsed = false;
     }
 
     public class EngineCabin : Part
     {
-        public EngineCabin(Connector Top, Connector Right, Connector Bottom, Connector Left) : base(Top, Right, Bottom, Left) { }
+        public bool EffectUsed { get; set; }
+
+        public EngineCabin(Connector Top, Connector Right, Connector Bottom, Connector Left) : base(Top, Right, Bottom, Left) => EffectUsed = false;
     }
 }

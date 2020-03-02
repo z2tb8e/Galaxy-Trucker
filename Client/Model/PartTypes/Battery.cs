@@ -9,14 +9,6 @@
         public Battery(Connector Top, Connector Right, Connector Bottom, Connector Left, int Capacity) : base(Top, Right, Bottom, Left)
             => this.Capacity = Charges = Capacity;
 
-        public bool UseCharge()
-        {
-            if(Charges > 0)
-            {
-                --Charges;
-                return true;
-            }
-            return false;
-        }
+        public void UseCharge() => Charges = Charges > 0 ? Charges - 1 : 0;
     }
 }
