@@ -14,7 +14,7 @@ namespace Client.Model
         private readonly Part[,] _parts;
         private readonly int _penaltyCap;
         private int _penalty;
-        private readonly List<(int, int)> _activatableParts;
+        private readonly List<Part> _activatableParts;
         private readonly List<Storage> _storages;
 
         #endregion
@@ -50,14 +50,14 @@ namespace Client.Model
             _ => 1
         });
 
-        public List<(int, int)> InactiveShields => _activatableParts.Cast<(int, int)>()
-            .Where(x => (_parts[x.Item1, x.Item2] is Shield) && !(_parts[x.Item1, x.Item2] as Shield).Activated).ToList();
+        public List<(int, int)> InactiveShields => _activatableParts.Cast<Part>()
+            .Where(x => x is Shield && !(x as Shield).Activated).Select(x => (x.Pos1, x.Pos2)).ToList();
 
-        public List<(int, int)> InactiveLasers => _activatableParts.Cast<(int, int)>()
-            .Where(x => (_parts[x.Item1, x.Item2] is LaserDouble) && !(_parts[x.Item1, x.Item2] as LaserDouble).Activated).ToList();
+        public List<(int, int)> InactiveLasers => _activatableParts.Cast<Part>()
+            .Where(x => x is LaserDouble && !(x as LaserDouble).Activated).Select(x => (x.Pos1, x.Pos2)).ToList();
 
-        public List<(int, int)> InactiveEngines => _activatableParts.Cast<(int, int)>()
-            .Where(x => (_parts[x.Item1, x.Item2] is EngineDouble) && !(_parts[x.Item1, x.Item2] as EngineDouble).Activated).ToList();
+        public List<(int, int)> InactiveEngines => _activatableParts.Cast<Part>()
+            .Where(x => x is EngineDouble && !(x as EngineDouble).Activated).Select(x => (x.Pos1, x.Pos2)).ToList();
 
         private bool HasEngineAlien => _parts.Cast<Part>().Where(x => x is Cabin).Any(x => (x as Cabin).Personnel == Personnel.EngineAlien);
 
@@ -74,7 +74,7 @@ namespace Client.Model
         {
             (int, int) cockpit;
             (cockpit, _movableFields) = LayoutReader.GetLayout(layout);
-            _activatableParts = new List<(int, int)>();
+            _activatableParts = new List<Part>();
             _storages = new List<Storage>();
             _parts = new Part[11, 11];
             _parts[cockpit.Item1, cockpit.Item2] = new Cockpit(color);
@@ -100,7 +100,7 @@ namespace Client.Model
             if (!(_parts[pos1, pos2] is Cabin))
                 throw new InvalidIndexException("Part at (" + pos1.ToString() + "," + pos2.ToString() + ") is not a cabin.");
 
-            List<Part> neighbours = new List<Part>()
+            Part[] neighbours = new Part[]
             {
                 _parts[pos1 - 1, pos2],
                 _parts[pos1, pos2 + 1],
@@ -159,9 +159,9 @@ namespace Client.Model
         /// </summary>
         public void ResetActivatables()
         {
-            foreach((int,int) indices in _activatableParts)
+            foreach(Part p in _activatableParts)
             {
-                switch (_parts[indices.Item1, indices.Item2])
+                switch (p)
                 {
                     case Shield s:
                         if (s.Activated)
@@ -239,27 +239,20 @@ namespace Client.Model
                 Direction.Right => _parts.GetLength(1),
                 _ => line
             };
+            bool endOfLine = false;
             Part target = null;
-            while(target == null)
+            while (!endOfLine && target == null)
             {
                 target = _parts[ind1, ind2];
                 if(target != null)
                 {
-                    switch (dir)
+                    endOfLine = dir switch
                     {
-                        case Direction.Top:
-                            ++ind1;
-                            break;
-                        case Direction.Right:
-                            --ind2;
-                            break;
-                        case Direction.Bottom:
-                            --ind1;
-                            break;
-                        default:
-                            ++ind2;
-                            break;
-                    }
+                        Direction.Top => ++ind1 < _parts.GetLength(0),
+                        Direction.Right => --ind2 >= 0,
+                        Direction.Bottom => --ind1 >= 0,
+                        _ => ++ind2 < _parts.GetLength(1)
+                    };
                 }
             }
 
@@ -268,13 +261,17 @@ namespace Client.Model
                 return;
 
             //determine which directions the ship is shielded from
-            List<(Direction, Direction)> shieldedDirections = _parts.Cast<Part>().Where(x => x is Shield && (x as Shield).Activated).Select(x => (x as Shield).Directions).ToList();
-            bool[] isShielded = new bool[4];
-            foreach((Direction, Direction) dirs in shieldedDirections)
+            bool[] isShielded = new bool[]
             {
-                isShielded[(int)dirs.Item1] = true;
-                isShielded[(int)dirs.Item2] = true;
-            }
+                _parts.Cast<Part>().Where(x => x is Shield && (x as Shield).Activated &&
+                    (x as Shield).Directions.Item1 == Direction.Top || (x as Shield).Directions.Item2 == Direction.Top).Any(),
+                _parts.Cast<Part>().Where(x => x is Shield && (x as Shield).Activated &&
+                    (x as Shield).Directions.Item1 == Direction.Right || (x as Shield).Directions.Item2 == Direction.Right).Any(),
+                _parts.Cast<Part>().Where(x => x is Shield && (x as Shield).Activated &&
+                    (x as Shield).Directions.Item1 == Direction.Bottom || (x as Shield).Directions.Item2 == Direction.Bottom).Any(),
+                _parts.Cast<Part>().Where(x => x is Shield && (x as Shield).Activated &&
+                    (x as Shield).Directions.Item1 == Direction.Left || (x as Shield).Directions.Item2 == Direction.Left).Any(),
+            };
 
             //check if the part gets removed based on the type of projectile it got hit by
             //small asteroids remove the part only if it has an open connection towards it and the direction isn't shielded
@@ -398,10 +395,13 @@ namespace Client.Model
             if (!_movableFields[pos1, pos2] || _parts[pos1, pos2] != null)
                 return false;
 
-            Part top = _parts[pos1 - 1, pos2];
-            Part right = _parts[pos1, pos2 + 1];
-            Part bottom = _parts[pos1 + 1, pos2];
-            Part left = _parts[pos1, pos2 - 1];
+            (Part, Direction)[] neighbours = new (Part, Direction)[]
+            {
+                (_parts[pos1 - 1, pos2], Direction.Bottom),
+                (_parts[pos1, pos2 + 1], Direction.Left),
+                (_parts[pos1 + 1, pos2], Direction.Top),
+                (_parts[pos1, pos2 - 1], Direction.Right)
+            };
 
             //if the part is a laser it can't have a part right in front of it
             if (part is Laser)
@@ -409,67 +409,52 @@ namespace Client.Model
                 switch (part.Rotation)
                 {
                     case Direction.Top:
-                        if (top != null) return false;
+                        if (neighbours[1].Item1 != null) return false;
                         break;
                     case Direction.Right:
-                        if (right != null) return false;
+                        if (neighbours[2].Item1 != null) return false;
                         break;
                     case Direction.Bottom:
-                        if (bottom != null) return false;
+                        if (neighbours[3].Item1 != null) return false;
                         break;
                     default:
-                        if (left != null) return false;
+                        if (neighbours[4].Item1 != null) return false;
                         break;
                 }
             }
 
             //if the part is an engine it can't have a part right behind it (note: you can only have engines facing top, thus no other directions need be checked)
-            if (part is Engine && bottom != null)
+            if (part is Engine && neighbours[3].Item1 != null)
                 return false;
 
             //check if the part is not obscured from any direction but it has at least one valid connection, also check if the field is being blocked by a laser or engine
             Part matchingPart = null;
             bool isMismatched = false;
-            if (top != null)
+
+            foreach((Part, Direction) neighbour in neighbours)
             {
-                if ((top is Laser && top.Rotation == Direction.Bottom) || top is Engine)
-                    return false;
-                int match = ConnectorsMatch(part.GetConnector(Direction.Top), top.GetConnector(Direction.Bottom));
-                if (matchingPart == null && match == 1) matchingPart = top;
-                else if (match == -1) isMismatched = true;
-            }
-            if (right != null)
-            {
-                if (right is Laser && right.Rotation == Direction.Left)
-                    return false;
-                int match = ConnectorsMatch(part.GetConnector(Direction.Right), right.GetConnector(Direction.Left));
-                if (matchingPart == null && match == 1) matchingPart = right;
-                else if (match == -1) isMismatched = true;
-            }
-            if (bottom != null)
-            {
-                if (bottom is Laser && bottom.Rotation == Direction.Top)
-                    return false;
-                int match = ConnectorsMatch(part.GetConnector(Direction.Bottom), bottom.GetConnector(Direction.Top));
-                if (matchingPart == null && match == 1) matchingPart = bottom;
-                else if (match == -1) isMismatched = true;
-            }
-            if (left != null)
-            {
-                if (left is Laser && left.Rotation == Direction.Right)
-                    return false;
-                int match = ConnectorsMatch(part.GetConnector(Direction.Left), left.GetConnector(Direction.Right));
-                if (matchingPart == null && match == 1) matchingPart = left;
-                else if (match == -1) isMismatched = true;
+                if(neighbour.Item1 is null)
+                {
+                    if (neighbour.Item2 == Direction.Bottom && neighbour.Item1 is Engine)
+                        return false;
+                    if (neighbour.Item1 is Laser && neighbour.Item1.Rotation == neighbour.Item2)
+                        return false;
+                    Connector onPart = part.GetConnector((Direction)((int)neighbour.Item2 + 2 % 4));
+                    int match = ConnectorsMatch(onPart, neighbour.Item1.GetConnector(neighbour.Item2));
+                    if (matchingPart == null && match == 1) matchingPart = neighbour.Item1;
+                    else if (match == -1) isMismatched = true;
+                }
             }
 
             if (matchingPart != null && !isMismatched)
             {
                 if (part is IActivatable)
-                    _activatableParts.Add((pos1, pos2));
+                    _activatableParts.Add(part);
                 else if (part is Storage)
                     _storages.Add(part as Storage);
                 _parts[pos1, pos2] = part;
+                part.Pos1 = pos1;
+                part.Pos2 = pos2;
                 part.Path = matchingPart.Path;
                 part.AddToPath(matchingPart);
                 return true;
@@ -490,28 +475,23 @@ namespace Client.Model
 
             Part removedPart = _parts[pos1, pos2];
             if (removedPart is IActivatable)
-                _activatableParts.Remove((pos1, pos2));
+                _activatableParts.Remove(removedPart);
             else if (removedPart is Storage)
                 _storages.Remove(removedPart as Storage);
             ++_penalty;
             _parts[pos1, pos2] = null;
 
-            if (_parts[pos1 - 1, pos2] != null && _parts[pos1 - 1, pos2].Path.Contains(removedPart))
+            Part[] neighbours = new Part[]
             {
-                RemovePartsRecursive(pos1 - 1, pos2);
-            }
-            if (_parts[pos1, pos2 + 1] != null && _parts[pos1, pos2 + 1].Path.Contains(removedPart))
-            {
-                RemovePartsRecursive(pos1, pos2 + 1);
-            }
-            if (_parts[pos1 + 1, pos2] != null && _parts[pos1 + 1, pos2].Path.Contains(removedPart))
-            {
-                RemovePartsRecursive(pos1 + 1, pos2);
-            }
-            if (_parts[pos1, pos2 - 1] != null && _parts[pos1, pos2 - 1].Path.Contains(removedPart))
-            {
-                RemovePartsRecursive(pos1, pos2 - 1);
-            }
+                _parts[pos1 - 1, pos2],
+                _parts[pos1, pos2 + 1],
+                _parts[pos1 + 1, pos2],
+                _parts[pos1, pos2 - 1]
+            };
+
+            foreach (Part p in neighbours)
+                if (p != null && p.Path.Contains(removedPart))
+                    RemovePartsRecursive(p);
         }
 
         #endregion
@@ -521,99 +501,50 @@ namespace Client.Model
         /// <summary>
         /// Function to recursively try to find a new path to the cockpit for the current element, and all parts nearby which have the current element in their path
         /// </summary>
-        /// <param name="pos1">The first index of the current part</param>
-        /// <param name="pos2">The second index of the current part</param>
+        /// <param name="current">The current part being checked whether it's removed</param>
         /// <returns>A logical value indicating if the current part got removed</returns>
-        private bool RemovePartsRecursive(int pos1, int pos2)
+        private bool RemovePartsRecursive(Part current)
         {
-            Part top = _parts[pos1 - 1, pos2];
-            Part right = _parts[pos1, pos2 + 1];
-            Part bottom = _parts[pos1 + 1, pos2];
-            Part left = _parts[pos1, pos2 - 1];
-            Part current = _parts[pos1, pos2];
-            //In each direction check if
-            if (top != null)
+            (Part,Direction)[] neighbours = new (Part,Direction)[]
             {
-                //we find a part which is connected through the current element, then check deeper down the path if there is an alternative
-                if (top.Path.Contains(current))
-                {
-                    if (RemovePartsRecursive(pos1 - 1, pos2))
-                    {
-                        current.Path = top.Path;
-                        current.AddToPath(top);
-                        return true;
-                    }
-                }
-                //we find a part which is not connected through the current element, but has a connection to it, then rebind to that path
-                else if (1 == ConnectorsMatch(current.GetConnector(Direction.Top), top.GetConnector(Direction.Bottom)))
-                {
-                    current.Path = top.Path;
-                    current.AddToPath(top);
-                    return true;
-                }
-            }
-            if (right != null)
-            {
-                if (right.Path.Contains(current))
-                {
-                    if(RemovePartsRecursive(pos1, pos2 + 1))
-                    {
-                        current.Path = right.Path;
-                        current.AddToPath(right);
-                        return true;
-                    }
-                }
-                else if (1 == ConnectorsMatch(current.GetConnector(Direction.Right), right.GetConnector(Direction.Left)))
-                {
-                    current.Path = right.Path;
-                    current.AddToPath(right);
-                    return true;
-                }
-            }
-            if (bottom != null)
-            {
-                if (bottom.Path.Contains(current))
-                {
-                    if(RemovePartsRecursive(pos1 + 1, pos2))
-                    {
-                        current.Path = bottom.Path;
-                        current.AddToPath(bottom);
-                        return true;
-                    }
-                }
-                else if (1 == ConnectorsMatch(current.GetConnector(Direction.Bottom), bottom.GetConnector(Direction.Top)))
-                {
-                    current.Path = bottom.Path;
-                    current.AddToPath(bottom);
-                    return true;
-                }
-            }
-            if (left != null)
-            {
+                (_parts[current.Pos1 - 1, current.Pos2], Direction.Bottom),
+                (_parts[current.Pos1, current.Pos2 + 1], Direction.Left),
+                (_parts[current.Pos1 + 1, current.Pos2], Direction.Top),
+                (_parts[current.Pos1, current.Pos2 - 1], Direction.Right)
+            };
 
-                if (left.Path.Contains(current))
+            //in each direction check if
+            foreach((Part,Direction) neighbour in neighbours)
+            {
+                if(neighbour.Item1 != null)
                 {
-                    if(RemovePartsRecursive(pos1, pos2 - 2))
+                    //we find a part which is connected through the current element, then check deeper down the path if there is an alternative
+                    if (neighbour.Item1.Path.Contains(current))
                     {
-                        current.Path = left.Path;
-                        current.AddToPath(left);
+                        if (RemovePartsRecursive(neighbour.Item1))
+                        {
+                            current.Path = neighbour.Item1.Path;
+                            current.AddToPath(neighbour.Item1);
+                            return true;
+                        }
+                    }
+                    //we find a part which is not connected through the current element, but has a connection to it, then rebind to that path
+                    else if (1 == ConnectorsMatch(current.GetConnector((Direction)((int)neighbour.Item2 + 2 % 4)), neighbour.Item1.GetConnector(neighbour.Item2)))
+                    {
+                        current.Path = neighbour.Item1.Path;
+                        current.AddToPath(neighbour.Item1);
                         return true;
                     }
                 }
-                else if (1 == ConnectorsMatch(current.GetConnector(Direction.Left), left.GetConnector(Direction.Right)))
-                {
-                    current.Path = left.Path;
-                    current.AddToPath(left);
-                    return true;
-                }
             }
+
             //if no alternative path is found, remove the part
             if (current is IActivatable)
-                _activatableParts.Remove((pos1, pos2));
+                _activatableParts.Remove(current);
             else if (current is Storage)
                 _storages.Remove(current as Storage);
             ++_penalty;
-            _parts[pos1, pos2] = null;
+            _parts[current.Pos1, current.Pos2] = null;
             return false;
         }
 

@@ -8,6 +8,10 @@ namespace Client.Model
 
         private Stack<Part> _path;
 
+        public int Pos1 { get; set; }
+
+        public int Pos2 { get; set; }
+
         public Direction Rotation { get; private set; }
 
         public Connector[] Connectors => _connectors;
