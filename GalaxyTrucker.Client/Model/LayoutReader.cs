@@ -2,7 +2,7 @@
 using System.IO;
 using System.Text.Json;
 
-namespace Client.Model
+namespace GalaxyTrucker.Client.Model
 {
     public class Layouts
     {

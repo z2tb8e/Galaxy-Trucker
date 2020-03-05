@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Client.Exceptions
+namespace GalaxyTrucker.Client.Exceptions
 {
     /// <summary>
     /// Exception thrown when a part at the supplied indices is null, or does not have the neccessary subclass or does not meet the criteria required by the method.

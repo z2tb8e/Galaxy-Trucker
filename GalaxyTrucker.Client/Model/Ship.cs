@@ -1,10 +1,10 @@
-﻿using Client.Exceptions;
-using Client.Model.PartTypes;
+﻿using GalaxyTrucker.Client.Exceptions;
+using GalaxyTrucker.Client.Model.PartTypes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Client.Model
+namespace GalaxyTrucker.Client.Model
 {
     public class Ship
     {

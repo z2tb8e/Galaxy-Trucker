@@ -1,7 +1,7 @@
 ﻿using System.Windows.Media.Imaging;
-using Client.Model;
+using GalaxyTrucker.Client.Model;
 
-namespace Client.ViewModels
+namespace GalaxyTrucker.Client.ViewModels
 {
     /// <summary>
     /// Wrapper class for the Part class to be displayed with while hiding the logic components
@@ -19,7 +19,20 @@ namespace Client.ViewModels
 
         public void SetImage() => PartImage = PartBuilder.GetPartImage(_part);
 
-        public int Row { get; set; }
-        public int Column { get; set; }
+        public void Rotate(Direction d) => _part.Rotate(d);
+
+        public Direction Rotation => _part.Rotation;
+
+        public int Row
+        {
+            get => _part.Pos1;
+            set => _part.Pos1 = value;
+        }
+
+        public int Column
+        {
+            get => _part.Pos2;
+            set => _part.Pos2 = value;
+        }
     }
 }

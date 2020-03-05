@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace Client.ViewModels
+namespace GalaxyTrucker.Client.ViewModels
 {
     public abstract class NotifyBase : INotifyPropertyChanged
     {

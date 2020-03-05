@@ -1,6 +1,4 @@
-﻿using Client.Exceptions;
-
-namespace Client.Model.PartTypes
+﻿namespace GalaxyTrucker.Client.Model.PartTypes
 {
     public class Engine : Part
     {

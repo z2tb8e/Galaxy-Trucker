@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Client.Exceptions
+namespace GalaxyTrucker.Client.Exceptions
 {
     /// <summary>
     /// Exception thrown when the part builder encounters a part with an unknown sublcass.

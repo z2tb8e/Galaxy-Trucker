@@ -1,4 +1,4 @@
-﻿namespace Client.Model.PartTypes
+﻿namespace GalaxyTrucker.Client.Model.PartTypes
 {
     public class Cabin : Part
     {

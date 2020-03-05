@@ -1,4 +1,4 @@
-﻿namespace Client.Model
+﻿namespace GalaxyTrucker.Client.Model
 {
     interface IActivatable
     {

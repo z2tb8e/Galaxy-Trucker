@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Client.Model
+namespace GalaxyTrucker.Client.Model
 {
     public abstract class Part
     {

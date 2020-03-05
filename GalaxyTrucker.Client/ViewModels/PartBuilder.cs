@@ -1,13 +1,13 @@
-﻿using Client.Model;
-using Client.Model.PartTypes;
+﻿using GalaxyTrucker.Client.Model;
+using GalaxyTrucker.Client.Model.PartTypes;
 using System;
 using System.Drawing;
 using System.Windows.Media.Imaging;
-using Client.Exceptions;
+using GalaxyTrucker.Client.Exceptions;
 using System.IO;
 using System.Drawing.Imaging;
 
-namespace Client.ViewModels
+namespace GalaxyTrucker.Client.ViewModels
 {
     public static class PartBuilder
     {

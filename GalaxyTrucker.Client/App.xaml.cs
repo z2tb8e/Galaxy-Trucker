@@ -5,11 +5,12 @@ using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
-using Client.Model;
-using Client.Model.PartTypes;
-using Client.ViewModels;
+using GalaxyTrucker.Client.Model;
+using GalaxyTrucker.Client.Model.PartTypes;
+using GalaxyTrucker.Client.ViewModels;
+using System.IO;
 
-namespace Client
+namespace GalaxyTrucker.Client
 {
     /// <summary>
     /// Interaction logic for App.xaml
@@ -18,8 +19,7 @@ namespace Client
     {
         public App()
         {
-            Part p = new LaserDouble(Connector.None, Connector.Universal, Connector.Double, Connector.Single);
-            PartBuilder.GetPartImage(p);
+            
         }
     }
 }
