@@ -16,6 +16,8 @@ namespace GalaxyTrucker.Client.Model
         private int _penalty;
         private readonly List<Part> _activatableParts;
         private readonly List<Storage> _storages;
+        private bool _hasEngineAlien;
+        private bool _hasLaserAlien;
 
         #endregion
 
@@ -28,7 +30,7 @@ namespace GalaxyTrucker.Client.Model
             get
             {
                 int sum = _parts.Cast<Part>().Where(x => x is Laser).Sum(x => (x as Laser).Firepower);
-                sum += sum > 0 && HasLaserAlien ? 2 : 0;
+                sum += sum > 0 && _hasLaserAlien ? 2 : 0;
                 return sum;
             }
         }
@@ -38,7 +40,7 @@ namespace GalaxyTrucker.Client.Model
             get
             {
                 int sum = _parts.Cast<Part>().Where(x => x is Engine).Sum(x => (x as Engine).Enginepower);
-                sum += sum > 0 && HasEngineAlien ? 2 : 0;
+                sum += sum > 0 && _hasEngineAlien ? 2 : 0;
                 return sum;
             }
         }
@@ -66,10 +68,6 @@ namespace GalaxyTrucker.Client.Model
         public List<(int, int)> InactiveEngines => _activatableParts.Cast<Part>()
             .Where(x => x is EngineDouble && !(x as EngineDouble).Activated).Select(x => (x.Pos1, x.Pos2)).ToList();
 
-        private bool HasEngineAlien { get; set; }
-
-        private bool HasLaserAlien { get; set; }
-
         #endregion
 
         #region events
@@ -85,8 +83,8 @@ namespace GalaxyTrucker.Client.Model
         /// <param name="color">The color indicating the owner of the ship</param>
         public Ship(ShipLayout layout, PlayerColor color)
         {
-            HasEngineAlien = false;
-            HasLaserAlien = false;
+            _hasEngineAlien = false;
+            _hasLaserAlien = false;
             (int, int) cockpit;
             (cockpit, _movableFields) = LayoutReader.GetLayout(layout);
             _activatableParts = new List<Part>();
@@ -105,6 +103,33 @@ namespace GalaxyTrucker.Client.Model
         #region public methods
 
         /// <summary>
+        /// Method to get the number of connectors facing empty fields
+        /// </summary>
+        /// <returns>The number of these open connectors</returns>
+        public int GetOpenConnectorCount()
+        {
+            int sum = 0;
+            foreach(Part p in _parts)
+            {
+                (Part, Direction)[] neighbours = new (Part, Direction)[]
+                {
+                    (_parts[p.Pos1 - 1, p.Pos2], Direction.Top),
+                    (_parts[p.Pos1, p.Pos2 + 1], Direction.Right),
+                    (_parts[p.Pos1 + 1, p.Pos2], Direction.Bottom),
+                    (_parts[p.Pos1, p.Pos2 - 1], Direction.Left)
+                };
+                foreach((Part, Direction) pair in neighbours)
+                {
+                    if(pair.Item1 == null && p.Connectors[(int)pair.Item2] != Connector.None)
+                    {
+                        ++sum;
+                    }
+                }
+            }
+            return sum;
+        }
+
+        /// <summary>
         /// Method to add to the cabin at the supplied indices, given it has the neccessary alien cabin neighbouring it.
         /// </summary>
         /// <param name="pos1">The first index of the cabin</param>
@@ -112,7 +137,7 @@ namespace GalaxyTrucker.Client.Model
         /// <param name="alien">The type of alien to add</param>
         public void AddAlien(int pos1, int pos2, Personnel alien)
         {
-            if (HasEngineAlien && alien == Personnel.EngineAlien || HasLaserAlien && alien == Personnel.LaserAlien)
+            if (_hasEngineAlien && alien == Personnel.EngineAlien || _hasLaserAlien && alien == Personnel.LaserAlien)
             {
                 throw new DuplicateAlienException(alien, (pos1, pos2));
             }
@@ -144,7 +169,7 @@ namespace GalaxyTrucker.Client.Model
                 }
                 if (cabin != null)
                 {
-                    HasEngineAlien = true;
+                    _hasEngineAlien = true;
                     (_parts[pos1, pos2] as Cabin).Personnel = Personnel.EngineAlien;
                 }
                 else throw new InvalidIndexException("Cabin at (" + pos1.ToString() + "," + pos2.ToString() + ") does not have the required neighbouring alien cabin");
@@ -162,7 +187,7 @@ namespace GalaxyTrucker.Client.Model
                 }
                 if (cabin != null)
                 {
-                    HasLaserAlien = true;
+                    _hasLaserAlien = true;
                     (_parts[pos1, pos2] as Cabin).Personnel = Personnel.LaserAlien;
                 }
                 else throw new InvalidIndexException("Cabin at (" + pos1.ToString() + "," + pos2.ToString() + ") does not have the required neighbouring alien cabin");
@@ -537,11 +562,11 @@ namespace GalaxyTrucker.Client.Model
                         (p as Cabin).Personnel = Personnel.None;
                         if (alienType == Personnel.LaserAlien)
                         {
-                            HasLaserAlien = false;
+                            _hasLaserAlien = false;
                         }
                         else
                         {
-                            HasEngineAlien = false;
+                            _hasEngineAlien = false;
                         }
                     }
                 }
@@ -624,11 +649,11 @@ namespace GalaxyTrucker.Client.Model
                         (p.Item1 as Cabin).Personnel = Personnel.None;
                         if (alienType == Personnel.LaserAlien)
                         {
-                            HasLaserAlien = false;
+                            _hasLaserAlien = false;
                         }
                         else
                         {
-                            HasEngineAlien = false;
+                            _hasEngineAlien = false;
                         }
                     }
                 }

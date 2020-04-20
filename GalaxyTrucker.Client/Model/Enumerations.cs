@@ -63,4 +63,18 @@
         CockpitHit,
         OutOfHumans
     }
+
+    public enum CardCheckAttribute
+    {
+        Firepower,
+        Enginepower,
+        CrewCount
+    }
+    public enum CardEventPenalty
+    {
+        Delay,
+        Crew,
+        Resources,
+        Barrage
+    }
 }
