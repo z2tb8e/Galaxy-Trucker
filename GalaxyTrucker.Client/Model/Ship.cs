@@ -43,6 +43,13 @@ namespace GalaxyTrucker.Client.Model
             }
         }
 
+        public int HumanCount => _parts.Cast<Part>().Where(x => x is Cabin).Sum(x => (x as Cabin).Personnel switch
+        {
+            Personnel.HumanSingle => 1,
+            Personnel.HumanDouble => 2,
+            _ => 0
+        });
+
         public int CrewCount => _parts.Cast<Part>().Where(x => x is Cabin).Sum(x => (x as Cabin).Personnel switch
         {
             Personnel.None => 0,
@@ -59,19 +66,27 @@ namespace GalaxyTrucker.Client.Model
         public List<(int, int)> InactiveEngines => _activatableParts.Cast<Part>()
             .Where(x => x is EngineDouble && !(x as EngineDouble).Activated).Select(x => (x.Pos1, x.Pos2)).ToList();
 
-        private bool HasEngineAlien => _parts.Cast<Part>().Where(x => x is Cabin).Any(x => (x as Cabin).Personnel == Personnel.EngineAlien);
+        private bool HasEngineAlien { get; set; }
 
-        private bool HasLaserAlien => _parts.Cast<Part>().Where(x => x is Cabin).Any(x => (x as Cabin).Personnel == Personnel.LaserAlien);
+        private bool HasLaserAlien { get; set; }
+
+        #endregion
+
+        #region events
+
+        public event EventHandler<WreckedSource> ShipWrecked;
 
         #endregion
 
         /// <summary>
-        /// Constructor for the ship class, setting the fields in which parts can be placed in, as well as placing the cockpit and setting the player colour
+        /// Constructor for the ship class, setting the fields in which parts can be placed in, as well as placing the cockpit and setting the player colour.
         /// </summary>
         /// <param name="layout">The layout of the ship</param>
         /// <param name="color">The color indicating the owner of the ship</param>
         public Ship(ShipLayout layout, PlayerColor color)
         {
+            HasEngineAlien = false;
+            HasLaserAlien = false;
             (int, int) cockpit;
             (cockpit, _movableFields) = LayoutReader.GetLayout(layout);
             _activatableParts = new List<Part>();
@@ -90,15 +105,23 @@ namespace GalaxyTrucker.Client.Model
         #region public methods
 
         /// <summary>
-        /// Method to add to the cabin at the supplied indices, given it has the neccessary alien cabin neighbouring it
+        /// Method to add to the cabin at the supplied indices, given it has the neccessary alien cabin neighbouring it.
         /// </summary>
         /// <param name="pos1">The first index of the cabin</param>
         /// <param name="pos2">The second index of the cabin</param>
         /// <param name="alien">The type of alien to add</param>
         public void AddAlien(int pos1, int pos2, Personnel alien)
         {
+            if (HasEngineAlien && alien == Personnel.EngineAlien || HasLaserAlien && alien == Personnel.LaserAlien)
+            {
+                throw new DuplicateAlienException(alien, (pos1, pos2));
+            }
+
             if (!(_parts[pos1, pos2] is Cabin))
                 throw new InvalidIndexException("Part at (" + pos1.ToString() + "," + pos2.ToString() + ") is not a cabin.");
+
+            else if(_parts[pos1,pos2] is Cockpit)
+                throw new InvalidIndexException("The cockpit must have humans as personnel");
 
             Part[] neighbours = new Part[]
             {
@@ -113,7 +136,7 @@ namespace GalaxyTrucker.Client.Model
                 Part cabin;
                 try
                 {
-                    cabin = neighbours.Cast<Part>().Where(x => x != null && x is EngineCabin && !(x as EngineCabin).EffectUsed).First();
+                    cabin = neighbours.Cast<Part>().Where(x => x is EngineCabin).First();
                 }
                 catch (Exception)
                 {
@@ -121,7 +144,7 @@ namespace GalaxyTrucker.Client.Model
                 }
                 if (cabin != null)
                 {
-                    (cabin as EngineCabin).EffectUsed = true;
+                    HasEngineAlien = true;
                     (_parts[pos1, pos2] as Cabin).Personnel = Personnel.EngineAlien;
                 }
                 else throw new InvalidIndexException("Cabin at (" + pos1.ToString() + "," + pos2.ToString() + ") does not have the required neighbouring alien cabin");
@@ -131,7 +154,7 @@ namespace GalaxyTrucker.Client.Model
                 Part cabin;
                 try
                 {
-                    cabin = neighbours.Cast<Part>().Where(x => x != null && x is LaserCabin && !(x as LaserCabin).EffectUsed).First();
+                    cabin = neighbours.Cast<Part>().Where(x => x is LaserCabin).First();
                 }
                 catch (Exception)
                 {
@@ -139,7 +162,7 @@ namespace GalaxyTrucker.Client.Model
                 }
                 if (cabin != null)
                 {
-                    (cabin as LaserCabin).EffectUsed = true;
+                    HasLaserAlien = true;
                     (_parts[pos1, pos2] as Cabin).Personnel = Personnel.LaserAlien;
                 }
                 else throw new InvalidIndexException("Cabin at (" + pos1.ToString() + "," + pos2.ToString() + ") does not have the required neighbouring alien cabin");
@@ -148,14 +171,14 @@ namespace GalaxyTrucker.Client.Model
         }
 
         /// <summary>
-        /// Method to fill the unfilled cabins with regular personnel
+        /// Method to fill the unfilled cabins with human personnel.
         /// </summary>
         public void FillCabins()
             => _parts.Cast<Part>().Where(x => x is Cabin && (x as Cabin).Personnel == Personnel.None)
             .Select(x => (x as Cabin).Personnel = Personnel.HumanDouble);
 
         /// <summary>
-        /// Method to deactivate all activated parts
+        /// Method to deactivate all activated parts.
         /// </summary>
         public void ResetActivatables()
         {
@@ -180,8 +203,8 @@ namespace GalaxyTrucker.Client.Model
         }
 
         /// <summary>
-        /// Method to apply the effects of a pandemic event
-        /// In case of a pandemic all cabins which are directly connected and have at least a single crew member, lose one personnel each
+        /// Method to apply the effects of a pandemic event.
+        /// In case of a pandemic all cabins which are directly connected and have at least a single crew member, lose one member of personnel each.
         /// </summary>
         public void ApplyPandemic()
         {
@@ -218,7 +241,7 @@ namespace GalaxyTrucker.Client.Model
         }
 
         /// <summary>
-        /// Method to apply the effects of a projectile hitting the ship from a given direction the given line
+        /// Method to apply the effects of a projectile hitting the ship from a given direction the given line.
         /// </summary>
         /// <param name="pj">The type of projectile the ship is getting hit by</param>
         /// <param name="dir">The direction the projectile is coming from</param>
@@ -299,7 +322,7 @@ namespace GalaxyTrucker.Client.Model
         }
 
         /// <summary>
-        /// Method to add a list of wares to the ship's storages while maximizing the value of the stored wares
+        /// Method to add a list of wares to the ship's storages while maximizing the value of the stored wares.
         /// </summary>
         /// <param name="wares">The list of wares to add</param>
         public void AddWares(List<Ware> wares)
@@ -309,17 +332,14 @@ namespace GalaxyTrucker.Client.Model
                 Ware min = _storages.Min(x => x.Min);
                 if(w > min)
                 {
-                    try
-                    {
-                        Storage target = _storages.Find(x => x.Min == min && (w != Ware.Red || (w == Ware.Red && x is SpecialStorage)));
-                        target.AddWare(w);
-                    }catch(Exception) { }
+                    Storage target = _storages.Find(x => x.Min == min && (w != Ware.Red || (w == Ware.Red && x is SpecialStorage)));
+                    target.AddWare(w);
                 }
             }
         }
 
         /// <summary>
-        /// Method to remove the supplied number of wares from the ship, prioritizing the highest value wares
+        /// Method to remove the supplied number of wares from the ship, prioritizing the highest value wares.
         /// </summary>
         /// <param name="count">The number of wares to remove</param>
         public void RemoveWares(int count)
@@ -336,7 +356,7 @@ namespace GalaxyTrucker.Client.Model
         }
 
         /// <summary>
-        /// Method to remove a single personnel from cabin at the supplied indices
+        /// Method to remove a single personnel from cabin at the supplied indices.
         /// </summary>
         /// <param name="pos1">The first index of the cabin</param>
         /// <param name="pos2">The first index of the cabin</param>
@@ -350,7 +370,7 @@ namespace GalaxyTrucker.Client.Model
         }
 
         /// <summary>
-        /// Method to activate the part at the given indices, given it is an activatable part and it's currently inactive
+        /// Method to activate the part at the given indices, given it is an activatable part and it's currently inactive.
         /// </summary>
         /// <param name="pos1"></param>
         /// <param name="pos2"></param>
@@ -383,7 +403,7 @@ namespace GalaxyTrucker.Client.Model
         }
 
         /// <summary>
-        /// Function to add a new part to the ship at the supplied indices
+        /// Function to add a new part to the ship at the supplied indices.
         /// </summary>
         /// <param name="part">The part to add</param>
         /// <param name="pos1">The first index to add the part at</param>
@@ -425,15 +445,17 @@ namespace GalaxyTrucker.Client.Model
 
             //if the part is an engine it can't have a part right behind it (note: you can only have engines facing top, thus no other directions need be checked)
             if (part is Engine && neighbours[3].Item1 != null)
+            {
                 return false;
+            }
 
             //check if the part is not obscured from any direction but it has at least one valid connection, also check if the field is being blocked by a laser or engine
             Part matchingPart = null;
             bool isMismatched = false;
 
-            foreach((Part, Direction) neighbour in neighbours)
+            foreach ((Part, Direction) neighbour in neighbours)
             {
-                if(neighbour.Item1 is null)
+                if (neighbour.Item1 is null)
                 {
                     if (neighbour.Item2 == Direction.Bottom && neighbour.Item1 is Engine)
                         return false;
@@ -449,9 +471,13 @@ namespace GalaxyTrucker.Client.Model
             if (matchingPart != null && !isMismatched)
             {
                 if (part is IActivatable)
+                {
                     _activatableParts.Add(part);
+                }
                 else if (part is Storage)
+                {
                     _storages.Add(part as Storage);
+                }
                 _parts[pos1, pos2] = part;
                 part.Pos1 = pos1;
                 part.Pos2 = pos2;
@@ -459,27 +485,39 @@ namespace GalaxyTrucker.Client.Model
                 part.AddToPath(matchingPart);
                 return true;
             }
-            else return false;
+            else
+            {
+                return false;
+            }
         }
 
         /// <summary>
         /// Method to remove the part at the supplied indices, 
-        /// as well as removing all the parts which are no longer connected to the cockpit without the removed part
+        /// as well as removing all the parts which are no longer connected to the cockpit without the removed part.
         /// </summary>
         /// <param name="pos1">The first index of the part to remove</param>
         /// <param name="pos2">The second index of the part to remove</param>
         public void RemovePartAtIndex(int pos1, int pos2)
         {
-            if (_parts[pos1, pos2] == null)
-                throw new InvalidIndexException("Part at (" + pos1.ToString() + "," + pos2.ToString() + ") is null.");
+            Part removedPart = _parts[pos1, pos2] ?? throw new InvalidIndexException("Part at (" + pos1.ToString() + "," + pos2.ToString() + ") is null.");
 
-            Part removedPart = _parts[pos1, pos2];
-            if (removedPart is IActivatable)
-                _activatableParts.Remove(removedPart);
-            else if (removedPart is Storage)
-                _storages.Remove(removedPart as Storage);
             ++_penalty;
             _parts[pos1, pos2] = null;
+
+            if (removedPart is Cockpit)
+            {
+                ShipWrecked(this, WreckedSource.CockpitHit);
+                _penalty = Math.Min(_penaltyCap, _parts.Cast<Part>().Where(p => p != null).Count());
+                return;
+            }
+            else if (removedPart is IActivatable)
+            {
+                _activatableParts.Remove(removedPart);
+            }
+            else if (removedPart is Storage)
+            {
+                _storages.Remove(removedPart as Storage);
+            }
 
             Part[] neighbours = new Part[]
             {
@@ -489,9 +527,38 @@ namespace GalaxyTrucker.Client.Model
                 _parts[pos1, pos2 - 1]
             };
 
+            if (removedPart is EngineCabin || removedPart is LaserCabin)
+            {
+                Personnel alienType = removedPart is EngineCabin ? Personnel.EngineAlien : Personnel.LaserAlien;
+                foreach (Part p in neighbours)
+                {
+                    if(p is Cabin && (p as Cabin).Personnel == alienType)
+                    {
+                        (p as Cabin).Personnel = Personnel.None;
+                        if (alienType == Personnel.LaserAlien)
+                        {
+                            HasLaserAlien = false;
+                        }
+                        else
+                        {
+                            HasEngineAlien = false;
+                        }
+                    }
+                }
+            }
+
             foreach (Part p in neighbours)
+            {
                 if (p != null && p.Path.Contains(removedPart))
+                {
                     RemovePartsRecursive(p);
+                }
+            }
+            if (HumanCount == 0)
+            {
+                ShipWrecked(this, WreckedSource.OutOfHumans);
+            }
+
         }
 
         #endregion
@@ -540,9 +607,33 @@ namespace GalaxyTrucker.Client.Model
 
             //if no alternative path is found, remove the part
             if (current is IActivatable)
+            {
                 _activatableParts.Remove(current);
+            }
             else if (current is Storage)
+            {
                 _storages.Remove(current as Storage);
+            }
+            if (current is EngineCabin || current is LaserCabin)
+            {
+                Personnel alienType = current is EngineCabin ? Personnel.EngineAlien : Personnel.LaserAlien;
+                foreach ((Part,Direction) p in neighbours)
+                {
+                    if (p.Item1 is Cabin && (p.Item1 as Cabin).Personnel == alienType)
+                    {
+                        (p.Item1 as Cabin).Personnel = Personnel.None;
+                        if (alienType == Personnel.LaserAlien)
+                        {
+                            HasLaserAlien = false;
+                        }
+                        else
+                        {
+                            HasEngineAlien = false;
+                        }
+                    }
+                }
+            }
+
             ++_penalty;
             _parts[current.Pos1, current.Pos2] = null;
             return false;

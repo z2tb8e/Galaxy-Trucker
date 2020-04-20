@@ -57,4 +57,10 @@
         Blue,
         Green
     }
+
+    public enum WreckedSource
+    {
+        CockpitHit,
+        OutOfHumans
+    }
 }
