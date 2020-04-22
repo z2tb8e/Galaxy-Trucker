@@ -68,22 +68,22 @@ namespace GalaxyTrucker.Network
         public void StartBuildStage()
         {
             _stage = ServerStage.Build;
-            List<Thread> playerConfirms = new List<Thread>();
+            List<Task> playerConfirms = new List<Task>();
             foreach(PlayerColor key in _clients.Keys)
             {
-                Thread t = new Thread(() => GetConfirm(key));
+                Task t = new Task(() => GetConfirm(key));
                 playerConfirms.Add(t);
                 t.Start();
             }
 
-            foreach(Thread t in playerConfirms)
+            foreach(Task t in playerConfirms)
             {
-                t.Join();
+                t.Wait();
             }
 
             foreach(PlayerColor key in _clients.Keys)
             {
-                new Thread(() => SendStartToPlayer(key)).Start();
+                new Task(() => SendStartToPlayer(key)).Start();
             }
 
             BuildStage();
@@ -92,18 +92,26 @@ namespace GalaxyTrucker.Network
         private void BuildStage()
         {
             ConcurrentDictionary<PlayerColor, bool> playersFinished = new ConcurrentDictionary<PlayerColor, bool>();
+            List<Task> activeTasks = new List<Task>();
             foreach(PlayerColor key in _clients.Keys)
             {
                 playersFinished[key] = false;
             }
 
-            while(playersFinished.Values.Contains(false))
+            while(playersFinished.Values.Contains(false) || activeTasks.Any())
             {
+                foreach(Task t in activeTasks)
+                {
+                    t.Wait();
+                }
+                activeTasks.RemoveAll(t => t.IsCompleted);
                 foreach(PlayerColor key in _clients.Keys)
                 {
                     if (_clients[key].GetStream().DataAvailable)
                     {
-                        new Thread(() => ManageBuildMessage(key, playersFinished)).Start();
+                        Task t = new Task(() => ManageBuildMessage(key, playersFinished));
+                        activeTasks.Add(t);
+                        t.Start();
                     }
                 }
             }
@@ -137,7 +145,7 @@ namespace GalaxyTrucker.Network
                 {
                     value = false;
                 }
-                if (!playersFinished[player])
+                else if (playersFinished[player])
                 {
                     Console.WriteLine("{0} player not shown part due to being finished", player);
                     value = false;
@@ -159,6 +167,8 @@ namespace GalaxyTrucker.Network
                 }
                 playersFinished[player] = !playersFinished[player];
                 Console.WriteLine("{0} player changed ready status to {1}", player, playersFinished[player]);
+                byte[] msg = Encoding.ASCII.GetBytes("Confirm");
+                ns.Write(msg, 0, msg.Length);
             }
         }
 

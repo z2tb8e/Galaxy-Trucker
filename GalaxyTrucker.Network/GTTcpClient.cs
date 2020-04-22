@@ -19,7 +19,7 @@ namespace GalaxyTrucker.Network
 
         public GTTcpClient(IPEndPoint endPoint)
         {
-            _canSend = new Semaphore(1, 1);
+            _canSend = new Semaphore(0, 1);
             _stage = ServerStage.Lobby;
             _client = new TcpClient();
             _endPoint = endPoint;
@@ -61,6 +61,7 @@ namespace GalaxyTrucker.Network
                 }
                 _stage = ServerStage.Build;
                 Console.WriteLine("{0} player begins building", _color);
+                _canSend.Release();
 
             }
             catch (ArgumentNullException e)
@@ -80,7 +81,7 @@ namespace GalaxyTrucker.Network
         public bool PickPart(int ind1, int ind2)
         {
             _canSend.WaitOne();
-            if(_stage != ServerStage.Build)
+            if (_stage != ServerStage.Build)
             {
                 throw new InvalidOperationException();
             }

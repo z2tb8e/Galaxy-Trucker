@@ -4,6 +4,7 @@ using System.Text;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace GalaxyTrucker.Network
 {
@@ -21,30 +22,23 @@ namespace GalaxyTrucker.Network
             GTTcpClient client3 = new GTTcpClient(endPoint);
             GTTcpClient client4 = new GTTcpClient(endPoint);
 
-            Thread listenerThread = new Thread(listener.Start);
-            Thread clientThread1 = new Thread(client1.Connect);
-            Thread clientThread2 = new Thread(client2.Connect);
-            Thread clientThread3 = new Thread(client3.Connect);
-            Thread clientThread4 = new Thread(client4.Connect);
+            new Thread(() => listener.Start()).Start();
+            new Thread(() => client1.Connect()).Start();
+            new Thread(() => client2.Connect()).Start();
+            new Thread(() => client3.Connect()).Start();
+            new Thread(() => client4.Connect()).Start();
 
-            listenerThread.Start();
-            clientThread1.Start();
-            clientThread2.Start();
-            clientThread3.Start();
-            clientThread4.Start();
-
-            Thread.Sleep(2000);
             new Thread(() => client1.PickPart(5, 6)).Start();
             new Thread(() => client4.PickPart(6, 1)).Start();
             new Thread(() => client3.PickPart(2, 1)).Start();
             new Thread(() => client2.PickPart(3, 15)).Start();
             new Thread(() => client1.ToggleFinishedBuilding()).Start();
             new Thread(() => client2.ToggleFinishedBuilding()).Start();
-            new Thread(() => client2.PickPart(3, 15)).Start();
+            new Thread(() => client2.PickPart(1,2)).Start();
             new Thread(() => client3.ToggleFinishedBuilding()).Start();
             new Thread(() => client1.ToggleFinishedBuilding()).Start();
             new Thread(() => client4.ToggleFinishedBuilding()).Start();
-            new Thread(() => client3.PickPart(3, 15)).Start();
+            new Thread(() => client1.PickPart(3, 15)).Start();
             new Thread(() => client1.ToggleFinishedBuilding()).Start();
 
 
