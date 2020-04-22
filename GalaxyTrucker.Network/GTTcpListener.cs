@@ -137,12 +137,11 @@ namespace GalaxyTrucker.Network
             _orderSemaphore = new Semaphore(1, 1);
             _playerOrder = new List<PlayerColor>();
 
-            //Send Start message to all clients
-            Parallel.ForEach(_clients.Keys, key =>
+            foreach(PlayerColor key in _clients.Keys)
             {
                 _playerReady[key] = false;
                 WriteMessageToStream(key, "Start");
-            });
+            }
 
             BuildStage();
         }
@@ -182,11 +181,12 @@ namespace GalaxyTrucker.Network
                 return;
             }
             _stage = ServerStage.Flight;
-            Parallel.ForEach(_clients.Keys, key =>
+
+            foreach(PlayerColor key in _clients.Keys)
             {
                 _playerReady[key] = false;
                 WriteMessageToStream(key, "Start");
-            });
+            }
 
             FlightStage();
         }
