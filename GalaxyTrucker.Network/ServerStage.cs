@@ -8,19 +8,19 @@
         /// <summary>
         /// Accepting attempted connections
         /// </summary>
-        Lobby,
+        Lobby = 0,
         /// <summary>
         /// Building phase, not accepting connections
         /// </summary>
-        Build,
+        Build = 1,
         /// <summary>
         /// Past building flight phase, not accepting connections
         /// </summary>
-        Flight,
+        Flight = 2,
         /// <summary>
         /// Server is closing
         /// </summary>
-        Close
+        Close = 3
 
     }
 }
