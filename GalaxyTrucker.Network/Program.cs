@@ -1,23 +1,16 @@
-﻿using System;
-using System.Linq;
-using System.Text;
+﻿using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.IO;
-using GalaxyTrucker.Client.Model;
-using GalaxyTrucker.Client.Model.CardEventTypes;
 
 namespace GalaxyTrucker.Network
 {
     class Program
     {
-        private static readonly string _path = "Resources/Cards.txt";
+        private static readonly string _path = "Resources/Parts.txt";
         static void Main()
         {
-            /*IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
+            IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
             IPAddress ipAddress = ipHostInfo.AddressList.Where(ip => ip.AddressFamily == AddressFamily.InterNetwork).First();
             IPEndPoint endPoint = new IPEndPoint(ipAddress, 11000);
 
@@ -60,17 +53,10 @@ namespace GalaxyTrucker.Network
             new Thread(() => client2.ToggleReadyToFly()).Start();
 
 
-            client1.Close();
+            /*client1.Close();
             client2.Close();
             client3.Close();
             listener.Close();*/
-            StreamReader file = new StreamReader(_path);
-            string line;
-            while ((line = file.ReadLine()) != null)
-            {
-                Console.WriteLine(line);
-            }
-            file.Close();
         }
     }
 }
