@@ -11,7 +11,7 @@ namespace GalaxyTrucker.Client.ViewModels
 {
     public static class PartBuilder
     {
-        private static readonly string _startingPath = "../../../Resources/PartBuilder/";
+        private static readonly string _startingPath = "Resources/PartBuilder/";
 
         public static BitmapImage GetPartImage(Part part)
         {

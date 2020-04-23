@@ -14,10 +14,10 @@ namespace GalaxyTrucker.Network
 {
     class Program
     {
-        private static readonly string _path = "../../../../GalaxyTrucker.Client/Resources/Parts.txt";
+        private static readonly string _path = "Resources/Cards.txt";
         static void Main()
         {
-            IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
+            /*IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
             IPAddress ipAddress = ipHostInfo.AddressList.Where(ip => ip.AddressFamily == AddressFamily.InterNetwork).First();
             IPEndPoint endPoint = new IPEndPoint(ipAddress, 11000);
 
@@ -60,10 +60,17 @@ namespace GalaxyTrucker.Network
             new Thread(() => client2.ToggleReadyToFly()).Start();
 
 
-            /*client1.Close();
+            client1.Close();
             client2.Close();
             client3.Close();
             listener.Close();*/
+            StreamReader file = new StreamReader(_path);
+            string line;
+            while ((line = file.ReadLine()) != null)
+            {
+                Console.WriteLine(line);
+            }
+            file.Close();
         }
     }
 }

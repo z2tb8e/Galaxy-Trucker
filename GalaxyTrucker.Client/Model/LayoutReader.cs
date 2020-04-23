@@ -22,7 +22,7 @@ namespace GalaxyTrucker.Client.Model
 
     public static class LayoutReader
     {
-        private static readonly string _path = "../../../Resources/ShipLayouts.json";
+        private static readonly string _path = "Resources/ShipLayouts.json";
 
         public static ((int,int),bool[,]) GetLayout(ShipLayout layout)
         {
