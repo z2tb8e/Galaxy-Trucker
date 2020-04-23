@@ -2,5 +2,6 @@
 {
     public class OpenSpace : CardEvent
     {
+        public OpenSpace(GameStage stage) : base(stage) { }
     }
 }

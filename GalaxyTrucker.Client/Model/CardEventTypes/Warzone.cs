@@ -1,4 +1,6 @@
-﻿namespace GalaxyTrucker.Client.Model.CardEventTypes
+﻿using System.Collections.Generic;
+
+namespace GalaxyTrucker.Client.Model.CardEventTypes
 {
     public class WarzoneEvent<T>
     {
@@ -18,9 +20,9 @@
 
         public WarzoneEvent<int> Event2 { get; }
 
-        public WarzoneEvent<Barrage> Event3 { get; }
+        public WarzoneEvent<List<(Projectile, Direction)>> Event3 { get; }
 
-        public Warzone(WarzoneEvent<int> event1, WarzoneEvent<int> event2, WarzoneEvent<Barrage> event3) =>
+        public Warzone(GameStage stage, WarzoneEvent<int> event1, WarzoneEvent<int> event2, WarzoneEvent<List<(Projectile, Direction)>> event3) : base(stage) =>
             (Event1, Event2, Event3) = (event1, event2, event3);
     }
 }

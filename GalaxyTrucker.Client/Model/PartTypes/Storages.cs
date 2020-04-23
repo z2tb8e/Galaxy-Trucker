@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 
 namespace GalaxyTrucker.Client.Model.PartTypes
 {
@@ -17,7 +15,7 @@ namespace GalaxyTrucker.Client.Model.PartTypes
         public int Value => _storage.Cast<int>().Sum();
 
         public Storage(Connector Top, Connector Right, Connector Bottom, Connector Left, int Capacity) : base(Top, Right, Bottom, Left) =>
-            _storage = new Ware[this.Capacity = Capacity];
+            _storage = Enumerable.Repeat(Ware.Empty, this.Capacity = Capacity).ToArray();
 
         protected virtual bool CanAdd(Ware w) => w != Ware.Red && w != Ware.Empty;
 

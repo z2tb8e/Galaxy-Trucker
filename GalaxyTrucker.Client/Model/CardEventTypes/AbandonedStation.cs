@@ -10,7 +10,7 @@ namespace GalaxyTrucker.Client.Model.CardEventTypes
 
         public List<Ware> Wares { get; }
 
-        public AbandonedStation(int minimumCrew, int dayCost, List<Ware> wares) =>
+        public AbandonedStation(GameStage stage, int minimumCrew, int dayCost, List<Ware> wares) : base(stage) =>
             (MinimumCrew, DayCost, Wares) = (minimumCrew, dayCost, wares);
     }
 }

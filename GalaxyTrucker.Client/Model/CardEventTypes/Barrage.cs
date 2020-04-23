@@ -6,6 +6,6 @@ namespace GalaxyTrucker.Client.Model.CardEventTypes
     {
         public List<(Projectile, Direction)> Projectiles { get; }
 
-        public Barrage(List<(Projectile, Direction)> projectiles) => Projectiles = projectiles;
+        public Barrage(GameStage stage, List<(Projectile, Direction)> projectiles) : base(stage) => Projectiles = projectiles;
     }
 }

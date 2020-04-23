@@ -6,9 +6,9 @@ namespace GalaxyTrucker.Client.Model.CardEventTypes
     {
         public int DayCost { get; }
 
-        public List<Ware> Offers { get; }
+        public List<List<Ware>> Offers { get; }
 
-        public Planets(int dayCost, List<Ware> offers) =>
+        public Planets(GameStage stage, int dayCost, List<List<Ware>> offers) : base(stage) =>
             (DayCost, Offers) = (dayCost, offers);
     }
 }

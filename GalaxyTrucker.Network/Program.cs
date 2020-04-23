@@ -6,11 +6,15 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.IO;
+using GalaxyTrucker.Client.Model;
+using GalaxyTrucker.Client.Model.CardEventTypes;
 
 namespace GalaxyTrucker.Network
 {
     class Program
     {
+        private static readonly string _path = "../../../../GalaxyTrucker.Client/Resources/Parts.txt";
         static void Main()
         {
             IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());

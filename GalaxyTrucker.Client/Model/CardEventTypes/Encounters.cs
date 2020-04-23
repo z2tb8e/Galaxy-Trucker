@@ -12,22 +12,22 @@ namespace GalaxyTrucker.Client.Model.CardEventTypes
 
         public RewardT Reward { get; }
 
-        public Encounter(int firepower, int dayCost, PenaltyT penalty, RewardT reward) =>
+        public Encounter(GameStage stage, int firepower, int dayCost, PenaltyT penalty, RewardT reward) : base(stage) =>
             (Firepower, DayCost, Penalty, Reward) = (firepower, dayCost, penalty, reward);
     }
 
-    public class Pirates : Encounter<Barrage, int>
+    public class Pirates : Encounter<List<(Projectile,Direction)>, int>
     {
-        public Pirates(int firepower, int dayCost, Barrage barrage, int reward) : base(firepower, dayCost, barrage, reward) { }
+        public Pirates(GameStage stage, int firepower, int dayCost, List<(Projectile, Direction)> projectiles, int reward) : base(stage, firepower, dayCost, projectiles, reward) { }
     }
 
     public class Smugglers : Encounter<int, List<Ware>>
     {
-        public Smugglers(int firepower, int dayCost, int warePenalty, List<Ware> wares) : base(firepower, dayCost, warePenalty, wares) { }
+        public Smugglers(GameStage stage, int firepower, int dayCost, int warePenalty, List<Ware> wares) : base(stage, firepower, dayCost, warePenalty, wares) { }
     }
 
     public class Slavers : Encounter<int, int>
     {
-        public Slavers(int firepower, int dayCost, int crewPenalty, int reward) : base(firepower, dayCost, crewPenalty, reward) { }
+        public Slavers(GameStage stage, int firepower, int dayCost, int crewPenalty, int reward) : base(stage, firepower, dayCost, crewPenalty, reward) { }
     }
 }

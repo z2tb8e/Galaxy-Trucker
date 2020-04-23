@@ -8,7 +8,7 @@
 
         public int Reward { get; }
 
-        public AbandonedShip(int crewCost, int dayCost, int reward) =>
+        public AbandonedShip(GameStage stage, int crewCost, int dayCost, int reward) : base(stage) =>
             (CrewCost, DayCost, Reward) = (crewCost, dayCost, reward);
     }
 }

@@ -3,35 +3,35 @@
     public enum Direction
     {
         Top = 0,
-        Right,
-        Bottom,
-        Left
+        Right = 1,
+        Bottom = 2,
+        Left = 3
     };
 
     public enum Connector
     {
-        None,
-        Single,
-        Double,
-        Universal
+        None = 0,
+        Single = 1,
+        Double = 2,
+        Universal = 3
     };
 
     public enum Ware
     {
         Empty = 0,
-        Blue,
-        Green,
-        Yellow,
-        Red
+        Blue = 1,
+        Green = 2,
+        Yellow = 3,
+        Red = 4
     };
 
     public enum Personnel
     {
         None = 0,
-        HumanSingle,
-        HumanDouble,
-        LaserAlien,
-        EngineAlien
+        HumanSingle = 1,
+        HumanDouble = 2,
+        LaserAlien = 3,
+        EngineAlien = 4
     };
 
     public enum ShipLayout
@@ -44,10 +44,10 @@
 
     public enum Projectile
     {
-        AsteroidSmall,
-        AsteroidLarge,
-        ShotSmall,
-        ShotLarge
+        AsteroidSmall = 0,
+        AsteroidLarge = 1,
+        ShotSmall = 2,
+        ShotLarge = 3
     };
 
     public enum PlayerColor
@@ -66,15 +66,22 @@
 
     public enum CardCheckAttribute
     {
-        Firepower,
-        Enginepower,
-        CrewCount
+        Firepower = 0,
+        Enginepower = 1,
+        CrewCount = 2
     }
     public enum CardEventPenalty
     {
-        Delay,
-        Crew,
-        Resources,
-        Barrage
+        Delay = 0,
+        Crew = 1,
+        Wares = 2,
+        Barrage = 3
+    }
+
+    public enum GameStage
+    {
+        First = 0,
+        Second = 1,
+        Third = 2
     }
 }

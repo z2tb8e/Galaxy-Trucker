@@ -2,5 +2,6 @@
 {
     public class Stardust : CardEvent
     {
+        public Stardust(GameStage stage) : base(stage) { }
     }
 }
