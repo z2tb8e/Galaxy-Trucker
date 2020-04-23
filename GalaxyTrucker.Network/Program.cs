@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -7,7 +8,6 @@ namespace GalaxyTrucker.Network
 {
     class Program
     {
-        private static readonly string _path = "Resources/Parts.txt";
         static void Main()
         {
             IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());

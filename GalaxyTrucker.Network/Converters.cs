@@ -9,7 +9,7 @@ namespace GalaxyTrucker.Network
 {
     public static class Converters
     {
-        public static string PartToString(Part p)
+        public static string ToCustomString(this Part p)
         {
             if(p is Cockpit)
             {
@@ -43,7 +43,7 @@ namespace GalaxyTrucker.Network
             return stringBuilder.ToString();
         }
 
-        public static Part StringToPart(string str)
+        public static Part ToPart(this string str)
         {
             if(str[0] == 'C')
             {
@@ -76,7 +76,7 @@ namespace GalaxyTrucker.Network
             return p;
         }
 
-        public static string CardEventToString(CardEvent c)
+        public static string ToCustomString(this CardEvent c)
         {
             StringBuilder stringBuilder = new StringBuilder();
 
@@ -166,7 +166,7 @@ namespace GalaxyTrucker.Network
             return stringBuilder.ToString();
         }
 
-        public static CardEvent StringToCardEvent(string str)
+        public static CardEvent ToCardEvent(this string str)
         {
             CardEvent ret;
 
