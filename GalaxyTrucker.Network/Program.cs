@@ -52,7 +52,6 @@ namespace GalaxyTrucker.Network
             new Thread(() => client1.ToggleReadyToFly()).Start();
             new Thread(() => client2.ToggleReadyToFly()).Start();
 
-
             /*client1.Close();
             client2.Close();
             client3.Close();
