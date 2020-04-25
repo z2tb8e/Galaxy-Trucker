@@ -34,25 +34,27 @@ namespace GalaxyTrucker.Network
             client1.ToggleReady(ServerStage.Lobby);
             client1.ToggleReady(ServerStage.Lobby);
 
-            Thread.Sleep(1000);
+            Thread.Sleep(500);
 
             new Thread(() => listener.StartBuildStage()).Start();
 
-            Thread.Sleep(1000);
+            Thread.Sleep(500);
 
             client1.PickPart(5, 6);
             client4.PickPart(6, 1);
             client3.PickPart(2, 1);
+            client1.PutBackPart(5, 6);
             client2.PickPart(13, 2);
             client1.ToggleReady(ServerStage.Build);
             client2.PutBackPart(13, 2);
+            client4.PutBackPart(6, 1);
             client2.PickPart(1, 2);
             client3.ToggleReady(ServerStage.Build);
             client4.ToggleReady(ServerStage.Build);
             client1.PickPart(3, 0);
             client2.ToggleReady(ServerStage.Build);
 
-            Thread.Sleep(1000);
+            Thread.Sleep(500);
 
             client1.StartFlightStage(1, 1, 1, 1, 1);
             client2.StartFlightStage(1, 1, 1, 1, 1);

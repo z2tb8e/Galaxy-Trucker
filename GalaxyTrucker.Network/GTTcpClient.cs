@@ -73,7 +73,6 @@ namespace GalaxyTrucker.Network
 
                 _color = Enum.Parse<PlayerColor>(msg);
                 Console.WriteLine("Assigned color: {0}", _color);
-                //new Thread(() => HandleServerMessages()).Start();
                 Task.Factory.StartNew(() => HandleServerMessages(), TaskCreationOptions.LongRunning);
 
             }

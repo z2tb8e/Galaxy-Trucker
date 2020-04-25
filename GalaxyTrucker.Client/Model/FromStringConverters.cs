@@ -11,7 +11,7 @@ namespace GalaxyTrucker.Client.Model
         {
             if (str[0] == 'C')
             {
-                PlayerColor color = (PlayerColor)(int.Parse("" + str[0]));
+                PlayerColor color = (PlayerColor)(int.Parse("" + str[1]));
                 return new Cockpit(color);
             }
 
