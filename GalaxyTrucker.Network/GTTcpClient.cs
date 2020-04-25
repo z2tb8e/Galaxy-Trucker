@@ -187,8 +187,8 @@ namespace GalaxyTrucker.Network
                         PartTakenResolve(parts);
                         break;
 
-                    case "PlayerReadied":
-                        PlayerReadiedResolve(parts);
+                    case "PlayerToggledReady":
+                        PlayerToggledReady(parts);
                         break;
 
                     default:
@@ -226,6 +226,10 @@ namespace GalaxyTrucker.Network
             Console.WriteLine("Client {0}: FlightBegun", _color);
         }
 
+        /// <summary>
+        /// Method called when the server sends a message to signal that the building stage started
+        /// </summary>
+        /// <param name="parts"></param>
         private void BuildingBegunResolve(string[] parts)
         {
             if (!IsReady)
@@ -242,6 +246,10 @@ namespace GalaxyTrucker.Network
             BuildingBegun?.Invoke(this, new BuildingBegunEventArgs(players));
         }
 
+        /// <summary>
+        /// Method called when the server sends a message to signal that the building stage ended
+        /// </summary>
+        /// <param name="parts"></param>
         private void BuildingEndedResolve(string[] parts)
         {
             if (!IsReady)
@@ -257,6 +265,10 @@ namespace GalaxyTrucker.Network
             BuildingEnded?.Invoke(this, new BuildingEndedEventArgs(turnOrder));
         }
 
+        /// <summary>
+        /// Method called when the server sends a message to tell the result the client picking a part earlier
+        /// </summary>
+        /// <param name="parts"></param>
         private void PickPartResultResolve(string[] parts)
         {
             if (_stage != ServerStage.Build)
@@ -271,6 +283,9 @@ namespace GalaxyTrucker.Network
             PartPicked?.Invoke(this, new PartPickedEventArgs(picked));
         }
 
+        /// <summary>
+        /// Method called when the server sends a message to confirm that the client successfully took a part
+        /// </summary>
         private void PutBackPartResolve()
         {
             if (_stage != ServerStage.Build)
@@ -279,6 +294,10 @@ namespace GalaxyTrucker.Network
             }
         }
 
+        /// <summary>
+        /// Method called when the server sends a message to signal that another player put back a part
+        /// </summary>
+        /// <param name="parts"></param>
         private void PartPutBackResolve(string[] parts)
         {
             if (_stage != ServerStage.Build)
@@ -291,6 +310,10 @@ namespace GalaxyTrucker.Network
             PartPutBack?.Invoke(this, new PartPutBackEventArgs(ind1, ind2, putBack));
         }
 
+        /// <summary>
+        /// Method called when the server sends a message to signal that another player took a part
+        /// </summary>
+        /// <param name="parts"></param>
         private void PartTakenResolve(string[] parts)
         {
             if (_stage != ServerStage.Build)
@@ -302,7 +325,11 @@ namespace GalaxyTrucker.Network
             PartTaken?.Invoke(this, new PartTakenEventArgs(ind1, ind2));
         }
 
-        private void PlayerReadiedResolve(string[] parts)
+        /// <summary>
+        /// Method called when the server sends a message signaling that another player toggled their ready state 
+        /// </summary>
+        /// <param name="parts"></param>
+        private void PlayerToggledReady(string[] parts)
         {
             PlayerColor player = Enum.Parse<PlayerColor>(parts[1]);
             PlayerReadied?.Invoke(this, new PlayerReadiedEventArgs(player));

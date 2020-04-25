@@ -237,6 +237,11 @@ namespace GalaxyTrucker.Network
             }
         }
 
+        /// <summary>
+        /// Method called when a client sends a message signaling it's ready to enter Flight stage
+        /// </summary>
+        /// <param name="player"></param>
+        /// <param name="parts"></param>
         private void StartFlightStageResolve(PlayerColor player, string[] parts)
         {
             PlayerAttributes attributes = new PlayerAttributes
@@ -251,6 +256,10 @@ namespace GalaxyTrucker.Network
             _playerReady[player] = true;
         }
 
+        /// <summary>
+        /// Method called when a client sends a message to toggle its readied state
+        /// </summary>
+        /// <param name="player"></param>
         private void ToggleReadyResolve(PlayerColor player)
         {
             _playerReady[player] = !_playerReady[player];
@@ -268,7 +277,7 @@ namespace GalaxyTrucker.Network
                 _orderSemaphore.Release();
             }
             string response = "ToggleReadyConfirm";
-            string announcement = "PlayerReadied," + player.ToString();
+            string announcement = "PlayerToggledReady," + player.ToString();
             WriteMessageToPlayer(player, response);
             foreach (PlayerColor key in _clients.Keys)
             {
@@ -279,6 +288,11 @@ namespace GalaxyTrucker.Network
             }
         }
 
+        /// <summary>
+        /// Method called when a client sends a message signaling it put back a part into the shared collection
+        /// </summary>
+        /// <param name="player"></param>
+        /// <param name="parts"></param>
         private void PutBackPartResolve(PlayerColor player, string[] parts)
         {
             int ind1 = int.Parse(parts[1]);
@@ -306,6 +320,11 @@ namespace GalaxyTrucker.Network
             _partAvailable[ind1, ind2].Item1.Release();
         }
 
+        /// <summary>
+        /// Method called when a clients sends a message that it wants to pick a part at the given indices
+        /// </summary>
+        /// <param name="player"></param>
+        /// <param name="parts"></param>
         private void PickPartResolve(PlayerColor player, string[] parts)
         {
             int ind1 = int.Parse(parts[1]);
