@@ -17,6 +17,11 @@
             };
             return ret;
         }
+
+        public override string ToString()
+        {
+            return base.ToString() + "c";
+        }
     }
 
     public class Cockpit : Cabin
@@ -30,5 +35,10 @@
         }
 
         public new void Rotate(Direction _) { }
+
+        public override string ToString()
+        {
+            return "C" + ((int)Player).ToString();
+        }
     }
 }

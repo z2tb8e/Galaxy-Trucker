@@ -11,6 +11,11 @@
         }
 
         public new void Rotate(Direction _) { }
+
+        public override string ToString()
+        {
+            return base.ToString() + "e";
+        }
     };
 
     public class EngineDouble : Engine, IActivatable
@@ -25,5 +30,10 @@
         public void Activate() => Activated = true;
 
         public void Deactivate() => Activated = false;
+
+        public override string ToString()
+        {
+            return (this as Part).ToString() + "E";
+        }
     }
 }

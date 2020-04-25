@@ -1,58 +1,22 @@
-﻿using GalaxyTrucker.Client.Model;
-using GalaxyTrucker.Client.Model.CardEventTypes;
+﻿using GalaxyTrucker.Client.Model.CardEventTypes;
 using GalaxyTrucker.Client.Model.PartTypes;
 using System;
 using System.Collections.Generic;
-using System.Text;
 
-namespace GalaxyTrucker.Network
+namespace GalaxyTrucker.Client.Model
 {
-    public static class Converters
+    public static class FromStringConverters
     {
-        public static string ToCustomString(this Part p)
-        {
-            if(p is Cockpit)
-            {
-                int playerColor = (int)(p as Cockpit).Player;
-                return ("C" + playerColor);
-            }
-
-            StringBuilder stringBuilder = new StringBuilder();
-            foreach (Connector c in p.Connectors)
-            {
-                stringBuilder.Append((int)c);
-            }
-
-            stringBuilder.Append(p switch
-            {
-                Battery b => ("b" + b.Capacity),
-                Cabin _ => ("c"),
-                EngineDouble _ => ("E"),
-                Engine _ => ("e"),
-                LaserDouble _ => ("L"),
-                Laser _ => ("l"),
-                Pipe _ => ("p"),
-                EngineCabin _ => ("a"),
-                LaserCabin _ => ("A"),
-                Shield _ => ("d"),
-                SpecialStorage spStorage => ("S" + spStorage.Capacity),
-                Storage storage => ("s" + storage.Capacity),
-                _ => throw new InvalidCastException("Unrecognized Part type")
-            });
-
-            return stringBuilder.ToString();
-        }
-
         public static Part ToPart(this string str)
         {
-            if(str[0] == 'C')
+            if (str[0] == 'C')
             {
                 PlayerColor color = (PlayerColor)(int.Parse("" + str[0]));
                 return new Cockpit(color);
             }
 
             Connector[] connectors = new Connector[4];
-            for(int i = 0; i < 4; ++i)
+            for (int i = 0; i < 4; ++i)
             {
                 connectors[i] = (Connector)int.Parse("" + str[i]);
             }
@@ -74,96 +38,6 @@ namespace GalaxyTrucker.Network
                 _ => throw new InvalidCastException("Unrecognized Part type character"),
             };
             return p;
-        }
-
-        public static string ToCustomString(this CardEvent c)
-        {
-            StringBuilder stringBuilder = new StringBuilder();
-
-            stringBuilder.Append((int)c.Stage);
-
-            switch (c)
-            {
-                case AbandonedShip ship:
-                    stringBuilder.Append("a");
-                    stringBuilder.Append(ship.CrewCost.ToString("X") + ship.DayCost + ship.Reward.ToString("X"));
-                    break;
-                case AbandonedStation station:
-                    stringBuilder.Append("A");
-                    stringBuilder.Append(station.MinimumCrew.ToString("X") + station.DayCost + station.Wares.Count);
-                    foreach (Ware w in station.Wares)
-                    {
-                        stringBuilder.Append((int)w);
-                    }
-                    break;
-                case Barrage barrage:
-                    stringBuilder.Append("b");
-                    stringBuilder.Append(barrage.Projectiles.Count);
-                    foreach ((Projectile, Direction) pair in barrage.Projectiles)
-                    {
-                        stringBuilder.Append((int)pair.Item1 + "" + (int)pair.Item2);
-                    }
-                    break;
-                case Pirates pirates:
-                    stringBuilder.Append("y");
-                    stringBuilder.Append(pirates.Firepower.ToString("X") + pirates.DayCost + pirates.Reward.ToString("X") + pirates.Penalty.Count);
-                    foreach ((Projectile, Direction) pair in pirates.Penalty)
-                    {
-                        stringBuilder.Append((int)pair.Item1 + "" + (int)pair.Item2);
-                    }
-                    break;
-                case Smugglers smugglers:
-                    stringBuilder.Append("d");
-                    stringBuilder.Append(smugglers.Firepower.ToString("X") + smugglers.DayCost + smugglers.Reward.Count);
-                    foreach(Ware w in smugglers.Reward)
-                    {
-                        stringBuilder.Append((int)w);
-                    }
-                    stringBuilder.Append(smugglers.Penalty);
-                    break;
-                case Slavers slavers:
-                    stringBuilder.Append("S");
-                    stringBuilder.Append(slavers.Firepower.ToString("X") + slavers.DayCost + slavers.Reward.ToString("X") + slavers.Penalty);
-                    break;
-                case OpenSpace _:
-                    stringBuilder.Append("o");
-                    break;
-                case Pandemic _:
-                    stringBuilder.Append("p");
-                    break;
-                case Sabotage _:
-                    stringBuilder.Append("g");
-                    break;
-                case Planets planets:
-                    stringBuilder.Append("P");
-                    stringBuilder.Append(planets.DayCost + "" + planets.Offers.Count);
-                    foreach (List<Ware> offer in planets.Offers)
-                    {
-                        stringBuilder.Append(offer.Count);
-                        foreach(Ware w in offer)
-                        {
-                            stringBuilder.Append((int)w);
-                        }
-                    }
-                    break;
-                case Stardust _:
-                    stringBuilder.Append("s");
-                    break;
-                case Warzone warzone:
-                    stringBuilder.Append("w");
-                    stringBuilder.Append((int)warzone.Event1.Attribute + "" + (int)warzone.Event1.PenaltyType + "" + warzone.Event1.Penalty);
-                    stringBuilder.Append((int)warzone.Event2.Attribute + "" + (int)warzone.Event2.PenaltyType + "" + warzone.Event2.Penalty);
-                    stringBuilder.Append((int)warzone.Event3.Attribute + "" + (int)warzone.Event3.PenaltyType + "" + warzone.Event3.Penalty.Count);
-                    foreach((Projectile, Direction) pair in warzone.Event3.Penalty)
-                    {
-                        stringBuilder.Append((int)pair.Item1 + "" + (int)pair.Item2);
-                    }
-                    break;
-                default:
-                    throw new InvalidCastException("Unrecognized CardEvent type");
-            }
-
-            return stringBuilder.ToString();
         }
 
         public static CardEvent ToCardEvent(this string str)
@@ -191,7 +65,7 @@ namespace GalaxyTrucker.Network
                     //format: 'Stage''A''MinimumCrew''DayCost''Wares.Count'('Ware')+
                     List<Ware> stationWares = new List<Ware>();
                     int wareCount = int.Parse("" + str[4]);
-                    for(int i = 0; i < wareCount; ++i)
+                    for (int i = 0; i < wareCount; ++i)
                     {
                         stationWares.Add((Ware)(int.Parse("" + str[i + 5])));
                     }
@@ -207,9 +81,9 @@ namespace GalaxyTrucker.Network
                     //format: 'Stage''b''Projectiles.Count'('Projectile','Direction')+
                     List<(Projectile, Direction)> projectiles = new List<(Projectile, Direction)>();
                     int projectileCount = int.Parse("" + str[2]);
-                    for(int i = 0; i < projectileCount; ++i)
+                    for (int i = 0; i < projectileCount; ++i)
                     {
-                        projectiles.Add(((Projectile)(int.Parse("" + str[3 + 2*i])), (Direction)int.Parse("" + str[4 + 2*i])));
+                        projectiles.Add(((Projectile)(int.Parse("" + str[3 + 2 * i])), (Direction)int.Parse("" + str[4 + 2 * i])));
                     }
                     ret = new Barrage(stage, projectiles);
                     break;
@@ -217,9 +91,9 @@ namespace GalaxyTrucker.Network
                     //format: 'Stage''y''Firepower''DayCost''Reward''Penalty.Projectiles.Count'('Projectile','Direction')+
                     List<(Projectile, Direction)> pirateProjectiles = new List<(Projectile, Direction)>();
                     int pirateProjectileCount = int.Parse("" + str[5]);
-                    for(int i = 0; i < pirateProjectileCount; ++i)
+                    for (int i = 0; i < pirateProjectileCount; ++i)
                     {
-                        pirateProjectiles.Add(((Projectile)(int.Parse("" + str[6 + 2*i])), (Direction)int.Parse("" + str[7 + 2*i])));
+                        pirateProjectiles.Add(((Projectile)(int.Parse("" + str[6 + 2 * i])), (Direction)int.Parse("" + str[7 + 2 * i])));
                     }
                     ret = new Pirates
                     (
@@ -234,7 +108,7 @@ namespace GalaxyTrucker.Network
                     //format: 'Stage''d''Firepower''DayCost''Reward.Count'('Ware')+'Penalty'
                     List<Ware> smugglerWares = new List<Ware>();
                     int smugglerWareCount = int.Parse("" + str[4]);
-                    for(int i = 0; i < smugglerWareCount; ++i)
+                    for (int i = 0; i < smugglerWareCount; ++i)
                     {
                         smugglerWares.Add((Ware)int.Parse("" + str[5 + i]));
                     }
@@ -275,11 +149,11 @@ namespace GalaxyTrucker.Network
                     List<List<Ware>> offers = new List<List<Ware>>();
                     int offerCount = int.Parse("" + str[3]);
                     int index = 0;
-                    for(int i = 0; i < offerCount; ++i)
+                    for (int i = 0; i < offerCount; ++i)
                     {
                         int offerWareCount = int.Parse("" + str[4 + index]);
                         List<Ware> offer = new List<Ware>();
-                        for(int j = 0; j < offerWareCount; ++j)
+                        for (int j = 0; j < offerWareCount; ++j)
                         {
                             offer.Add((Ware)int.Parse("" + str[5 + index + j]));
                         }
@@ -315,9 +189,9 @@ namespace GalaxyTrucker.Network
                     );
                     List<(Projectile, Direction)> event3Projectiles = new List<(Projectile, Direction)>();
                     int event3ProjectilesCount = int.Parse("" + str[10]);
-                    for(int i = 0; i < event3ProjectilesCount; ++i)
+                    for (int i = 0; i < event3ProjectilesCount; ++i)
                     {
-                        event3Projectiles.Add(((Projectile)int.Parse("" + str[11 + 2*i]), (Direction)int.Parse("" + str[12 + 2*i])));
+                        event3Projectiles.Add(((Projectile)int.Parse("" + str[11 + 2 * i]), (Direction)int.Parse("" + str[12 + 2 * i])));
                     }
                     WarzoneEvent<List<(Projectile, Direction)>> event3 = new WarzoneEvent<List<(Projectile, Direction)>>
                     (

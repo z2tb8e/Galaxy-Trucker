@@ -10,5 +10,10 @@
             => this.Capacity = Charges = Capacity;
 
         public void UseCharge() => Charges = Charges > 0 ? Charges - 1 : 0;
+
+        public override string ToString()
+        {
+            return base.ToString() + "b" + Capacity.ToString();
+        }
     }
 }

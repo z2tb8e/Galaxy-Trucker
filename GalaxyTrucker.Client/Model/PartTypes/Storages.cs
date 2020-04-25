@@ -42,6 +42,11 @@ namespace GalaxyTrucker.Client.Model.PartTypes
         }
 
         public Ware GetMaxWare() => _storage.Max();
+
+        public override string ToString()
+        {
+            return base.ToString() + "s" + Capacity.ToString();
+        }
     }
 
     public class SpecialStorage : Storage
@@ -49,5 +54,10 @@ namespace GalaxyTrucker.Client.Model.PartTypes
         public SpecialStorage(Connector Top, Connector Right, Connector Bottom, Connector Left, int Capacity) : base(Top, Right, Bottom, Left, Capacity) { }
 
         protected override bool CanAdd(Ware w) => w != Ware.Empty;
+
+        public override string ToString()
+        {
+            return (this as Part).ToString() + "S" + Capacity.ToString();
+        }
     }
 }

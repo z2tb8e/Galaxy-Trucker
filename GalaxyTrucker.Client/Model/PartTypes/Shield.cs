@@ -11,5 +11,10 @@
         public void Activate() => Activated = true;
 
         public void Deactivate() => Activated = false;
+
+        public override string ToString()
+        {
+            return base.ToString() + "d";
+        }
     }
 }

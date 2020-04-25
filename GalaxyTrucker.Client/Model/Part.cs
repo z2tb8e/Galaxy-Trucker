@@ -32,5 +32,10 @@ namespace GalaxyTrucker.Client.Model
         public void AddToPath(Part p) => _path.Push(p);
 
         public bool IsInPath(Part p) => _path.Contains(p);
+
+        public override string ToString()
+        {
+            return ((int)_connectors[0]).ToString() + ((int)_connectors[1]).ToString() + ((int)_connectors[2]).ToString() + ((int)_connectors[3]).ToString();
+        }
     }
 }

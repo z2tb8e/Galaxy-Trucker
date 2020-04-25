@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Text;
 
 namespace GalaxyTrucker.Client.Model.CardEventTypes
 {
@@ -12,6 +13,11 @@ namespace GalaxyTrucker.Client.Model.CardEventTypes
 
         public WarzoneEvent(CardCheckAttribute attribute, CardEventPenalty penaltyType, T penalty) =>
             (Attribute, PenaltyType, Penalty) = (attribute, penaltyType, penalty);
+
+        public override string ToString()
+        {
+            return ((int)Attribute).ToString() + ((int)PenaltyType).ToString();
+        }
     }
 
     public class Warzone : CardEvent
@@ -24,5 +30,18 @@ namespace GalaxyTrucker.Client.Model.CardEventTypes
 
         public Warzone(GameStage stage, WarzoneEvent<int> event1, WarzoneEvent<int> event2, WarzoneEvent<List<(Projectile, Direction)>> event3) : base(stage) =>
             (Event1, Event2, Event3) = (event1, event2, event3);
+
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder(base.ToString() + "w");
+            sb.Append(Event1.ToString() + Event1.Penalty.ToString());
+            sb.Append(Event2.ToString() + Event2.Penalty.ToString());
+            sb.Append(Event3.ToString() + Event3.Penalty.Count.ToString());
+            foreach((Projectile, Direction) pair in Event3.Penalty)
+            {
+                sb.Append(((int)pair.Item1).ToString() + ((int)pair.Item2).ToString());
+            }
+            return sb.ToString();
+        }
     }
 }

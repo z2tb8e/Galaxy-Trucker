@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -8,30 +9,58 @@ using GalaxyTrucker.Client.Model;
 
 namespace GalaxyTrucker.Network
 {
+    /// <summary>
+    /// Exception thrown when a server message indicates that the client is out of sync with it.
+    /// </summary>
+    public class OutOfSyncException : Exception{}
+
     public class GTTcpClient
     {
+
+        #region fields
+
         private readonly TcpClient _client;
 
         private readonly IPEndPoint _endPoint;
-        private readonly Semaphore _canSend;
         private ServerStage _stage;
         private PlayerColor _color;
         private NetworkStream _stream;
 
+        #endregion
+
+        #region properties
+
         public bool IsReady { get; private set; }
 
-        public EventHandler BuildingBegun;
+        #endregion
 
-        public EventHandler BuildingEnded;
+        #region events
+
+        public event EventHandler<BuildingBegunEventArgs> BuildingBegun;
+
+        public event EventHandler<BuildingEndedEventArgs> BuildingEnded;
+
+        public event EventHandler<FlightBegunEventArgs> FlightBegun;
+
+        public event EventHandler<PartPickedEventArgs> PartPicked;
+
+        public event EventHandler<PartTakenEventArgs> PartTaken;
+
+        public event EventHandler<PartPutBackEventArgs> PartPutBack;
+
+        public event EventHandler<PlayerReadiedEventArgs> PlayerReadied;
+
+        #endregion
 
         public GTTcpClient(IPEndPoint endPoint)
         {
             IsReady = false;
-            _canSend = new Semaphore(0, 1);
             _stage = ServerStage.Lobby;
             _client = new TcpClient();
             _endPoint = endPoint;
         }
+
+        #region public methods
 
         public void Connect()
         {
@@ -40,11 +69,12 @@ namespace GalaxyTrucker.Network
                 _client.Connect(_endPoint);
                 _stream = _client.GetStream();
 
-                string msg = ReadMessageFromStream();
+                string msg = ReadMessageFromServer();
 
-                _color = (PlayerColor)Enum.Parse(typeof(PlayerColor), msg);
+                _color = Enum.Parse<PlayerColor>(msg);
                 Console.WriteLine("Assigned color: {0}", _color);
-                _canSend.Release();
+                //new Thread(() => HandleServerMessages()).Start();
+                Task.Factory.StartNew(() => HandleServerMessages(), TaskCreationOptions.LongRunning);
 
             }
             catch (ArgumentNullException e)
@@ -61,155 +91,246 @@ namespace GalaxyTrucker.Network
             }
         }
 
-        public void ToggleReadyToBuild()
+        public void ToggleReady(ServerStage currentStage)
         {
-            _canSend.WaitOne();
-            if(_stage != ServerStage.Lobby)
+            if(_stage != currentStage)
             {
-                _canSend.Release();
                 throw new InvalidOperationException();
             }
 
-            WriteMessageToStream("ToggleReadyToBuild");
+            WriteMessageToServer("ToggleReady");
 
             IsReady = !IsReady;
-            if (IsReady)
-            {
-                new Task(() => AwaitNextStageStart()).Start();
-            }
-
-            string response = ReadMessageFromStream();
-            if(response != "Confirm")
-            {
-                Console.WriteLine("Unexpected server response: {0}", response);
-            }
-            else
-            {
-                Console.WriteLine("Client: {0} toggled ready state to {1}", _color, IsReady);
-            }
-            _canSend.Release();
         }
 
-        public void ToggleReadyToFly()
+        public void StartFlightStage(int firepower, int enginepower, int crewCount, int storageSize, int batteries)
         {
-            _canSend.WaitOne();
-            if (_stage != ServerStage.Build)
+            if(_stage != ServerStage.Build || IsReady)
             {
-                _canSend.Release();
                 throw new InvalidOperationException();
             }
-            WriteMessageToStream("ToggleReadyToFly");
 
-            IsReady = !IsReady;
-            if (IsReady)
-            {
-                new Task(() => AwaitNextStageStart()).Start();
-            }
-
-            string response = ReadMessageFromStream();
-            if (response != "Confirm")
-            {
-                Console.WriteLine("Unexpected server response: {0}", response);
-            }
-            else
-            {
-                Console.WriteLine("Client: {0} toggled ready state to {1}", _color, IsReady);
-            }
-            _canSend.Release();
+            WriteMessageToServer("StartFlightStage," + firepower + "," + enginepower + "," + crewCount + "," + storageSize + "," + batteries);
+            IsReady = true;
         }
 
         public void PutBackPart(int ind1, int ind2)
         {
-            _canSend.WaitOne();
             if(_stage != ServerStage.Build)
             {
-                _canSend.Release();
                 throw new InvalidOperationException();
             }
 
-            string msg = "PutBack," + ind1.ToString() + "," + ind2.ToString();
-            WriteMessageToStream(msg);
-
-            string response = ReadMessageFromStream();
-            if (response != "Confirm")
-            {
-                Console.WriteLine("Unexpected server response: {0}", response);
-            }
-            _canSend.Release();
+            string msg = "PutBackPart," + ind1 + "," + ind2;
+            WriteMessageToServer(msg);
         }
 
-        public bool PickPart(int ind1, int ind2)
+        public void PickPart(int ind1, int ind2)
         {
-            _canSend.WaitOne();
             if (_stage != ServerStage.Build)
             {
-                _canSend.Release();
                 throw new InvalidOperationException();
             }
 
-            string msg = ind1.ToString() + "," + ind2.ToString();
-            WriteMessageToStream(msg);
-
-            string response = ReadMessageFromStream();
-            _canSend.Release();
-            return bool.Parse(response);
+            string msg = "PickPart," + ind1 + "," + ind2;
+            WriteMessageToServer(msg);
         }
 
         public void Close()
         {
-            _canSend.WaitOne();
             _stream.Close();
             _client.Close();
         }
 
-        private void AwaitNextStageStart()
-        {
-            while (IsReady)
-            {
-                if (_stream.DataAvailable)
-                {
-                    _canSend.WaitOne();
-                    string msg = ReadMessageFromStream();
+        #endregion
 
-                    if(msg != "Start")
-                    {
-                        Console.WriteLine("Unexpected server message: {0}", msg);
-                    }
-                    else
-                    {
-                        if(_stage == ServerStage.Lobby)
-                        {
-                            BuildingBegun?.Invoke(this, EventArgs.Empty);
-                        }
-                        else if(_stage == ServerStage.Build)
-                        {
-                            BuildingEnded?.Invoke(this, EventArgs.Empty);
-                        }
-                        IsReady = false;
-                        _stage = (ServerStage)((int)_stage + 1);
-                    }
-                    _canSend.Release();
+        #region private methods
+
+        private void HandleServerMessages()
+        {
+            string message;
+            string[] parts;
+            while (_client.Connected)
+            {
+                message = ReadMessageFromServer();
+                parts = message.Split(',');
+                switch (parts[0])
+                {
+                    case "FlightBegun":
+                        FlightBegunResolve(parts);
+                        break;
+
+                    case "BuildingBegun":
+                        BuildingBegunResolve(parts);
+                        break;
+
+                    case "BuildingEnded":
+                        BuildingEndedResolve(parts);
+                        break;
+
+                    case "PickPartResult":
+                        PickPartResultResolve(parts);
+                        break;
+
+                    case "ToggleReadyConfirm":
+                        break;
+
+                    case "PutBackPartConfirm":
+                        PutBackPartResolve();
+                        break;
+
+                    case "PartPutBack":
+                        PartPutBackResolve(parts);
+                        break;
+
+                    case "PartTaken":
+                        PartTakenResolve(parts);
+                        break;
+
+                    case "PlayerReadied":
+                        PlayerReadiedResolve(parts);
+                        break;
+
+                    default:
+                        Console.WriteLine("Unhandled server message: {0}", message);
+                        break;
                 }
             }
         }
 
-        private string ReadMessageFromStream()
+        private void FlightBegunResolve(string[] parts)
         {
-            byte[] buffer = new byte[128];
-            int bytes = _stream.Read(buffer);
-            string message = Encoding.ASCII.GetString(buffer, 0, bytes);
-            return message;
+            if (!IsReady)
+            {
+                throw new OutOfSyncException();
+            }
+            IsReady = false;
+            _stage = ServerStage.Flight;
+            //Format: FlightBegun,PlayerNumber,Color,Firepower,Enginepower,CrewCount,StorageSize,Batteries
+            Dictionary<PlayerColor, PlayerAttributes> playerAttributes = new Dictionary<PlayerColor, PlayerAttributes>();
+            int playerNumber = int.Parse(parts[1]);
+            for (int i = 0; i < playerNumber; ++i)
+            {
+                PlayerColor currentPlayer = Enum.Parse<PlayerColor>(parts[2 + i * 6]);
+                PlayerAttributes attributes = new PlayerAttributes
+                {
+                    Firepower = int.Parse(parts[3 + i * 6]),
+                    Enginepower = int.Parse(parts[4 + i * 6]),
+                    CrewCount = int.Parse(parts[5 + i * 6]),
+                    StorageSize = int.Parse(parts[6 + i * 6]),
+                    Batteries = int.Parse(parts[7 + i * 6]),
+                };
+                playerAttributes[currentPlayer] = attributes;
+            }
+            FlightBegun?.Invoke(this, new FlightBegunEventArgs(playerAttributes));
+            Console.WriteLine("Client {0}: FlightBegun", _color);
         }
 
-        private void WriteMessageToStream(string message)
+        private void BuildingBegunResolve(string[] parts)
+        {
+            if (!IsReady)
+            {
+                throw new OutOfSyncException();
+            }
+            IsReady = false;
+            _stage = ServerStage.Build;
+            List<PlayerColor> players = new List<PlayerColor>();
+            for (int i = 1; i < parts.Length; ++i)
+            {
+                players.Add(Enum.Parse<PlayerColor>(parts[i]));
+            }
+            BuildingBegun?.Invoke(this, new BuildingBegunEventArgs(players));
+        }
+
+        private void BuildingEndedResolve(string[] parts)
+        {
+            if (!IsReady)
+            {
+                throw new OutOfSyncException();
+            }
+            IsReady = false;
+            List<PlayerColor> turnOrder = new List<PlayerColor>();
+            for (int i = 1; i < parts.Length; ++i)
+            {
+                turnOrder.Add(Enum.Parse<PlayerColor>(parts[i]));
+            }
+            BuildingEnded?.Invoke(this, new BuildingEndedEventArgs(turnOrder));
+        }
+
+        private void PickPartResultResolve(string[] parts)
+        {
+            if (_stage != ServerStage.Build)
+            {
+                throw new OutOfSyncException();
+            }
+            Part picked = null;
+            if (parts[1] != "null")
+            {
+                picked = parts[1].ToPart();
+            }
+            PartPicked?.Invoke(this, new PartPickedEventArgs(picked));
+        }
+
+        private void PutBackPartResolve()
+        {
+            if (_stage != ServerStage.Build)
+            {
+                throw new OutOfSyncException();
+            }
+        }
+
+        private void PartPutBackResolve(string[] parts)
+        {
+            if (_stage != ServerStage.Build)
+            {
+                throw new OutOfSyncException();
+            }
+            int ind1 = int.Parse(parts[1]);
+            int ind2 = int.Parse(parts[2]);
+            Part putBack = parts[3].ToPart();
+            PartPutBack?.Invoke(this, new PartPutBackEventArgs(ind1, ind2, putBack));
+        }
+
+        private void PartTakenResolve(string[] parts)
+        {
+            if (_stage != ServerStage.Build)
+            {
+                throw new OutOfSyncException();
+            }
+            int ind1 = int.Parse(parts[1]);
+            int ind2 = int.Parse(parts[2]);
+            PartTaken?.Invoke(this, new PartTakenEventArgs(ind1, ind2));
+        }
+
+        private void PlayerReadiedResolve(string[] parts)
+        {
+            PlayerColor player = Enum.Parse<PlayerColor>(parts[1]);
+            PlayerReadied?.Invoke(this, new PlayerReadiedEventArgs(player));
+        }
+
+        private string ReadMessageFromServer()
+        {
+            StringBuilder message = new StringBuilder();
+            int character = _stream.ReadByte();
+            while ((char)character != '#')
+            {
+                message.Append((char)character);
+                character = _stream.ReadByte();
+            }
+            return message.ToString();
+        }
+
+        private void WriteMessageToServer(string message)
         {
             if (!_stream.CanWrite)
             {
                 throw new InvalidOperationException();
             }
 
-            byte[] msg = Encoding.ASCII.GetBytes(message);
+            byte[] msg = Encoding.ASCII.GetBytes(message + "#");
             _stream.Write(msg, 0, msg.Length);
         }
+
+        #endregion
     }
 }

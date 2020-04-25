@@ -9,6 +9,11 @@
             if (Top != Connector.None)
                 throw new System.ArgumentException("Parameter can only be Connector.None for lasers", "Top");
         }
+
+        public override string ToString()
+        {
+            return base.ToString() + "l";
+        }
     }
 
     public class LaserDouble : Laser, IActivatable
@@ -23,5 +28,10 @@
         public void Activate() => Activated = true;
 
         public void Deactivate() => Activated = false;
+
+        public override string ToString()
+        {
+            return (this as Part).ToString() + "L";
+        }
     }
 }
