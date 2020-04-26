@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GalaxyTrucker.Client.Model;
+using GalaxyTrucker.Client.Model.PartTypes;
 
 namespace GalaxyTrucker.Network
 {
@@ -18,13 +19,13 @@ namespace GalaxyTrucker.Network
 
         public bool IsAvailable { get; set; }
 
-        public Part Part { get; set; }
+        public string PartString { get; set; }
 
-        public PartAvailability(Part part)
+        public PartAvailability(string partString)
         {
             Semaphore = new Semaphore(1, 1);
             IsAvailable = true;
-            Part = part;
+            PartString = partString;
         }
     }
 
@@ -100,6 +101,7 @@ namespace GalaxyTrucker.Network
         }
 
         #region public methods
+
         public void Start()
         {
             try
@@ -329,10 +331,10 @@ namespace GalaxyTrucker.Network
             }
             else
             {
-                Part p = _parts[ind1, ind2].Part;
+                string partString = _parts[ind1, ind2].PartString;
                 _parts[ind1, ind2].IsAvailable = true;
                 string response = "PutBackPartConfirm";
-                string announcement = "PartPutBack," + parts[1] + "," + parts[2] + "," + p.ToString();
+                string announcement = "PartPutBack," + parts[1] + "," + parts[2] + "," + partString;
                 WriteMessageToPlayer(player, response);
                 Task.Factory.StartNew(() =>
                 {
@@ -365,9 +367,9 @@ namespace GalaxyTrucker.Network
             }
             else
             {
-                Part p = _parts[ind1, ind2].Part;
+                string partString = _parts[ind1, ind2].PartString;
                 _parts[ind1, ind2].IsAvailable = false;
-                string response = "PickPartResult," + p.ToString();
+                string response = "PickPartResult," + partString;
                 string announcement = "PartTaken," + ind1.ToString() + "," + ind2.ToString();
                 WriteMessageToPlayer(player, response);
                 foreach (PlayerColor key in _connections.Keys)
@@ -405,12 +407,12 @@ namespace GalaxyTrucker.Network
 
         private void ShuffleParts()
         {
-            List<Part> parts = new List<Part>();
+            List<string> parts = new List<string>();
             string line;
             StreamReader sr = new StreamReader(_partPath);
             while((line = sr.ReadLine()) != null)
             {
-                parts.Add(line.ToPart());
+                parts.Add(line);
             }
             sr.Close();
 
@@ -419,7 +421,7 @@ namespace GalaxyTrucker.Network
             {
                 n--;
                 int k = _random.Next(n + 1);
-                Part value = parts[k];
+                string value = parts[k];
                 parts[k] = parts[n];
                 parts[n] = value;
             }
