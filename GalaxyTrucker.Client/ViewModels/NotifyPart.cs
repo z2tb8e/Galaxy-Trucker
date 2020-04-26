@@ -14,8 +14,14 @@ namespace GalaxyTrucker.Client.ViewModels
 
         public bool Highlighted { get; set; }
 
-        public NotifyPart(Part part, int Row, int Column) =>
-            (_part, this.Row, this.Column, PartImage, Highlighted) = (part, Row, Column, null, false);
+        public NotifyPart(Part part, int row, int column)
+        {
+            _part = part;
+            Row = row;
+            Column = column;
+            PartImage = null;
+            Highlighted = false;
+        }
 
         public void SetImage() => PartImage = PartBuilder.GetPartImage(_part);
 

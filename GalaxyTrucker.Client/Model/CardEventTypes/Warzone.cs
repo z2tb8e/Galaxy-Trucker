@@ -11,8 +11,12 @@ namespace GalaxyTrucker.Client.Model.CardEventTypes
 
         public T Penalty { get; }
 
-        public WarzoneEvent(CardCheckAttribute attribute, CardEventPenalty penaltyType, T penalty) =>
-            (Attribute, PenaltyType, Penalty) = (attribute, penaltyType, penalty);
+        public WarzoneEvent(CardCheckAttribute attribute, CardEventPenalty penaltyType, T penalty)
+        {
+            Attribute = attribute;
+            PenaltyType = penaltyType;
+            Penalty = penalty;
+        }
 
         public override string ToString()
         {
@@ -28,8 +32,12 @@ namespace GalaxyTrucker.Client.Model.CardEventTypes
 
         public WarzoneEvent<List<(Projectile, Direction)>> Event3 { get; }
 
-        public Warzone(GameStage stage, WarzoneEvent<int> event1, WarzoneEvent<int> event2, WarzoneEvent<List<(Projectile, Direction)>> event3) : base(stage) =>
-            (Event1, Event2, Event3) = (event1, event2, event3);
+        public Warzone(GameStage stage, WarzoneEvent<int> event1, WarzoneEvent<int> event2, WarzoneEvent<List<(Projectile, Direction)>> event3) : base(stage)
+        {
+            Event1 = event1;
+            Event2 = event2;
+            Event3 = event3;
+        }
 
         public override string ToString()
         {

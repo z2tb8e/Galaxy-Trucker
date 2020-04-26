@@ -1,9 +1,7 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace GalaxyTrucker.Network
 {
@@ -41,13 +39,16 @@ namespace GalaxyTrucker.Network
             Thread.Sleep(500);
 
             client1.PickPart(5, 6);
+            client1.PickPart(5, 5);
+            client1.PickPart(5, 4);
+            client1.PickPart(5, 3);
+            client1.PickPart(5, 2);
+            client1.PickPart(5, 1);
+            client1.PickPart(5, 0);
+            client1.PickPart(5, 7);
             client4.PickPart(6, 1);
             client3.PickPart(2, 1);
-            client1.PutBackPart(5, 6);
-            client2.PickPart(13, 2);
             client1.ToggleReady(ServerStage.Build);
-            client2.PutBackPart(13, 2);
-            client4.PutBackPart(6, 1);
             client2.PickPart(1, 2);
             client3.ToggleReady(ServerStage.Build);
             client4.ToggleReady(ServerStage.Build);
@@ -61,6 +62,7 @@ namespace GalaxyTrucker.Network
             client3.StartFlightStage(1, 1, 1, 1, 1);
             client4.StartFlightStage(1, 1, 1, 1, 1);
 
+            Thread.Sleep(1000);
             /*client1.Close();
             client2.Close();
             client3.Close();

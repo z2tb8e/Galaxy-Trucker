@@ -13,8 +13,13 @@ namespace GalaxyTrucker.Client.Model.CardEventTypes
 
         public RewardT Reward { get; }
 
-        public Encounter(GameStage stage, int firepower, int dayCost, PenaltyT penalty, RewardT reward) : base(stage) =>
-            (Firepower, DayCost, Penalty, Reward) = (firepower, dayCost, penalty, reward);
+        public Encounter(GameStage stage, int firepower, int dayCost, PenaltyT penalty, RewardT reward) : base(stage)
+        {
+            Firepower = firepower;
+            DayCost = dayCost;
+            Penalty = penalty;
+            Reward = reward;
+        }
 
         public override string ToString()
         {

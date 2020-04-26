@@ -36,8 +36,11 @@ namespace GalaxyTrucker.Network
 
         public int Ind2 { get; set; }
 
-        public PartTakenEventArgs(int ind1, int ind2) =>
-            (Ind1, Ind2) = (ind1, ind2);
+        public PartTakenEventArgs(int ind1, int ind2)
+        {
+            Ind1 = ind1;
+            Ind2 = ind2;
+        }
     }
 
     /// <summary>
@@ -51,8 +54,12 @@ namespace GalaxyTrucker.Network
 
         public Part Part { get; set; }
 
-        public PartPutBackEventArgs(int ind1, int ind2, Part part) =>
-            (Ind1, Ind2, Part) = (ind1, ind2, part);
+        public PartPutBackEventArgs(int ind1, int ind2, Part part)
+        {
+            Ind1 = ind1;
+            Ind2 = ind2;
+            Part = part;
+        }
     }
 
     /// <summary>

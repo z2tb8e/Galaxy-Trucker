@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using GalaxyTrucker.Client.Model;
 
@@ -151,48 +150,51 @@ namespace GalaxyTrucker.Network
             string[] parts;
             while (_client.Connected)
             {
-                message = ReadMessageFromServer();
-                parts = message.Split(',');
-                switch (parts[0])
+                if (_stream.DataAvailable)
                 {
-                    case "FlightBegun":
-                        FlightBegunResolve(parts);
-                        break;
+                    message = ReadMessageFromServer();
+                    parts = message.Split(',');
+                    switch (parts[0])
+                    {
+                        case "FlightBegun":
+                            FlightBegunResolve(parts);
+                            break;
 
-                    case "BuildingBegun":
-                        BuildingBegunResolve(parts);
-                        break;
+                        case "BuildingBegun":
+                            BuildingBegunResolve(parts);
+                            break;
 
-                    case "BuildingEnded":
-                        BuildingEndedResolve(parts);
-                        break;
+                        case "BuildingEnded":
+                            BuildingEndedResolve(parts);
+                            break;
 
-                    case "PickPartResult":
-                        PickPartResultResolve(parts);
-                        break;
+                        case "PickPartResult":
+                            PickPartResultResolve(parts);
+                            break;
 
-                    case "ToggleReadyConfirm":
-                        break;
+                        case "ToggleReadyConfirm":
+                            break;
 
-                    case "PutBackPartConfirm":
-                        PutBackPartResolve();
-                        break;
+                        case "PutBackPartConfirm":
+                            PutBackPartResolve();
+                            break;
 
-                    case "PartPutBack":
-                        PartPutBackResolve(parts);
-                        break;
+                        case "PartPutBack":
+                            PartPutBackResolve(parts);
+                            break;
 
-                    case "PartTaken":
-                        PartTakenResolve(parts);
-                        break;
+                        case "PartTaken":
+                            PartTakenResolve(parts);
+                            break;
 
-                    case "PlayerToggledReady":
-                        PlayerToggledReady(parts);
-                        break;
+                        case "PlayerToggledReady":
+                            PlayerToggledReady(parts);
+                            break;
 
-                    default:
-                        Console.WriteLine("Unhandled server message: {0}", message);
-                        break;
+                        default:
+                            Console.WriteLine("Unhandled server message: {0}", message);
+                            break;
+                    }
                 }
             }
         }

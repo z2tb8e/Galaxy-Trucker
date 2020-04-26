@@ -38,16 +38,13 @@ namespace GalaxyTrucker.Network
         private readonly ConcurrentDictionary<PlayerColor, TcpClient> _clients;
         private readonly ConcurrentDictionary<PlayerColor, bool> _playerReady;
         private readonly ConcurrentDictionary<PlayerColor, Semaphore> _canSend;
-        private readonly ConcurrentDictionary<PlayerColor, bool> _playerHasMessages;
         private readonly ConcurrentDictionary<PlayerColor, PlayerAttributes> _playerAttributes;
+        private readonly Semaphore _orderSemaphore;
 
         private volatile ServerStage _stage;
 
-        private Semaphore _orderSemaphore;
         private List<PlayerColor> _playerOrder;
 
-        //Semaphore: limit accessibility to one client at a time
-        //bool: whether the tile is not already taken
         private readonly PartAvailability[,] _partAvailable;
         private readonly Part[,] _parts;
 
@@ -71,10 +68,12 @@ namespace GalaxyTrucker.Network
             _clients = new ConcurrentDictionary<PlayerColor, TcpClient>();
             _playerReady = new ConcurrentDictionary<PlayerColor, bool>();
             _canSend = new ConcurrentDictionary<PlayerColor, Semaphore>();
-            _playerHasMessages = new ConcurrentDictionary<PlayerColor, bool>();
             _playerAttributes = new ConcurrentDictionary<PlayerColor, PlayerAttributes>();
-            _parts = new Part[14, 10];
+
             _random = new Random();
+            _orderSemaphore = new Semaphore(1, 1);
+
+            _parts = new Part[14, 10];
             _partAvailable = new PartAvailability[14, 10];
             for(int i = 0; i < 14; ++i)
             {
@@ -104,9 +103,7 @@ namespace GalaxyTrucker.Network
                         _playerReady[assignedColor] = false;
                         NetworkStream stream = client.GetStream();
                         WriteMessageToPlayer(assignedColor, assignedColor.ToString());
-                        _playerHasMessages[assignedColor] = false;
 
-                        //new Thread(() => HandleClientMessages(assignedColor)).Start();
                         Task.Factory.StartNew(() => HandleClientMessages(assignedColor), TaskCreationOptions.LongRunning);
                     }
                 }
@@ -136,7 +133,6 @@ namespace GalaxyTrucker.Network
 
             _stage = ServerStage.Build;
 
-            _orderSemaphore = new Semaphore(1, 1);
             _playerOrder = new List<PlayerColor>();
 
 
@@ -176,7 +172,7 @@ namespace GalaxyTrucker.Network
 
         private void BuildStage()
         {
-            while (_playerReady.Values.Contains(false) || _playerHasMessages.Values.Contains(true)) ;
+            while (_playerReady.Values.Contains(false)) ;
             string playerOrder = string.Join(',', _playerOrder);
             foreach (PlayerColor player in _clients.Keys)
             {
@@ -216,34 +212,36 @@ namespace GalaxyTrucker.Network
         {
             string message;
             string[] parts;
+            NetworkStream ns = _clients[player].GetStream();
             while (_clients[player].Connected)
             {
-                _playerHasMessages[player] = false;
-                message = ReadMessageFromPlayer(player);
-                parts = message.Split(',');
-                _playerHasMessages[player] = true;
-                Console.WriteLine("Message received from {0}: {1}", player, message);
-                switch (parts[0])
+                if(ns.DataAvailable)
                 {
-                    case "ToggleReady":
-                        ToggleReadyResolve(player);
-                        break;
+                    message = ReadMessageFromPlayer(player);
+                    parts = message.Split(',');
+                    Console.WriteLine("Message received from {0}: {1}", player, message);
+                    switch (parts[0])
+                    {
+                        case "ToggleReady":
+                            ToggleReadyResolve(player);
+                            break;
 
-                    case "PickPart":
-                        PickPartResolve(player, parts);
-                        break;
+                        case "PickPart":
+                            PickPartResolve(player, parts);
+                            break;
 
-                    case "PutBackPart":
-                        PutBackPartResolve(player, parts);
-                        break;
+                        case "PutBackPart":
+                            PutBackPartResolve(player, parts);
+                            break;
 
-                    case "StartFlightStage":
-                        StartFlightStageResolve(player, parts);
-                        break;
+                        case "StartFlightStage":
+                            StartFlightStageResolve(player, parts);
+                            break;
 
-                    default:
-                        Console.WriteLine("Unhandled client message from {0}: {1}", player, message);
-                        break;
+                        default:
+                            Console.WriteLine("Unhandled client message from {0}: {1}", player, message);
+                            break;
+                    }
                 }
             }
         }
@@ -317,7 +315,6 @@ namespace GalaxyTrucker.Network
             else
             {
                 Part p = _parts[ind1, ind2];
-                //Part p = new Cockpit(player);
                 _partAvailable[ind1, ind2].IsAvailable = true;
                 string response = "PutBackPartConfirm";
                 string announcement = "PartPutBack," + parts[1] + "," + parts[2] + "," + p.ToString();

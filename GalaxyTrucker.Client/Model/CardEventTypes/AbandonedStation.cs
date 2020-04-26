@@ -11,8 +11,12 @@ namespace GalaxyTrucker.Client.Model.CardEventTypes
 
         public List<Ware> Wares { get; }
 
-        public AbandonedStation(GameStage stage, int minimumCrew, int dayCost, List<Ware> wares) : base(stage) =>
-            (MinimumCrew, DayCost, Wares) = (minimumCrew, dayCost, wares);
+        public AbandonedStation(GameStage stage, int minimumCrew, int dayCost, List<Ware> wares) : base(stage)
+        {
+            MinimumCrew = minimumCrew;
+            DayCost = dayCost;
+            Wares = wares;
+        }
 
         public override string ToString()
         {

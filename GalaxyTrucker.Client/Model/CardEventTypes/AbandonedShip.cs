@@ -8,8 +8,12 @@
 
         public int Reward { get; }
 
-        public AbandonedShip(GameStage stage, int crewCost, int dayCost, int reward) : base(stage) =>
-            (CrewCost, DayCost, Reward) = (crewCost, dayCost, reward);
+        public AbandonedShip(GameStage stage, int crewCost, int dayCost, int reward) : base(stage)
+        {
+            CrewCost = crewCost;
+            DayCost = dayCost;
+            Reward = reward;
+        }
 
         public override string ToString()
         {

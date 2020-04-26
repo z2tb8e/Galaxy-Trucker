@@ -21,8 +21,10 @@ namespace GalaxyTrucker.Client.Model
         protected Part(Connector Top, Connector Right, Connector Bottom, Connector Left)
         {
             _path = new Stack<Part>();
-            _connectors = new Connector[4];
-            (_connectors[0], _connectors[1], _connectors[2], _connectors[3], this.Rotation) = (Top, Right, Bottom, Left, default);
+            _connectors = new Connector[4]
+            {
+                Top, Right, Bottom, Left
+            };
         }
 
         public Connector GetConnector(Direction dir) => _connectors[((int)dir + (int)Rotation) % 4];

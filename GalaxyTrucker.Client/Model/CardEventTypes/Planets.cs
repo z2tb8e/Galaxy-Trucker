@@ -9,8 +9,11 @@ namespace GalaxyTrucker.Client.Model.CardEventTypes
 
         public List<List<Ware>> Offers { get; }
 
-        public Planets(GameStage stage, int dayCost, List<List<Ware>> offers) : base(stage) =>
-            (DayCost, Offers) = (dayCost, offers);
+        public Planets(GameStage stage, int dayCost, List<List<Ware>> offers) : base(stage)
+        {
+            DayCost = dayCost;
+            Offers = offers;
+        }
 
         public override string ToString()
         {
