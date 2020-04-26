@@ -18,12 +18,40 @@ namespace GalaxyTrucker.Network
 
         public bool IsAvailable { get; set; }
 
-        public PartAvailability()
+        public Part Part { get; set; }
+
+        public PartAvailability(Part part)
         {
             Semaphore = new Semaphore(1, 1);
-            IsAvailable = false;
+            IsAvailable = true;
+            Part = part;
         }
     }
+
+    public class ConnectionInfo
+    {
+        public TcpClient Client { get; }
+
+        public NetworkStream Stream { get; }
+
+        public bool IsReady { get; set; }
+
+        public bool HasMessage { get; set; }
+
+        public Semaphore SendSemaphore { get; }
+
+        public PlayerAttributes Attributes { get; set; }
+
+        public ConnectionInfo(TcpClient client)
+        {
+            Client = client;
+            Stream = client.GetStream();
+            IsReady = false;
+            HasMessage = false;
+            SendSemaphore = new Semaphore(1, 1);
+        }
+    }
+
     public class GTTcpListener
     {
         #region fields
@@ -35,18 +63,16 @@ namespace GalaxyTrucker.Network
         private readonly TcpListener _listener;
 
         private readonly Random _random;
-        private readonly ConcurrentDictionary<PlayerColor, TcpClient> _clients;
-        private readonly ConcurrentDictionary<PlayerColor, bool> _playerReady;
-        private readonly ConcurrentDictionary<PlayerColor, Semaphore> _canSend;
-        private readonly ConcurrentDictionary<PlayerColor, PlayerAttributes> _playerAttributes;
+
+        private readonly ConcurrentDictionary<PlayerColor, ConnectionInfo> _connections;
+
         private readonly Semaphore _orderSemaphore;
 
         private volatile ServerStage _stage;
 
         private List<PlayerColor> _playerOrder;
 
-        private readonly PartAvailability[,] _partAvailable;
-        private readonly Part[,] _parts;
+        private readonly PartAvailability[,] _parts;
 
         #endregion
 
@@ -56,7 +82,7 @@ namespace GalaxyTrucker.Network
             => _playerOrder.AsReadOnly();
 
         public IEnumerable<PlayerColor> NotReadyPlayers
-            => _playerReady.Keys.Where(p => !_playerReady[p]);
+            => _connections.Keys.Where(p => !_connections[p].IsReady);
 
         #endregion
 
@@ -65,23 +91,12 @@ namespace GalaxyTrucker.Network
         public GTTcpListener(IPEndPoint endPonint)
         {
             _listener = new TcpListener(endPonint);
-            _clients = new ConcurrentDictionary<PlayerColor, TcpClient>();
-            _playerReady = new ConcurrentDictionary<PlayerColor, bool>();
-            _canSend = new ConcurrentDictionary<PlayerColor, Semaphore>();
-            _playerAttributes = new ConcurrentDictionary<PlayerColor, PlayerAttributes>();
+            _connections = new ConcurrentDictionary<PlayerColor, ConnectionInfo>();
 
             _random = new Random();
             _orderSemaphore = new Semaphore(1, 1);
 
-            _parts = new Part[14, 10];
-            _partAvailable = new PartAvailability[14, 10];
-            for(int i = 0; i < 14; ++i)
-            {
-                for(int j = 0; j < 10; ++j)
-                {
-                    _partAvailable[i, j] = new PartAvailability();
-                }
-            }
+            _parts = new PartAvailability[14, 10];
         }
 
         #region public methods
@@ -92,16 +107,15 @@ namespace GalaxyTrucker.Network
                 _listener.Start(_maxPlayerCount);
                 _stage = ServerStage.Lobby;
                 Task.Factory.StartNew(() => ShuffleParts());
-                while(_clients.Count < _maxPlayerCount && _stage == ServerStage.Lobby)
+                while(_connections.Count < _maxPlayerCount && _stage == ServerStage.Lobby)
                 {
                     if (_listener.Pending())
                     {
                         TcpClient client = _listener.AcceptTcpClient();
                         PlayerColor assignedColor = Enum.GetValues(typeof(PlayerColor)).Cast<PlayerColor>()
-                            .Where(color => !_clients.ContainsKey(color)).First();
-                        _clients[assignedColor] = client;
-                        _playerReady[assignedColor] = false;
-                        NetworkStream stream = client.GetStream();
+                            .Where(color => !_connections.ContainsKey(color)).First();
+                        _connections[assignedColor] = new ConnectionInfo(client);
+
                         WriteMessageToPlayer(assignedColor, assignedColor.ToString());
 
                         Task.Factory.StartNew(() => HandleClientMessages(assignedColor), TaskCreationOptions.LongRunning);
@@ -120,12 +134,12 @@ namespace GalaxyTrucker.Network
 
         public void StartBuildStage()
         {
-            if (_clients.Count < 2)
+            if (_connections.Count < 2)
             {
                 Console.WriteLine("Less than 2 players are connected, BuildStage not started.");
                 return;
             }
-            else if (_playerReady.Values.Contains(false))
+            else if (_connections.Values.Where(c => !c.IsReady).Any())
             {
                 Console.WriteLine("Not all players are ready, BuildStage not started.");
                 return;
@@ -137,15 +151,14 @@ namespace GalaxyTrucker.Network
 
 
             StringBuilder playerColors = new StringBuilder();
-            foreach(PlayerColor color in _clients.Keys)
+            foreach(PlayerColor color in _connections.Keys)
             {
-                _canSend.TryAdd(color, new Semaphore(1, 1));
                 playerColors.Append("," + color.ToString());
             }
 
-            foreach(PlayerColor key in _clients.Keys)
+            foreach(PlayerColor key in _connections.Keys)
             {
-                _playerReady[key] = false;
+                _connections[key].IsReady = false;
                 WriteMessageToPlayer(key, "BuildingBegun" + playerColors.ToString());
             }
 
@@ -155,12 +168,12 @@ namespace GalaxyTrucker.Network
 
         public void Close()
         {
-            foreach(TcpClient client in _clients.Values)
+            foreach(ConnectionInfo connection in _connections.Values)
             {
-                if(client != null)
+                if(connection.Client != null)
                 {
-                    client.GetStream().Close();
-                    client.Close();
+                    connection.Stream.Close();
+                    connection.Client.Close();
                 }
             }
             _listener.Stop();
@@ -172,12 +185,13 @@ namespace GalaxyTrucker.Network
 
         private void BuildStage()
         {
-            while (_playerReady.Values.Contains(false)) ;
+            while (_connections.Values.Where(c => !c.IsReady || c.HasMessage).Any()) ;
+
             string playerOrder = string.Join(',', _playerOrder);
-            foreach (PlayerColor player in _clients.Keys)
+            foreach (PlayerColor player in _connections.Keys)
             {
                 WriteMessageToPlayer(player, "BuildingEnded," + playerOrder);
-                _playerReady[player] = false;
+                _connections[player].IsReady = false;
             }
             Console.WriteLine("Building stage over, player order: ({0})", string.Join(',', _playerOrder));
             BeginFlightStage();
@@ -185,17 +199,17 @@ namespace GalaxyTrucker.Network
 
         private void BeginFlightStage()
         {
-            while (_playerReady.Values.Contains(false)) ;
+            while (_connections.Values.Where(c => !c.IsReady).Any()) ;
             _stage = ServerStage.Flight;
 
-            StringBuilder playerAttributes = new StringBuilder("FlightBegun," + _clients.Count);
-            foreach(PlayerColor player in _clients.Keys)
+            StringBuilder playerAttributes = new StringBuilder("FlightBegun," + _connections.Count);
+            foreach(PlayerColor player in _connections.Keys)
             {
-                _playerReady[player] = false;
-                playerAttributes.Append("," + player.ToString() + _playerAttributes[player].ToString());
+                _connections[player].IsReady = false;
+                playerAttributes.Append("," + player.ToString() + _connections[player].Attributes.ToString());
             }
 
-            foreach(PlayerColor player in _clients.Keys)
+            foreach(PlayerColor player in _connections.Keys)
             {
                 WriteMessageToPlayer(player, playerAttributes.ToString());
             }
@@ -212,11 +226,13 @@ namespace GalaxyTrucker.Network
         {
             string message;
             string[] parts;
-            NetworkStream ns = _clients[player].GetStream();
-            while (_clients[player].Connected)
+            ConnectionInfo connection = _connections[player];
+            while (connection.Client.Connected)
             {
-                if(ns.DataAvailable)
+                connection.HasMessage = false;
+                if(connection.Stream.DataAvailable)
                 {
+                    connection.HasMessage = true;
                     message = ReadMessageFromPlayer(player);
                     parts = message.Split(',');
                     Console.WriteLine("Message received from {0}: {1}", player, message);
@@ -253,7 +269,7 @@ namespace GalaxyTrucker.Network
         /// <param name="parts"></param>
         private void StartFlightStageResolve(PlayerColor player, string[] parts)
         {
-            PlayerAttributes attributes = new PlayerAttributes
+            _connections[player].Attributes = new PlayerAttributes
             {
                 Firepower = int.Parse(parts[1]),
                 Enginepower = int.Parse(parts[2]),
@@ -261,8 +277,7 @@ namespace GalaxyTrucker.Network
                 StorageSize = int.Parse(parts[4]),
                 Batteries = int.Parse(parts[5])
             };
-            _playerAttributes[player] = attributes;
-            _playerReady[player] = true;
+            _connections[player].IsReady = true;
         }
 
         /// <summary>
@@ -271,11 +286,11 @@ namespace GalaxyTrucker.Network
         /// <param name="player"></param>
         private void ToggleReadyResolve(PlayerColor player)
         {
-            _playerReady[player] = !_playerReady[player];
+            _connections[player].IsReady = !_connections[player].IsReady;
             if (_stage == ServerStage.Build)
             {
                 _orderSemaphore.WaitOne();
-                if (_playerReady[player])
+                if (_connections[player].IsReady)
                 {
                     _playerOrder.Add(player);
                 }
@@ -288,7 +303,7 @@ namespace GalaxyTrucker.Network
             string response = "ToggleReadyConfirm";
             string announcement = "PlayerToggledReady," + player.ToString();
             WriteMessageToPlayer(player, response);
-            foreach (PlayerColor key in _clients.Keys)
+            foreach (PlayerColor key in _connections.Keys)
             {
                 if (player != key)
                 {
@@ -306,28 +321,31 @@ namespace GalaxyTrucker.Network
         {
             int ind1 = int.Parse(parts[1]);
             int ind2 = int.Parse(parts[2]);
-            _partAvailable[ind1, ind2].Semaphore.WaitOne();
+            _parts[ind1, ind2].Semaphore.WaitOne();
 
-            if (_partAvailable[ind1, ind2].IsAvailable)
+            if (_parts[ind1, ind2].IsAvailable)
             {
                 WriteMessageToPlayer(player, "PutBackPartConfirm");
             }
             else
             {
-                Part p = _parts[ind1, ind2];
-                _partAvailable[ind1, ind2].IsAvailable = true;
+                Part p = _parts[ind1, ind2].Part;
+                _parts[ind1, ind2].IsAvailable = true;
                 string response = "PutBackPartConfirm";
                 string announcement = "PartPutBack," + parts[1] + "," + parts[2] + "," + p.ToString();
                 WriteMessageToPlayer(player, response);
-                foreach (PlayerColor key in _clients.Keys)
+                Task.Factory.StartNew(() =>
                 {
-                    if (player != key)
+                    foreach (PlayerColor key in _connections.Keys)
                     {
-                        WriteMessageToPlayer(key, announcement);
+                        if (player != key)
+                        {
+                            WriteMessageToPlayer(key, announcement);
+                        }
                     }
-                }
+                });
             }
-            _partAvailable[ind1, ind2].Semaphore.Release();
+            _parts[ind1, ind2].Semaphore.Release();
         }
 
         /// <summary>
@@ -339,20 +357,20 @@ namespace GalaxyTrucker.Network
         {
             int ind1 = int.Parse(parts[1]);
             int ind2 = int.Parse(parts[2]);
-            _partAvailable[ind1, ind2].Semaphore.WaitOne();
+            _parts[ind1, ind2].Semaphore.WaitOne();
 
-            if (!_partAvailable[ind1, ind2].IsAvailable)
+            if (!_parts[ind1, ind2].IsAvailable)
             {
                 WriteMessageToPlayer(player, "PickPartResult,null");
             }
             else
             {
-                Part p = _parts[ind1, ind2];
-                _partAvailable[ind1, ind2].IsAvailable = false;
+                Part p = _parts[ind1, ind2].Part;
+                _parts[ind1, ind2].IsAvailable = false;
                 string response = "PickPartResult," + p.ToString();
                 string announcement = "PartTaken," + ind1.ToString() + "," + ind2.ToString();
                 WriteMessageToPlayer(player, response);
-                foreach (PlayerColor key in _clients.Keys)
+                foreach (PlayerColor key in _connections.Keys)
                 {
                     if (player != key)
                     {
@@ -360,12 +378,12 @@ namespace GalaxyTrucker.Network
                     }
                 }
             }
-            _partAvailable[ind1, ind2].Semaphore.Release();
+            _parts[ind1, ind2].Semaphore.Release();
         }
 
         private string ReadMessageFromPlayer(PlayerColor player)
         {
-            NetworkStream ns = _clients[player].GetStream();
+            NetworkStream ns = _connections[player].Stream;
             StringBuilder message = new StringBuilder();
             int character = ns.ReadByte();
             while((char) character != '#')
@@ -378,9 +396,11 @@ namespace GalaxyTrucker.Network
 
         private void WriteMessageToPlayer(PlayerColor player, string message)
         {
-            NetworkStream ns = _clients[player].GetStream();
+            _connections[player].SendSemaphore.WaitOne();
+            NetworkStream ns = _connections[player].Stream;
             byte[] msg = Encoding.ASCII.GetBytes(message + "#");
             ns.Write(msg, 0, msg.Length);
+            _connections[player].SendSemaphore.Release();
         }
 
         private void ShuffleParts()
@@ -408,7 +428,7 @@ namespace GalaxyTrucker.Network
             {
                 for(int j = 0; j < 10; ++j)
                 {
-                    _parts[i, j] = parts[i * 10 + j];
+                    _parts[i, j] = new PartAvailability(parts[i * 10 + j]);
                 }
             }
         }

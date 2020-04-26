@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using GalaxyTrucker.Client.Model;
 
@@ -153,6 +154,7 @@ namespace GalaxyTrucker.Network
                 if (_stream.DataAvailable)
                 {
                     message = ReadMessageFromServer();
+                    //Console.WriteLine("{0} received message from server: {1}.", _color, message);
                     parts = message.Split(',');
                     switch (parts[0])
                     {
