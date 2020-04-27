@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "GalaxyTrucker": {
+      "commandName": "Project",
+      "remoteDebugEnabled": false
+    }
+  }
+}

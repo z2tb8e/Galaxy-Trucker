@@ -9,6 +9,7 @@ using GalaxyTrucker.Model;
 using GalaxyTrucker.Model.PartTypes;
 using GalaxyTrucker.ViewModels;
 using System.IO;
+using GalaxyTrucker.Views;
 
 namespace GalaxyTrucker
 {
@@ -19,7 +20,17 @@ namespace GalaxyTrucker
     {
         public App()
         {
-            
+            Startup += App_Startup;
+        }
+
+        private void App_Startup(object sender, StartupEventArgs e)
+        {
+            ConnectViewModel connectViewModel = new ConnectViewModel();
+            ConnectWindow connectWindow = new ConnectWindow
+            {
+                DataContext = connectViewModel
+            };
+            connectWindow.Show();
         }
     }
 }

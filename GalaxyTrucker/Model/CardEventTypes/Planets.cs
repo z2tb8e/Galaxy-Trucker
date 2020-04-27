@@ -17,7 +17,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
 
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder(base.ToString() + "P" + DayCost.ToString() + Offers.Count.ToString());
+            StringBuilder sb = new StringBuilder($"{this as CardEvent}P{DayCost}{Offers.Count}");
             foreach(List<Ware> offer in Offers)
             {
                 sb.Append(offer.Count);

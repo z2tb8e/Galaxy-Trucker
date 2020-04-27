@@ -28,7 +28,7 @@
 
         public override string ToString()
         {
-            return "," + Firepower + "," + Enginepower + "," + CrewCount + "," + StorageSize + "," + Batteries;
+            return $",{Firepower},{Enginepower},{CrewCount},{StorageSize},{Batteries}";
         }
     }
 }

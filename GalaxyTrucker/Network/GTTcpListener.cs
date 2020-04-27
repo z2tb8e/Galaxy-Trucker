@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -42,6 +41,8 @@ namespace GalaxyTrucker.Network
         public Semaphore SendSemaphore { get; }
 
         public PlayerAttributes Attributes { get; set; }
+
+        public string DisplayName { get; set; }
 
         public ConnectionInfo(TcpClient client)
         {
@@ -87,8 +88,6 @@ namespace GalaxyTrucker.Network
 
         #endregion
 
-        
-
         public GTTcpListener(IPEndPoint endPonint)
         {
             _listener = new TcpListener(endPonint);
@@ -106,8 +105,6 @@ namespace GalaxyTrucker.Network
         {
             try
             {
-                Stopwatch watch = new Stopwatch();
-                watch.Start();
                 _listener.Start(_maxPlayerCount);
                 _stage = ServerStage.Lobby;
                 Task shuffle = ShufflePartsAsync();
@@ -118,24 +115,27 @@ namespace GalaxyTrucker.Network
                         TcpClient client = _listener.AcceptTcpClient();
                         PlayerColor assignedColor = Enum.GetValues(typeof(PlayerColor)).Cast<PlayerColor>()
                             .Where(color => !_connections.ContainsKey(color)).First();
+
                         _connections[assignedColor] = new ConnectionInfo(client);
 
                         WriteMessageToPlayer(assignedColor, assignedColor.ToString());
 
+                        string displayName = ReadMessageFromPlayer(assignedColor);
+                        _connections[assignedColor].DisplayName = displayName;
+
                         Task.Factory.StartNew(() => HandleClientMessages(assignedColor), TaskCreationOptions.LongRunning);
                     }
                 }
+                Task.Factory.StartNew(() => RefuseFurtherConnections(), TaskCreationOptions.LongRunning);
                 shuffle.Wait();
-                watch.Stop();
-                Console.WriteLine("elapsed: {0}", watch.ElapsedMilliseconds);
             }
             catch(SocketException e)
             {
-                Console.WriteLine("SocketException {0}", e);
+                Console.WriteLine($"SocketException {e}");
             }
             catch(ArgumentException e)
             {
-                Console.WriteLine("ArgumentException {0}", e);
+                Console.WriteLine($"ArgumentException {e}");
             }
         }
 
@@ -160,13 +160,13 @@ namespace GalaxyTrucker.Network
             StringBuilder playerColors = new StringBuilder();
             foreach(PlayerColor color in _connections.Keys)
             {
-                playerColors.Append("," + color.ToString());
+                playerColors.Append($",{color}");
             }
 
             foreach(PlayerColor key in _connections.Keys)
             {
                 _connections[key].IsReady = false;
-                WriteMessageToPlayer(key, "BuildingBegun" + playerColors.ToString());
+                WriteMessageToPlayer(key, $"BuildingBegun{playerColors}");
             }
 
             Console.WriteLine("StartBuildStage over");
@@ -197,10 +197,10 @@ namespace GalaxyTrucker.Network
             string playerOrder = string.Join(',', _playerOrder);
             foreach (PlayerColor player in _connections.Keys)
             {
-                WriteMessageToPlayer(player, "BuildingEnded," + playerOrder);
+                WriteMessageToPlayer(player, $"BuildingEnded,playerOrder");
                 _connections[player].IsReady = false;
             }
-            Console.WriteLine("Building stage over, player order: ({0})", string.Join(',', _playerOrder));
+            Console.WriteLine($"Building stage over, player order: ({string.Join(',', _playerOrder)})");
             BeginFlightStage();
         }
 
@@ -209,11 +209,11 @@ namespace GalaxyTrucker.Network
             while (_connections.Values.Where(c => !c.IsReady).Any()) ;
             _stage = ServerStage.Flight;
 
-            StringBuilder playerAttributes = new StringBuilder("FlightBegun," + _connections.Count);
+            StringBuilder playerAttributes = new StringBuilder($"FlightBegun,{_connections.Count}");
             foreach(PlayerColor player in _connections.Keys)
             {
                 _connections[player].IsReady = false;
-                playerAttributes.Append("," + player.ToString() + _connections[player].Attributes.ToString());
+                playerAttributes.Append($",{player}{_connections[player].Attributes}");
             }
 
             foreach(PlayerColor player in _connections.Keys)
@@ -242,7 +242,7 @@ namespace GalaxyTrucker.Network
                     connection.HasMessage = true;
                     message = ReadMessageFromPlayer(player);
                     parts = message.Split(',');
-                    Console.WriteLine("Message received from {0}: {1}", player, message);
+                    Console.WriteLine($"Message received from ({connection.DisplayName}, {player}): {message}");
                     switch (parts[0])
                     {
                         case "ToggleReady":
@@ -262,7 +262,7 @@ namespace GalaxyTrucker.Network
                             break;
 
                         default:
-                            Console.WriteLine("Unhandled client message from {0}: {1}", player, message);
+                            Console.WriteLine($"Unhandled client message from {player}: {message}");
                             break;
                     }
                 }
@@ -308,7 +308,7 @@ namespace GalaxyTrucker.Network
                 _orderSemaphore.Release();
             }
             string response = "ToggleReadyConfirm";
-            string announcement = "PlayerToggledReady," + player.ToString();
+            string announcement = $"PlayerToggledReady,{player}";
             WriteMessageToPlayer(player, response);
             foreach (PlayerColor key in _connections.Keys)
             {
@@ -339,7 +339,7 @@ namespace GalaxyTrucker.Network
                 string partString = _parts[ind1, ind2].PartString;
                 _parts[ind1, ind2].IsAvailable = true;
                 string response = "PutBackPartConfirm";
-                string announcement = "PartPutBack," + parts[1] + "," + parts[2] + "," + partString;
+                string announcement = $"PartPutBack,{parts[1]},{parts[2]},{partString}";
                 WriteMessageToPlayer(player, response);
                 Task.Factory.StartNew(() =>
                 {
@@ -374,8 +374,8 @@ namespace GalaxyTrucker.Network
             {
                 string partString = _parts[ind1, ind2].PartString;
                 _parts[ind1, ind2].IsAvailable = false;
-                string response = "PickPartResult," + partString;
-                string announcement = "PartTaken," + ind1.ToString() + "," + ind2.ToString();
+                string response = $"PickPartResult,{partString}";
+                string announcement = $"PartTaken,{ind1},{ind2}";
                 WriteMessageToPlayer(player, response);
                 foreach (PlayerColor key in _connections.Keys)
                 {
@@ -405,9 +405,24 @@ namespace GalaxyTrucker.Network
         {
             _connections[player].SendSemaphore.WaitOne();
             NetworkStream ns = _connections[player].Stream;
-            byte[] msg = Encoding.ASCII.GetBytes(message + "#");
+            byte[] msg = Encoding.ASCII.GetBytes($"{message}#");
             ns.Write(msg, 0, msg.Length);
             _connections[player].SendSemaphore.Release();
+        }
+
+        private void RefuseFurtherConnections()
+        {
+            while (true)
+            {
+                if (_listener.Pending())
+                {
+                    TcpClient client = _listener.AcceptTcpClient();
+                    NetworkStream stream = client.GetStream();
+                    byte[] message = Encoding.ASCII.GetBytes("Connection refused#");
+                    stream.Write(message, 0, message.Length);
+                    client.Close();
+                }
+            }
         }
 
         private async Task ShufflePartsAsync()

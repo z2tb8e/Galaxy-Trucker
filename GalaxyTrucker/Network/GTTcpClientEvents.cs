@@ -21,9 +21,9 @@ namespace GalaxyTrucker.Network
     /// </summary>
     public class BuildingEndedEventArgs : EventArgs
     {
-        public IList<PlayerColor> PlayerOrder { get; set; }
+        public List<PlayerColor> PlayerOrder { get; set; }
 
-        public BuildingEndedEventArgs(IList<PlayerColor> playerOrder) =>
+        public BuildingEndedEventArgs(List<PlayerColor> playerOrder) =>
             PlayerOrder = playerOrder;
     }
 
@@ -89,9 +89,9 @@ namespace GalaxyTrucker.Network
     /// </summary>
     public class FlightBegunEventArgs : EventArgs
     {
-        public IDictionary<PlayerColor, PlayerAttributes> PlayerAttributes { get; set; }
+        public Dictionary<PlayerColor, PlayerAttributes> PlayerAttributes { get; set; }
 
-        public FlightBegunEventArgs(IDictionary<PlayerColor, PlayerAttributes> playerAttributes) =>
+        public FlightBegunEventArgs(Dictionary<PlayerColor, PlayerAttributes> playerAttributes) =>
             PlayerAttributes = playerAttributes;
     }
 }

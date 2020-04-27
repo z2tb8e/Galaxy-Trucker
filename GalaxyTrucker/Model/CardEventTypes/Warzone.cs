@@ -20,7 +20,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
 
         public override string ToString()
         {
-            return ((int)Attribute).ToString() + ((int)PenaltyType).ToString();
+            return $"{(int)Attribute}{(int)PenaltyType}";
         }
     }
 

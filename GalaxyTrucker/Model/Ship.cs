@@ -143,7 +143,7 @@ namespace GalaxyTrucker.Model
             }
 
             if (!(_parts[pos1, pos2] is Cabin))
-                throw new InvalidIndexException("Part at (" + pos1.ToString() + "," + pos2.ToString() + ") is not a cabin.");
+                throw new InvalidIndexException($"Part at ({pos1},{pos2}) is not a cabin.");
 
             else if(_parts[pos1,pos2] is Cockpit)
                 throw new InvalidIndexException("The cockpit must have humans as personnel");
@@ -172,7 +172,7 @@ namespace GalaxyTrucker.Model
                     _hasEngineAlien = true;
                     (_parts[pos1, pos2] as Cabin).Personnel = Personnel.EngineAlien;
                 }
-                else throw new InvalidIndexException("Cabin at (" + pos1.ToString() + "," + pos2.ToString() + ") does not have the required neighbouring alien cabin");
+                else throw new InvalidIndexException($"Cabin at ({pos1},{pos2}) does not have the required neighbouring alien cabin");
             }
             else if (alien == Personnel.LaserAlien)
             {
@@ -190,7 +190,7 @@ namespace GalaxyTrucker.Model
                     _hasLaserAlien = true;
                     (_parts[pos1, pos2] as Cabin).Personnel = Personnel.LaserAlien;
                 }
-                else throw new InvalidIndexException("Cabin at (" + pos1.ToString() + "," + pos2.ToString() + ") does not have the required neighbouring alien cabin");
+                else throw new InvalidIndexException($"Cabin at ({pos1},{pos2}) does not have the required neighbouring alien cabin");
             }
             else throw new ArgumentException("Argument is not an alien", "alien");
         }
@@ -268,10 +268,10 @@ namespace GalaxyTrucker.Model
         /// <summary>
         /// Method to apply the effects of a projectile hitting the ship from a given direction the given line.
         /// </summary>
-        /// <param name="pj">The type of projectile the ship is getting hit by</param>
+        /// <param name="projectile">The type of projectile the ship is getting hit by</param>
         /// <param name="dir">The direction the projectile is coming from</param>
         /// <param name="line">The line (vertical or horizontal) in which the projectile is approaching</param>
-        public void ApplyProjectile(Projectile pj, Direction dir, int line)
+        public void ApplyProjectile(Projectile projectile, Direction dir, int line)
         {
             //determine the part about to be hit
             //if the projectile comes from the left or from the top, we check starting from the index 0, else from the maximum index
@@ -326,7 +326,7 @@ namespace GalaxyTrucker.Model
             //large asteroids remove the part unless there is a laser in that line facing it
             //small shots remove the part unless the direction is shielded
             //large shots always remove the part
-            switch (pj)
+            switch (projectile)
             {
                 case Projectile.AsteroidSmall:
                     if(target.GetConnector(dir) != Connector.None && !isShielded[(int)dir])
@@ -403,7 +403,7 @@ namespace GalaxyTrucker.Model
         {
             Part current = _parts[pos1, pos2];
             if (!(current is IActivatable))
-                throw new InvalidIndexException("Part at (" + pos1.ToString() + "," + pos2.ToString() + ") is not an activatable part.");
+                throw new InvalidIndexException($"Part at ({pos1},{pos2}) is not an activatable part.");
             switch (current)
             {
                 case LaserDouble l:
@@ -524,7 +524,7 @@ namespace GalaxyTrucker.Model
         /// <param name="pos2">The second index of the part to remove</param>
         public void RemovePartAtIndex(int pos1, int pos2)
         {
-            Part removedPart = _parts[pos1, pos2] ?? throw new InvalidIndexException("Part at (" + pos1.ToString() + "," + pos2.ToString() + ") is null.");
+            Part removedPart = _parts[pos1, pos2] ?? throw new InvalidIndexException($"Part at ({pos1},{pos2}) is null.");
 
             ++_penalty;
             _parts[pos1, pos2] = null;

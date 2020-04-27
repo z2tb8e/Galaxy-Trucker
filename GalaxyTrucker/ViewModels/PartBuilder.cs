@@ -15,16 +15,16 @@ namespace GalaxyTrucker.ViewModels
 
         public static BitmapImage GetPartImage(Part part)
         {
-            Image img = Image.FromFile(_startingPath + "blank.png");
+            Image img = Image.FromFile($"{_startingPath}blank.png");
             Graphics g = Graphics.FromImage(img);
 
             for(int i = 0; i < 4; ++i)
             {
                 string connectorPath = part.Connectors[i] switch
                 {
-                    Connector.Single => _startingPath + "connector_single.png",
-                    Connector.Double => _startingPath + "connector_double.png",
-                    Connector.Universal => _startingPath + "connector_universal.png",
+                    Connector.Single => $"{_startingPath}connector_single.png",
+                    Connector.Double => $"{_startingPath}connector_double.png",
+                    Connector.Universal => $"{_startingPath}connector_universal.png",
                     _ => null
                 };
                 if(connectorPath != null)
@@ -109,7 +109,7 @@ namespace GalaxyTrucker.ViewModels
                 partPiece = Image.FromFile(partPath);
             }catch(Exception)
             {
-                partPiece = Image.FromFile(_startingPath + "part_error.png");
+                partPiece = Image.FromFile($"{_startingPath}part_error.png");
             }
             g.DrawImage(partPiece, new Point(0, 0));
 

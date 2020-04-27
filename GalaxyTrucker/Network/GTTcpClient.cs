@@ -12,7 +12,14 @@ namespace GalaxyTrucker.Network
     /// <summary>
     /// Exception thrown when a server message indicates that the client is out of sync with it.
     /// </summary>
-    public class OutOfSyncException : Exception{}
+    public class OutOfSyncException : Exception { }
+
+    public class ConnectionRefusedException : Exception { }
+
+    public class UnknownMessageException : Exception
+    {
+        public UnknownMessageException(string s) : base(s) { }
+    }
 
     public class GTTcpClient
     {
@@ -21,14 +28,18 @@ namespace GalaxyTrucker.Network
 
         private readonly TcpClient _client;
 
-        private readonly IPEndPoint _endPoint;
         private ServerStage _stage;
-        private PlayerColor _color;
         private NetworkStream _stream;
 
         #endregion
 
         #region properties
+
+        public bool IsConnected => _client.Connected;
+
+        public string DisplayName { get; private set; }
+
+        public PlayerColor Player { get; private set; }
 
         public bool IsReady { get; private set; }
 
@@ -52,41 +63,59 @@ namespace GalaxyTrucker.Network
 
         #endregion
 
-        public GTTcpClient(IPEndPoint endPoint)
+        public GTTcpClient()
         {
             IsReady = false;
             _stage = ServerStage.Lobby;
             _client = new TcpClient();
-            _endPoint = endPoint;
         }
 
         #region public methods
 
-        public void Connect()
+        public void Connect(IPEndPoint endPoint, string displayName)
         {
+            if (displayName.Contains('#'))
+            {
+                throw new FormatException("Argument \"displayName\" contains illegal '#' character.");
+            }
             try
             {
-                _client.Connect(_endPoint);
+                DisplayName = displayName;
+
+                IAsyncResult ar = _client.BeginConnect(endPoint.Address, endPoint.Port, null, null);
+                WaitHandle wh = ar.AsyncWaitHandle;
+                try
+                {
+                    if (!ar.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(5), false))
+                    {
+                        _client.Close();
+                        throw new TimeoutException();
+                    }
+                    _client.EndConnect(ar);
+                }
+                finally
+                {
+                    wh.Close();
+                }
                 _stream = _client.GetStream();
 
                 string msg = ReadMessageFromServer();
+                if (msg == "Connection refused")
+                {
+                    _client.Close();
+                    throw new ConnectionRefusedException();
+                }
 
-                _color = Enum.Parse<PlayerColor>(msg);
-                Console.WriteLine("Assigned color: {0}", _color);
+                Player = Enum.Parse<PlayerColor>(msg);
+                Console.WriteLine("Assigned color: {0}", Player);
+
+                WriteMessageToServer(DisplayName);
                 Task.Factory.StartNew(() => HandleServerMessages(), TaskCreationOptions.LongRunning);
 
             }
-            catch (ArgumentNullException e)
+            catch (Exception)
             {
-                Console.WriteLine("ArgumentNullException: {0}", e);
-            }
-            catch(ArgumentException e)
-            {
-                Console.WriteLine("ArgumentException: {0}", e);
-            }
-            catch (SocketException e)
-            {
-                Console.WriteLine("SocketException: {0}", e);
+                throw;
             }
         }
 
@@ -109,7 +138,7 @@ namespace GalaxyTrucker.Network
                 throw new InvalidOperationException();
             }
 
-            WriteMessageToServer("StartFlightStage," + firepower + "," + enginepower + "," + crewCount + "," + storageSize + "," + batteries);
+            WriteMessageToServer($"StartFlightStage,{firepower},{enginepower},{crewCount},{storageSize},{batteries}");
             IsReady = true;
         }
 
@@ -120,8 +149,7 @@ namespace GalaxyTrucker.Network
                 throw new InvalidOperationException();
             }
 
-            string msg = "PutBackPart," + ind1 + "," + ind2;
-            WriteMessageToServer(msg);
+            WriteMessageToServer($"PutBackPart,{ind1},{ind2}");
         }
 
         public void PickPart(int ind1, int ind2)
@@ -131,8 +159,7 @@ namespace GalaxyTrucker.Network
                 throw new InvalidOperationException();
             }
 
-            string msg = "PickPart," + ind1 + "," + ind2;
-            WriteMessageToServer(msg);
+            WriteMessageToServer($"PickPart,{ind1},{ind2}");
         }
 
         public void Close()
@@ -154,7 +181,6 @@ namespace GalaxyTrucker.Network
                 if (_stream.DataAvailable)
                 {
                     message = ReadMessageFromServer();
-                    //Console.WriteLine("{0} received message from server: {1}.", _color, message);
                     parts = message.Split(',');
                     switch (parts[0])
                     {
@@ -194,8 +220,7 @@ namespace GalaxyTrucker.Network
                             break;
 
                         default:
-                            Console.WriteLine("Unhandled server message: {0}", message);
-                            break;
+                            throw new UnknownMessageException(message);
                     }
                 }
             }
@@ -226,7 +251,6 @@ namespace GalaxyTrucker.Network
                 playerAttributes[currentPlayer] = attributes;
             }
             FlightBegun?.Invoke(this, new FlightBegunEventArgs(playerAttributes));
-            Console.WriteLine("Client {0}: FlightBegun", _color);
         }
 
         /// <summary>
@@ -357,7 +381,7 @@ namespace GalaxyTrucker.Network
                 throw new InvalidOperationException();
             }
 
-            byte[] msg = Encoding.ASCII.GetBytes(message + "#");
+            byte[] msg = Encoding.ASCII.GetBytes($"{message}#");
             _stream.Write(msg, 0, msg.Length);
         }
 
