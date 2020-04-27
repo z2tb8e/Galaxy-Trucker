@@ -10,7 +10,7 @@ namespace GalaxyTrucker.ViewModels
 {
     public class ConnectViewModel : NotifyBase
     {
-        private const int DefaultPort = 7880;
+        private const int DefaultPort = 11000;
 
         private string _remoteIp;
         private int _remotePort;
@@ -70,17 +70,9 @@ namespace GalaxyTrucker.ViewModels
             }
         }
 
-        public ObservableCollection<string> Errors { get; set; }
+        public string Error { get; set; }
 
         public bool IsConnected => _client.IsConnected;
-
-        public bool CanConnect
-        {
-            get
-            {
-                return _remoteIp != null && _playerName != null;
-            }
-        }
 
         public DelegateCommand Connect { get; set; }
 
@@ -88,34 +80,35 @@ namespace GalaxyTrucker.ViewModels
 
         public ConnectViewModel()
         {
-            Errors = new ObservableCollection<string>();
             RemotePort = DefaultPort;
             _client = new GTTcpClient();
             Connect = new DelegateCommand(param =>
             {
-                Errors.Clear();
                 try
                 {
+                    Error = "";
                     IPEndPoint endpoint = new IPEndPoint(IPAddress.Parse(RemoteIp), RemotePort);
                     _client.Connect(endpoint, PlayerName);
+                    ConnectionStatus = $"Csatlakozva, kapott szín: {_client.Player.ToUserString()}";
+                    OnPropertyChanged("ConnectionStatus");
+                    OnPropertyChanged("Error");
+                    OnPropertyChanged("IsConnected");
                 }
                 catch (ConnectionRefusedException)
                 {
-                    Errors.Add("A megadott játékhoz már nem lehet csatlakozni.");
-                    OnPropertyChanged("Errors");
+                    Error = "A megadott játékhoz már nem lehet csatlakozni.";
+                    OnPropertyChanged("Error");
                 }
                 catch(TimeoutException)
                 {
-                    Errors.Add("Nem jött létre a kapcsolat az időlimiten belül.");
-                    OnPropertyChanged("Errors");
+                    Error = "Nem jött létre a kapcsolat az időlimiten belül.";
+                    OnPropertyChanged("Error");
                 }
                 catch (Exception e)
                 {
-                    Errors.Add($"Hiba a csatlakozás közben: {e.Message}");
-                    OnPropertyChanged("Errors");
+                    Error = $"Hiba a csatlakozás közben: {e.Message}";
+                    OnPropertyChanged("Error");
                 }
-                ConnectionStatus = $"Csatlakozva, kapott szín: {_client.Player.ToUserString()}";
-                OnPropertyChanged("ConnectionStatus");
             });
         }
     }
