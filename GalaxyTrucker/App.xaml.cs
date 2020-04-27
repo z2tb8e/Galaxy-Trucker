@@ -10,6 +10,7 @@ using GalaxyTrucker.Model.PartTypes;
 using GalaxyTrucker.ViewModels;
 using System.IO;
 using GalaxyTrucker.Views;
+using GalaxyTrucker.Network;
 
 namespace GalaxyTrucker
 {

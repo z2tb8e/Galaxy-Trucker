@@ -1,30 +1,22 @@
 ﻿using GalaxyTrucker.Model;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace GalaxyTrucker.NetworkTest
 {
     /// <summary>
-    /// Event raised at the end of the lobby containing the attending players's colours
+    /// Event raised at the end of the lobby
     /// </summary>
     public class BuildingBegunEventArgs : EventArgs
     {
-        public IEnumerable<PlayerColor> Players { get; set; }
-
-        public BuildingBegunEventArgs(IEnumerable<PlayerColor> players) =>
-            Players = players;
+        public BuildingBegunEventArgs() { }
     }
 
     /// <summary>
-    /// Event raised at the end of the building stage containing the players's colours in the starting turn order
+    /// Event raised at the end of the building stage
     /// </summary>
     public class BuildingEndedEventArgs : EventArgs
     {
-        public IList<PlayerColor> PlayerOrder { get; set; }
-
-        public BuildingEndedEventArgs(IList<PlayerColor> playerOrder) =>
-            PlayerOrder = playerOrder;
+        public BuildingEndedEventArgs() { }
     }
 
     /// <summary>
@@ -85,13 +77,26 @@ namespace GalaxyTrucker.NetworkTest
     }
 
     /// <summary>
-    /// Event raised at the start of flight stage containing attributes about each players's ships
+    /// Event raised at the start of flight stage
     /// </summary>
     public class FlightBegunEventArgs : EventArgs
     {
-        public IDictionary<PlayerColor, PlayerAttributes> PlayerAttributes { get; set; }
+        public FlightBegunEventArgs() { }
+    }
 
-        public FlightBegunEventArgs(IDictionary<PlayerColor, PlayerAttributes> playerAttributes) =>
-            PlayerAttributes = playerAttributes;
+    /// <summary>
+    /// Event raised when another client joins during lobby
+    /// </summary>
+    public class PlayerConnectedEventArgs : EventArgs
+    {
+        public string PlayerName { get; set; }
+
+        public PlayerColor Color { get; set; }
+
+        public PlayerConnectedEventArgs(string playerName, PlayerColor color)
+        {
+            PlayerName = playerName;
+            Color = color;
+        }
     }
 }

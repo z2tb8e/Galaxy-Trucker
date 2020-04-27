@@ -16,6 +16,27 @@ namespace GalaxyTrucker.NetworkTest
 
     public class ConnectionRefusedException : Exception { }
 
+    public class PlayerInfo
+    {
+        public string Name { get; }
+
+        public PlayerColor Color { get; }
+
+        public PlayerAttributes Attributes { get; set; }
+
+        public bool IsReady { get; set; }
+
+        public bool IsFlying { get; set; }
+
+        public PlayerInfo(PlayerColor color, string name, bool isReady)
+        {
+            Color = color;
+            Name = name;
+            IsReady = isReady;
+            IsFlying = true;
+        }
+    }
+
     public class GTTcpClient
     {
 
@@ -38,6 +59,9 @@ namespace GalaxyTrucker.NetworkTest
 
         public bool IsReady { get; private set; }
 
+        public Dictionary<PlayerColor, PlayerInfo> PlayerInfos { get; }
+        public List<PlayerColor> PlayerOrder { get; }
+
         #endregion
 
         #region events
@@ -56,10 +80,14 @@ namespace GalaxyTrucker.NetworkTest
 
         public event EventHandler<PlayerReadiedEventArgs> PlayerReadied;
 
+        public event EventHandler<PlayerConnectedEventArgs> PlayerConnected;
+
         #endregion
 
         public GTTcpClient()
         {
+            PlayerInfos = new Dictionary<PlayerColor, PlayerInfo>();
+            PlayerOrder = new List<PlayerColor>();
             IsReady = false;
             _stage = ServerStage.Lobby;
             _client = new TcpClient();
@@ -94,17 +122,28 @@ namespace GalaxyTrucker.NetworkTest
                 }
                 _stream = _client.GetStream();
 
-                string msg = ReadMessageFromServer();
-                if(msg == "Connection refused")
+                string color = ReadMessageFromServer();
+                if(color == "Connection refused")
                 {
                     _client.Close();
                     throw new ConnectionRefusedException();
                 }
-
-                Player = Enum.Parse<PlayerColor>(msg);
-                Console.WriteLine("Assigned color: {0}", Player);
-
                 WriteMessageToServer(DisplayName);
+
+                Player = Enum.Parse<PlayerColor>(color);
+                Console.WriteLine("Assigned color: {0}", Player);
+                //own client's info
+                PlayerInfos[Player] = new PlayerInfo(Player, DisplayName, false);
+
+                string otherPlayerInfo = ReadMessageFromServer();
+                string[] parts = otherPlayerInfo.Split(',');
+                int otherPlayerCount = int.Parse(parts[0]);
+                for(int i = 0; i < otherPlayerCount; ++i)
+                {
+                    PlayerColor index = Enum.Parse<PlayerColor>(parts[1 + i * 3]);
+                    PlayerInfos[index] = new PlayerInfo(index, parts[2 + i * 3], bool.Parse(parts[3 + i * 3]));
+                }
+
                 Task.Factory.StartNew(() => HandleServerMessages(), TaskCreationOptions.LongRunning);
 
             }
@@ -188,12 +227,16 @@ namespace GalaxyTrucker.NetworkTest
                     parts = message.Split(',');
                     switch (parts[0])
                     {
+                        case "PlayerConnected":
+                            PlayerConnectedResolve(parts);
+                            break;
+
                         case "FlightBegun":
                             FlightBegunResolve(parts);
                             break;
 
                         case "BuildingBegun":
-                            BuildingBegunResolve(parts);
+                            BuildingBegunResolve();
                             break;
 
                         case "BuildingEnded":
@@ -231,6 +274,18 @@ namespace GalaxyTrucker.NetworkTest
             }
         }
 
+        private void PlayerConnectedResolve(string[] parts)
+        {
+            if(_stage != ServerStage.Lobby)
+            {
+                throw new OutOfSyncException();
+            }
+            PlayerColor color = Enum.Parse<PlayerColor>(parts[1]);
+            string name = parts[2];
+            PlayerInfos[color] = new PlayerInfo(color, name, false);
+            PlayerConnected?.Invoke(this, new PlayerConnectedEventArgs(name, color));
+        }
+
         private void FlightBegunResolve(string[] parts)
         {
             if (!IsReady)
@@ -240,12 +295,11 @@ namespace GalaxyTrucker.NetworkTest
             IsReady = false;
             _stage = ServerStage.Flight;
             //Format: FlightBegun,PlayerNumber,Color,Firepower,Enginepower,CrewCount,StorageSize,Batteries
-            Dictionary<PlayerColor, PlayerAttributes> playerAttributes = new Dictionary<PlayerColor, PlayerAttributes>();
             int playerNumber = int.Parse(parts[1]);
             for (int i = 0; i < playerNumber; ++i)
             {
                 PlayerColor currentPlayer = Enum.Parse<PlayerColor>(parts[2 + i * 6]);
-                PlayerAttributes attributes = new PlayerAttributes
+                PlayerInfos[currentPlayer].Attributes = new PlayerAttributes
                 {
                     Firepower = int.Parse(parts[3 + i * 6]),
                     Enginepower = int.Parse(parts[4 + i * 6]),
@@ -253,9 +307,8 @@ namespace GalaxyTrucker.NetworkTest
                     StorageSize = int.Parse(parts[6 + i * 6]),
                     Batteries = int.Parse(parts[7 + i * 6]),
                 };
-                playerAttributes[currentPlayer] = attributes;
             }
-            FlightBegun?.Invoke(this, new FlightBegunEventArgs(playerAttributes));
+            FlightBegun?.Invoke(this, new FlightBegunEventArgs());
             Console.WriteLine("Client {0}: FlightBegun", Player);
         }
 
@@ -263,7 +316,7 @@ namespace GalaxyTrucker.NetworkTest
         /// Method called when the server sends a message to signal that the building stage started
         /// </summary>
         /// <param name="parts"></param>
-        private void BuildingBegunResolve(string[] parts)
+        private void BuildingBegunResolve()
         {
             if (!IsReady)
             {
@@ -271,12 +324,7 @@ namespace GalaxyTrucker.NetworkTest
             }
             IsReady = false;
             _stage = ServerStage.Build;
-            List<PlayerColor> players = new List<PlayerColor>();
-            for (int i = 1; i < parts.Length; ++i)
-            {
-                players.Add(Enum.Parse<PlayerColor>(parts[i]));
-            }
-            BuildingBegun?.Invoke(this, new BuildingBegunEventArgs(players));
+            BuildingBegun?.Invoke(this, new BuildingBegunEventArgs());
         }
 
         /// <summary>
@@ -290,12 +338,11 @@ namespace GalaxyTrucker.NetworkTest
                 throw new OutOfSyncException();
             }
             IsReady = false;
-            List<PlayerColor> turnOrder = new List<PlayerColor>();
             for (int i = 1; i < parts.Length; ++i)
             {
-                turnOrder.Add(Enum.Parse<PlayerColor>(parts[i]));
+                PlayerOrder.Add(Enum.Parse<PlayerColor>(parts[i]));
             }
-            BuildingEnded?.Invoke(this, new BuildingEndedEventArgs(turnOrder));
+            BuildingEnded?.Invoke(this, new BuildingEndedEventArgs());
         }
 
         /// <summary>
@@ -365,6 +412,7 @@ namespace GalaxyTrucker.NetworkTest
         private void PlayerToggledReady(string[] parts)
         {
             PlayerColor player = Enum.Parse<PlayerColor>(parts[1]);
+            PlayerInfos[player].IsReady = !PlayerInfos[player].IsReady;
             PlayerReadied?.Invoke(this, new PlayerReadiedEventArgs(player));
         }
 

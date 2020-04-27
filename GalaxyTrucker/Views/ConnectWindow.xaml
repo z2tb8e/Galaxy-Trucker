@@ -80,6 +80,22 @@
                 </Style>
             </TextBox.Style>
         </TextBox>
+
+        <DataGrid Name="connectedPlayers" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding ConnectedPlayers}" AutoGenerateColumns="False" IsReadOnly="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Width="150" Header="Név" Binding="{Binding Name}"/>
+                <DataGridTextColumn Width="50"  Header="Szín" Binding="{Binding Color}"/>
+                <DataGridTextColumn Width="50" Header="Készen áll" Binding="{Binding IsReady}"/>
+                <!--<DataGridTemplateColumn Header="Készen áll">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <CheckBox IsManipulationEnabled="False" IsChecked="{Binding IsReady}"></CheckBox>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>-->
+            </DataGrid.Columns>
+        </DataGrid>
+
         <TextBox Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Error}"></TextBox>
         <Button Width="80" Height="30" Grid.Column="2" Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,76"
                 Command="{Binding Connect}" Content="Csatlakozás">

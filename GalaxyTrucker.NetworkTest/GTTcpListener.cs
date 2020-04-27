@@ -123,6 +123,19 @@ namespace GalaxyTrucker.NetworkTest
                         string displayName = ReadMessageFromPlayer(assignedColor);
                         _connections[assignedColor].DisplayName = displayName;
 
+                        StringBuilder otherPlayers = new StringBuilder($"{_connections.Count - 1}");
+                        string announcement = $"PlayerConnected,{assignedColor},{displayName}";
+                        foreach(PlayerColor key in _connections.Keys)
+                        {
+                            if(key != assignedColor)
+                            {
+                                ConnectionInfo connection = _connections[key];
+                                otherPlayers.Append($",{key},{connection.DisplayName},{connection.IsReady}");
+                                WriteMessageToPlayer(key, announcement);
+                            }
+                        }
+                        WriteMessageToPlayer(assignedColor, otherPlayers.ToString());
+
                         Task.Factory.StartNew(() => HandleClientMessages(assignedColor), TaskCreationOptions.LongRunning);
                     }
                 }
@@ -152,22 +165,14 @@ namespace GalaxyTrucker.NetworkTest
                 return;
             }
 
+            foreach(PlayerColor player in _connections.Keys)
+            {
+                _connections[player].IsReady = false;
+                WriteMessageToPlayer(player, "BuildingBegun");
+            }
             _stage = ServerStage.Build;
 
             _playerOrder = new List<PlayerColor>();
-
-
-            StringBuilder playerColors = new StringBuilder();
-            foreach(PlayerColor color in _connections.Keys)
-            {
-                playerColors.Append($",{color}");
-            }
-
-            foreach(PlayerColor key in _connections.Keys)
-            {
-                _connections[key].IsReady = false;
-                WriteMessageToPlayer(key, $"BuildingBegun{playerColors}");
-            }
 
             Console.WriteLine("StartBuildStage over");
             BuildStage();
@@ -200,7 +205,7 @@ namespace GalaxyTrucker.NetworkTest
                 WriteMessageToPlayer(player, $"BuildingEnded,{playerOrder}");
                 _connections[player].IsReady = false;
             }
-            Console.WriteLine($"Building stage over, player order: ({string.Join(',', _playerOrder)})");
+            Console.WriteLine($"Building stage over, player order: ({playerOrder})");
             BeginFlightStage();
         }
 

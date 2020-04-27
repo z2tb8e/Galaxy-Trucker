@@ -15,15 +15,21 @@ namespace GalaxyTrucker.NetworkTest
             IPEndPoint endPoint = new IPEndPoint(ipAddress, 11000);
 
             GTTcpListener listener = new GTTcpListener(endPoint);
-            /*GTTcpClient client1 = new GTTcpClient();
+            GTTcpClient client1 = new GTTcpClient();
             GTTcpClient client2 = new GTTcpClient();
-            GTTcpClient client3 = new GTTcpClient();
+            /*GTTcpClient client3 = new GTTcpClient();
             GTTcpClient client4 = new GTTcpClient();*/
 
             new Thread(() => listener.Start()).Start();
 
-            /*client1.Connect(endPoint, "client1");
-            client2.Connect(endPoint, "client2");
+            client1.Connect(endPoint, "client1");
+
+            Thread.Sleep(10000);
+            client2.Connect(endPoint, "client5");
+
+            Thread.Sleep(1000);
+            client1.ToggleReady(ServerStage.Lobby);
+            /*client2.Connect(endPoint, "client2");
             client3.Connect(endPoint, "client3");
             client4.Connect(endPoint, "client4");
             client1.ToggleReady(ServerStage.Lobby);
@@ -94,7 +100,7 @@ namespace GalaxyTrucker.NetworkTest
             client1.StartFlightStage(1, 1, 1, 1, 1);
             client2.StartFlightStage(1, 1, 1, 1, 1);
             client3.StartFlightStage(1, 1, 1, 1, 1);
-            client4.StartFlightStage(1, 1, 1, 1, 1);*/
+            client4.StartFlightStage(1, 1, 1, 1, 1);
 
             Thread.Sleep(1000);
             /*client1.Close();

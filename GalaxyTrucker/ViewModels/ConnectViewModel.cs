@@ -1,9 +1,10 @@
 ﻿using GalaxyTrucker.Model;
 using GalaxyTrucker.Network;
 using System;
+using System.Linq;
 using System.Collections.ObjectModel;
 using System.Net;
-using System.Reflection;
+using System.Windows.Data;
 using System.Windows;
 
 namespace GalaxyTrucker.ViewModels
@@ -12,12 +13,24 @@ namespace GalaxyTrucker.ViewModels
     {
         private const int DefaultPort = 11000;
 
+        private readonly object _lock;
+        private ObservableCollection<PlayerInfo> _connectedPlayers;
         private string _remoteIp;
         private int _remotePort;
         private string _playerName;
 
         private readonly GTTcpClient _client;
         public string ConnectionStatus { get; set; }
+
+        public ObservableCollection<PlayerInfo> ConnectedPlayers
+        {
+            get { return _connectedPlayers; }
+            set
+            {
+                _connectedPlayers = value;
+                BindingOperations.EnableCollectionSynchronization(_connectedPlayers, _lock);
+            }
+        }
 
         public string RemoteIp
         {
@@ -80,8 +93,11 @@ namespace GalaxyTrucker.ViewModels
 
         public ConnectViewModel()
         {
+            _lock = new object();
             RemotePort = DefaultPort;
             _client = new GTTcpClient();
+            _client.PlayerConnected += Client_PlayerConnected;
+            _client.PlayerReadied += Client_PlayerReadied;
             Connect = new DelegateCommand(param =>
             {
                 try
@@ -90,9 +106,15 @@ namespace GalaxyTrucker.ViewModels
                     IPEndPoint endpoint = new IPEndPoint(IPAddress.Parse(RemoteIp), RemotePort);
                     _client.Connect(endpoint, PlayerName);
                     ConnectionStatus = $"Csatlakozva, kapott szín: {_client.Player.ToUserString()}";
+                    ConnectedPlayers ??= new ObservableCollection<PlayerInfo>();
+                    foreach(PlayerInfo info in _client.PlayerInfos.Values)
+                    {
+                        ConnectedPlayers.Add(info);
+                    }
                     OnPropertyChanged("ConnectionStatus");
                     OnPropertyChanged("Error");
                     OnPropertyChanged("IsConnected");
+                    OnPropertyChanged("ConnectedPlayers");
                 }
                 catch (ConnectionRefusedException)
                 {
@@ -110,6 +132,19 @@ namespace GalaxyTrucker.ViewModels
                     OnPropertyChanged("Error");
                 }
             });
+        }
+
+        private void Client_PlayerReadied(object sender, PlayerReadiedEventArgs e)
+        {
+            PlayerInfo info = _connectedPlayers.Where(info => info.Color == e.Player).First();
+            info.IsReady = !info.IsReady;
+            OnPropertyChanged("ConnectedPlayers");
+        }
+
+        private void Client_PlayerConnected(object sender, PlayerConnectedEventArgs e)
+        {
+            ConnectedPlayers.Add(new PlayerInfo(e.Color, e.PlayerName, false));
+            OnPropertyChanged("ConnectedPlayers");
         }
     }
 }

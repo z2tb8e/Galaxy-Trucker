@@ -105,10 +105,10 @@ namespace GalaxyTrucker.Network
         {
             try
             {
-                _listener.Start(_maxPlayerCount);
+                _listener.Start(4);
                 _stage = ServerStage.Lobby;
                 Task shuffle = ShufflePartsAsync();
-                while(_connections.Count < _maxPlayerCount && _stage == ServerStage.Lobby)
+                while (_connections.Count < _maxPlayerCount && _stage == ServerStage.Lobby)
                 {
                     if (_listener.Pending())
                     {
@@ -123,17 +123,30 @@ namespace GalaxyTrucker.Network
                         string displayName = ReadMessageFromPlayer(assignedColor);
                         _connections[assignedColor].DisplayName = displayName;
 
+                        StringBuilder otherPlayers = new StringBuilder($"{_connections.Count - 1}");
+                        string announcement = $"PlayerConnected,{assignedColor},{displayName}";
+                        foreach (PlayerColor key in _connections.Keys)
+                        {
+                            if (key != assignedColor)
+                            {
+                                ConnectionInfo connection = _connections[key];
+                                otherPlayers.Append($",{key},{connection.DisplayName},{connection.IsReady}");
+                                WriteMessageToPlayer(key, announcement);
+                            }
+                        }
+                        WriteMessageToPlayer(assignedColor, otherPlayers.ToString());
+
                         Task.Factory.StartNew(() => HandleClientMessages(assignedColor), TaskCreationOptions.LongRunning);
                     }
                 }
                 Task.Factory.StartNew(() => RefuseFurtherConnections(), TaskCreationOptions.LongRunning);
                 shuffle.Wait();
             }
-            catch(SocketException e)
+            catch (SocketException e)
             {
                 Console.WriteLine($"SocketException {e}");
             }
-            catch(ArgumentException e)
+            catch (ArgumentException e)
             {
                 Console.WriteLine($"ArgumentException {e}");
             }
@@ -152,22 +165,14 @@ namespace GalaxyTrucker.Network
                 return;
             }
 
+            foreach (PlayerColor player in _connections.Keys)
+            {
+                _connections[player].IsReady = false;
+                WriteMessageToPlayer(player, "BuildingBegun");
+            }
             _stage = ServerStage.Build;
 
             _playerOrder = new List<PlayerColor>();
-
-
-            StringBuilder playerColors = new StringBuilder();
-            foreach(PlayerColor color in _connections.Keys)
-            {
-                playerColors.Append($",{color}");
-            }
-
-            foreach(PlayerColor key in _connections.Keys)
-            {
-                _connections[key].IsReady = false;
-                WriteMessageToPlayer(key, $"BuildingBegun{playerColors}");
-            }
 
             Console.WriteLine("StartBuildStage over");
             BuildStage();
@@ -175,9 +180,9 @@ namespace GalaxyTrucker.Network
 
         public void Close()
         {
-            foreach(ConnectionInfo connection in _connections.Values)
+            foreach (ConnectionInfo connection in _connections.Values)
             {
-                if(connection.Client != null)
+                if (connection.Client != null)
                 {
                     connection.Stream.Close();
                     connection.Client.Close();
@@ -197,10 +202,10 @@ namespace GalaxyTrucker.Network
             string playerOrder = string.Join(',', _playerOrder);
             foreach (PlayerColor player in _connections.Keys)
             {
-                WriteMessageToPlayer(player, $"BuildingEnded,playerOrder");
+                WriteMessageToPlayer(player, $"BuildingEnded,{playerOrder}");
                 _connections[player].IsReady = false;
             }
-            Console.WriteLine($"Building stage over, player order: ({string.Join(',', _playerOrder)})");
+            Console.WriteLine($"Building stage over, player order: ({playerOrder})");
             BeginFlightStage();
         }
 
@@ -210,13 +215,13 @@ namespace GalaxyTrucker.Network
             _stage = ServerStage.Flight;
 
             StringBuilder playerAttributes = new StringBuilder($"FlightBegun,{_connections.Count}");
-            foreach(PlayerColor player in _connections.Keys)
+            foreach (PlayerColor player in _connections.Keys)
             {
                 _connections[player].IsReady = false;
                 playerAttributes.Append($",{player}{_connections[player].Attributes}");
             }
 
-            foreach(PlayerColor player in _connections.Keys)
+            foreach (PlayerColor player in _connections.Keys)
             {
                 WriteMessageToPlayer(player, playerAttributes.ToString());
             }
@@ -237,7 +242,7 @@ namespace GalaxyTrucker.Network
             while (connection.Client.Connected)
             {
                 connection.HasMessage = false;
-                if(connection.Stream.DataAvailable)
+                if (connection.Stream.DataAvailable)
                 {
                     connection.HasMessage = true;
                     message = ReadMessageFromPlayer(player);
@@ -393,7 +398,7 @@ namespace GalaxyTrucker.Network
             NetworkStream ns = _connections[player].Stream;
             StringBuilder message = new StringBuilder();
             int character = ns.ReadByte();
-            while((char) character != '#')
+            while ((char)character != '#')
             {
                 message.Append((char)character);
                 character = ns.ReadByte();
@@ -430,14 +435,14 @@ namespace GalaxyTrucker.Network
             List<string> parts = new List<string>();
             string line;
             StreamReader sr = new StreamReader(_partPath);
-            while((line = await sr.ReadLineAsync()) != null)
+            while ((line = await sr.ReadLineAsync()) != null)
             {
                 parts.Add(line);
             }
             sr.Close();
 
             int n = parts.Count;
-            while(n > 1)
+            while (n > 1)
             {
                 n--;
                 int k = _random.Next(n + 1);
@@ -445,10 +450,10 @@ namespace GalaxyTrucker.Network
                 parts[k] = parts[n];
                 parts[n] = value;
             }
-            
-            for(int i = 0; i < 14; ++i)
+
+            for (int i = 0; i < 14; ++i)
             {
-                for(int j = 0; j < 10; ++j)
+                for (int j = 0; j < 10; ++j)
                 {
                     _parts[i, j] = new PartAvailability(parts[i * 10 + j]);
                 }
