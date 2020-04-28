@@ -15,12 +15,15 @@ namespace GalaxyTrucker.ViewModels
         private const string DefaultName = "Teszt";
 
         private readonly object _lock;
-        private volatile ObservableCollection<PlayerInfoViewModel> _connectedPlayers;
+        private ObservableCollection<PlayerInfoViewModel> _connectedPlayers;
         private string _remoteIp;
         private int _remotePort;
         private string _playerName;
 
         private readonly GTTcpClient _client;
+
+        #region properties
+
         public string ConnectionStatus { get; set; }
 
         public ObservableCollection<PlayerInfoViewModel> ConnectedPlayers
@@ -93,11 +96,19 @@ namespace GalaxyTrucker.ViewModels
 
         public bool IsConnected => _client.IsConnected;
 
-        public DelegateCommand Connect { get; set; }
+        public DelegateCommand ConnectCommand { get; set; }
 
-        public DelegateCommand Ready { get; set; }
+        public DelegateCommand ReadyCommand { get; set; }
 
-        public ConnectViewModel()
+        public DelegateCommand BackToMenuCommand { get; set; }
+
+        #endregion
+
+        public event EventHandler BackToMenu;
+
+        public event EventHandler BuildingStarted;
+
+        public ConnectViewModel(GTTcpClient client)
         {
             ConnectInProgress = false;
             _lock = new object();
@@ -105,10 +116,12 @@ namespace GalaxyTrucker.ViewModels
             RemoteIp = DefaultIp;
             PlayerName = DefaultName;
             ConnectedPlayers = new ObservableCollection<PlayerInfoViewModel>();
-            _client = new GTTcpClient();
+            _client = client;
             _client.PlayerConnected += Client_PlayerConnected;
             _client.PlayerReadied += Client_PlayerReadied;
-            Connect = new DelegateCommand(async param =>
+            _client.BuildingBegun += Client_BuildingBegun;
+
+            ConnectCommand = new DelegateCommand(async param =>
             {
                 try
                 {
@@ -119,7 +132,7 @@ namespace GalaxyTrucker.ViewModels
                     OnPropertyChanged("ConnectInProgress");
                     await _client.Connect(endpoint, PlayerName);
                     ConnectionStatus = $"Csatlakozva, kapott szín: {_client.Player.ToUserString()}";
-                    foreach(PlayerInfo info in _client.PlayerInfos.Values)
+                    foreach (PlayerInfo info in _client.PlayerInfos.Values)
                     {
                         ConnectedPlayers.Add(new PlayerInfoViewModel(info));
                     }
@@ -133,7 +146,7 @@ namespace GalaxyTrucker.ViewModels
                     Error = "A megadott játékhoz már nem lehet csatlakozni.";
                     OnPropertyChanged("Error");
                 }
-                catch(TimeoutException)
+                catch (TimeoutException)
                 {
                     Error = "Nem jött létre a kapcsolat az időlimiten belül.";
                     OnPropertyChanged("Error");
@@ -150,13 +163,31 @@ namespace GalaxyTrucker.ViewModels
                 }
             });
 
-            Ready = new DelegateCommand(param =>
+            ReadyCommand = new DelegateCommand(param =>
             {
-                _client.ToggleReady(ServerStage.Lobby);
-                ConnectedPlayers.Where(info => info.Name == PlayerName).First().IsReady = _client.IsReady;
-                OnPropertyChanged("ConnectedPlayers");
-                OnPropertyChanged("IsReady");
+                try
+                {
+                    _client.ToggleReady(ServerStage.Lobby);
+                    ConnectedPlayers.Where(info => info.Name == PlayerName).First().IsReady = _client.IsReady;
+                    OnPropertyChanged("ConnectedPlayers");
+                    OnPropertyChanged("IsReady");
+                }
+                catch (Exception e)
+                {
+                    Error = $"Hiba a szerverrel való kommunikáció közben:\n{e.Message}";
+                    OnPropertyChanged("Error");
+                }
             });
+
+            BackToMenuCommand = new DelegateCommand(param =>
+            {
+                BackToMenu?.Invoke(this, EventArgs.Empty);
+            });
+        }
+
+        private void Client_BuildingBegun(object sender, BuildingBegunEventArgs e)
+        {
+            BuildingStarted?.Invoke(this, EventArgs.Empty);
         }
 
         private void Client_PlayerReadied(object sender, PlayerReadiedEventArgs e)

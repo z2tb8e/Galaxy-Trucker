@@ -13,11 +13,11 @@ using System.Windows.Shapes;
 namespace GalaxyTrucker.Views
 {
     /// <summary>
-    /// Interaction logic for ConnectWindow.xaml
+    /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class ConnectWindow : Window
+    public partial class MainWindow : Window
     {
-        public ConnectWindow()
+        public MainWindow()
         {
             InitializeComponent();
         }
