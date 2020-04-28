@@ -81,23 +81,36 @@
             </TextBox.Style>
         </TextBox>
 
-        <DataGrid Name="connectedPlayers" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding ConnectedPlayers}" AutoGenerateColumns="False" IsReadOnly="True">
-            <DataGrid.Columns>
-                <DataGridTextColumn Width="150" Header="Név" Binding="{Binding Name}"/>
-                <DataGridTextColumn Width="50"  Header="Szín" Binding="{Binding Color}"/>
-                <DataGridTextColumn Width="50" Header="Készen áll" Binding="{Binding IsReady}"/>
-                <!--<DataGridTemplateColumn Header="Készen áll">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <CheckBox IsManipulationEnabled="False" IsChecked="{Binding IsReady}"></CheckBox>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>-->
-            </DataGrid.Columns>
-        </DataGrid>
+        <ListView Name="connectedPlayers" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding ConnectedPlayers}">
+            <ListView.View>
+                <GridView AllowsColumnReorder="False">
+                    <GridViewColumn Header="Név" Width="150">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Name}" IsEnabled="False"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="Szín" Width="50">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Color}" IsEnabled="False"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="Készen áll" Width="100">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding IsReady}" IsEnabled="False"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                </GridView>
+            </ListView.View>
+        </ListView>
 
         <TextBox Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Error}"></TextBox>
-        <Button Width="80" Height="30" Grid.Column="2" Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,76"
+        <Button Width="100"  Height="30" Grid.Column="2" Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,76"
                 Command="{Binding Connect}" Content="Csatlakozás">
             <Button.Style>
                 <Style TargetType="Button">
@@ -108,6 +121,7 @@
                                 <Condition Binding="{Binding Path=(Validation.HasError), ElementName=nameTextBox}" Value="False"/>
                                 <Condition Binding="{Binding Path=(Validation.HasError), ElementName=remoteIpTextBox}" Value="False"/>
                                 <Condition Binding="{Binding Path=(Validation.HasError), ElementName=remotePortTextBox}" Value="False"/>
+                                <Condition Binding="{Binding ConnectInProgress}" Value="False"/>
                             </MultiDataTrigger.Conditions>
                             <Setter Property="IsEnabled" Value="True"/>
                         </MultiDataTrigger>
@@ -118,9 +132,10 @@
                 </Style>
             </Button.Style>
         </Button>
-        
+
         <Button Height="30" Grid.Column="2" Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,30"
-                IsEnabled="{Binding IsConnected}" Command="{Binding Ready}" Width="112">Tovább az építésre</Button>
+                IsEnabled="{Binding IsConnected}" Command="{Binding Ready}" Width="100" Content="Készenlét állítása">
+        </Button>
         <TextBox Grid.Row="3" Grid.Column="0" IsReadOnly="True" Text="{Binding ConnectionStatus}"></TextBox>
     </Grid>
 </Window>

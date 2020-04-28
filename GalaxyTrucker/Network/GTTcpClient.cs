@@ -100,7 +100,7 @@ namespace GalaxyTrucker.Network
 
         #region public methods
 
-        public void Connect(IPEndPoint endPoint, string displayName)
+        public async Task Connect(IPEndPoint endPoint, string displayName)
         {
             if (displayName.Contains('#'))
             {
@@ -110,21 +110,8 @@ namespace GalaxyTrucker.Network
             {
                 DisplayName = displayName;
 
-                IAsyncResult ar = _client.BeginConnect(endPoint.Address, endPoint.Port, null, null);
-                WaitHandle wh = ar.AsyncWaitHandle;
-                try
-                {
-                    if (!ar.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(5), false))
-                    {
-                        _client.Close();
-                        throw new TimeoutException();
-                    }
-                    _client.EndConnect(ar);
-                }
-                finally
-                {
-                    wh.Close();
-                }
+                await _client.ConnectAsync(endPoint.Address, endPoint.Port);
+                
                 _stream = _client.GetStream();
 
                 string color = ReadMessageFromServer();
@@ -149,7 +136,7 @@ namespace GalaxyTrucker.Network
                     PlayerInfos[index] = new PlayerInfo(index, parts[2 + i * 3], bool.Parse(parts[3 + i * 3]));
                 }
 
-                Task.Factory.StartNew(() => HandleServerMessages(), TaskCreationOptions.LongRunning);
+                _ = Task.Factory.StartNew(() => HandleServerMessages(), TaskCreationOptions.LongRunning);
 
             }
             catch (Exception)
@@ -168,6 +155,7 @@ namespace GalaxyTrucker.Network
             WriteMessageToServer("ToggleReady");
 
             IsReady = !IsReady;
+            PlayerInfos[Player].IsReady = IsReady;
         }
 
         public void StartFlightStage(int firepower, int enginepower, int crewCount, int storageSize, int batteries)
