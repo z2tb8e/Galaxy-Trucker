@@ -99,4 +99,17 @@ namespace GalaxyTrucker.Network
             Color = color;
         }
     }
+
+    /// <summary>
+    /// Event raised when another previously connected client disconnects
+    /// </summary>
+    public class PlayerDisconnectedEventArgs : EventArgs
+    {
+        public PlayerColor Color { get; set; }
+
+        public PlayerDisconnectedEventArgs(PlayerColor color)
+        {
+            Color = color;
+        }
+    }
 }

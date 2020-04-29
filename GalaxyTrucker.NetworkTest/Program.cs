@@ -14,7 +14,7 @@ namespace GalaxyTrucker.NetworkTest
             IPAddress ipAddress = ipHostInfo.AddressList.Where(ip => ip.AddressFamily == AddressFamily.InterNetwork).First();
             IPEndPoint endPoint = new IPEndPoint(ipAddress, 11000);
 
-            GTTcpListener listener = new GTTcpListener(endPoint);
+            GTTcpListener listener = new GTTcpListener(11000);
             GTTcpClient client1 = new GTTcpClient();
             GTTcpClient client2 = new GTTcpClient();
             GTTcpClient client3 = new GTTcpClient();
@@ -25,10 +25,10 @@ namespace GalaxyTrucker.NetworkTest
             client1.Connect(endPoint, "client1").Wait();
 
             Thread.Sleep(10000);
-            client2.Connect(endPoint, "client5").Wait();
+            //client2.Connect(endPoint, "client5").Wait();
 
-            Thread.Sleep(1000);
-            client1.ToggleReady(ServerStage.Lobby);
+            //Thread.Sleep(1000);
+            //client1.ToggleReady(ServerStage.Lobby);
             /*client2.Connect(endPoint, "client2").Wait();
             client3.Connect(endPoint, "client3").Wait();
             client4.Connect(endPoint, "client4").Wait();

@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="GalaxyTrucker.Views.ConnectControl"
+﻿<UserControl x:Class="GalaxyTrucker.Views.HostControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
@@ -47,20 +47,12 @@
             </TextBox.Text>
         </TextBox>
 
-        <Label Grid.Row="1" Grid.Column="1" FontSize="15" Margin="2" Target="{Binding ElementName=remoteIpTextBox}"
-               VerticalAlignment="Center" HorizontalAlignment="Center">Távoli ip cím</Label>
-        <TextBox Style="{StaticResource TextBoxInError}" Grid.Row="2" Grid.Column="1" Name="remoteIpTextBox" Margin="10">
-            <TextBox.Text>
-                <Binding Path="RemoteIp" UpdateSourceTrigger="PropertyChanged">
-                    <Binding.ValidationRules>
-                        <local:RemoteIpValidationRule/>
-                    </Binding.ValidationRules>
-                </Binding>
-            </TextBox.Text>
-        </TextBox>
+        <Label Grid.Row="1" Grid.Column="1" FontSize="15" Margin="2" Target="{Binding ElementName=hostIpTextBox}"
+               VerticalAlignment="Center" HorizontalAlignment="Center">Saját ip cím</Label>
+        <TextBox IsEnabled="False" Grid.Row="2" Text="{Binding HostIp}" Grid.Column="1" Name="hostIpTextBox" Margin="10"/>
 
         <Label Grid.Row="1" Grid.Column="2" FontSize="15" Margin="2" Target="{Binding ElementName=remotePortTextBox}"
-               VerticalAlignment="Center" HorizontalAlignment="Center">Távoli port(1024-65535)</Label>
+               VerticalAlignment="Center" HorizontalAlignment="Center">Használandó port(1024-65535)</Label>
         <TextBox Style="{StaticResource TextBoxInError}" Grid.Row="2" Grid.Column="2" Name="remotePortTextBox" Margin="10">
             <TextBox.Text>
                 <Binding Path="RemotePort" UpdateSourceTrigger="PropertyChanged">
@@ -100,8 +92,8 @@
         </ListView>
 
         <TextBox Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Error}"></TextBox>
-        <Button Width="100"  Height="30" Grid.Column="2" Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,45"
-                Command="{Binding ConnectCommand}" Content="Csatlakozás">
+        <Button Width="100"  Height="30" Grid.Column="2" Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,80"
+                Command="{Binding HostCommand}" Content="Várakozó indítása">
             <Button.Style>
                 <Style TargetType="Button">
                     <Setter Property="IsEnabled" Value="False"/>
@@ -109,9 +101,7 @@
                         <MultiDataTrigger>
                             <MultiDataTrigger.Conditions>
                                 <Condition Binding="{Binding Path=(Validation.HasError), ElementName=nameTextBox}" Value="False"/>
-                                <Condition Binding="{Binding Path=(Validation.HasError), ElementName=remoteIpTextBox}" Value="False"/>
                                 <Condition Binding="{Binding Path=(Validation.HasError), ElementName=remotePortTextBox}" Value="False"/>
-                                <Condition Binding="{Binding ConnectInProgress}" Value="False"/>
                             </MultiDataTrigger.Conditions>
                             <Setter Property="IsEnabled" Value="True"/>
                         </MultiDataTrigger>
@@ -123,8 +113,12 @@
             </Button.Style>
         </Button>
 
-        <Button Height="30" Grid.Column="2" Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,10"
+        <Button Height="30" Grid.Column="2" Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,45"
                 IsEnabled="{Binding IsConnected}" Command="{Binding ReadyCommand}" Width="100" Content="Készenlét állítása"/>
+        
+        <Button Height="30" Grid.Column="2" Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,10"
+                IsEnabled="{Binding CanStart}" Command="{Binding LaunchBuilding}" Width="100" Content="Játék indítása"/>
+        
         <TextBox Grid.Row="4" Grid.Column="0" IsReadOnly="True" Text="{Binding ConnectionStatus}"></TextBox>
     </Grid>
 </UserControl>

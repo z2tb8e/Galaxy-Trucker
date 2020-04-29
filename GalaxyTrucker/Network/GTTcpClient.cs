@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -86,6 +87,10 @@ namespace GalaxyTrucker.Network
         public event EventHandler<PlayerReadiedEventArgs> PlayerReadied;
 
         public event EventHandler<PlayerConnectedEventArgs> PlayerConnected;
+
+        public event EventHandler<PlayerDisconnectedEventArgs> PlayerDisconnected;
+
+        public event EventHandler ThisPlayerDisconnected;
 
         #endregion
 
@@ -191,7 +196,6 @@ namespace GalaxyTrucker.Network
 
         public void Close()
         {
-            _stream.Close();
             _client.Close();
         }
 
@@ -205,56 +209,77 @@ namespace GalaxyTrucker.Network
             string[] parts;
             while (_client.Connected)
             {
-                if (_stream.DataAvailable)
+                message = ReadMessageFromServer();
+                //Disconnected
+                if(message == null)
                 {
-                    message = ReadMessageFromServer();
-                    parts = message.Split(',');
-                    switch (parts[0])
-                    {
-                        case "PlayerConnected":
-                            PlayerConnectedResolve(parts);
-                            break;
+                    return;
+                }
+                parts = message.Split(',');
+                switch (parts[0])
+                {
+                    case "PlayerConnected":
+                        PlayerConnectedResolve(parts);
+                        break;
 
-                        case "FlightBegun":
-                            FlightBegunResolve(parts);
-                            break;
+                    case "FlightBegun":
+                        FlightBegunResolve(parts);
+                        break;
 
-                        case "BuildingBegun":
-                            BuildingBegunResolve();
-                            break;
+                    case "BuildingBegun":
+                        BuildingBegunResolve();
+                        break;
 
-                        case "BuildingEnded":
-                            BuildingEndedResolve(parts);
-                            break;
+                    case "BuildingEnded":
+                        BuildingEndedResolve(parts);
+                        break;
 
-                        case "PickPartResult":
-                            PickPartResultResolve(parts);
-                            break;
+                    case "PickPartResult":
+                        PickPartResultResolve(parts);
+                        break;
 
-                        case "ToggleReadyConfirm":
-                            break;
+                    case "ToggleReadyConfirm":
+                        break;
 
-                        case "PutBackPartConfirm":
-                            PutBackPartResolve();
-                            break;
+                    case "PutBackPartConfirm":
+                        PutBackPartResolve();
+                        break;
 
-                        case "PartPutBack":
-                            PartPutBackResolve(parts);
-                            break;
+                    case "PartPutBack":
+                        PartPutBackResolve(parts);
+                        break;
 
-                        case "PartTaken":
-                            PartTakenResolve(parts);
-                            break;
+                    case "PartTaken":
+                        PartTakenResolve(parts);
+                        break;
 
-                        case "PlayerToggledReady":
-                            PlayerToggledReady(parts);
-                            break;
+                    case "PlayerToggledReady":
+                        PlayerToggledReadyResolve(parts);
+                        break;
 
-                        default:
-                            throw new UnknownMessageException(message);
-                    }
+                    case "PlayerDisconnect":
+                        PlayerDisconnectResolve(parts);
+                        break;
+
+                    case "Ping":
+                        WriteMessageToServer("Ping");
+                        break;
+
+                    default:
+                        throw new UnknownMessageException(message);
                 }
             }
+        }
+
+        private void PlayerDisconnectResolve(string[] parts)
+        {
+            PlayerColor disconnectedPlayer = Enum.Parse<PlayerColor>(parts[1]);
+            PlayerInfos.Remove(disconnectedPlayer);
+            if (PlayerOrder != null)
+            {
+                PlayerOrder.Remove(disconnectedPlayer);
+            }
+            PlayerDisconnected?.Invoke(this, new PlayerDisconnectedEventArgs(disconnectedPlayer));
         }
 
         private void PlayerConnectedResolve(string[] parts)
@@ -391,7 +416,7 @@ namespace GalaxyTrucker.Network
         /// Method called when the server sends a message signaling that another player toggled their ready state 
         /// </summary>
         /// <param name="parts"></param>
-        private void PlayerToggledReady(string[] parts)
+        private void PlayerToggledReadyResolve(string[] parts)
         {
             PlayerColor player = Enum.Parse<PlayerColor>(parts[1]);
             PlayerInfos[player].IsReady = !PlayerInfos[player].IsReady;
@@ -400,25 +425,34 @@ namespace GalaxyTrucker.Network
 
         private string ReadMessageFromServer()
         {
-            StringBuilder message = new StringBuilder();
-            int character = _stream.ReadByte();
-            while ((char)character != '#')
+            try
             {
-                message.Append((char)character);
-                character = _stream.ReadByte();
+                StringBuilder message = new StringBuilder();
+                int character = _stream.ReadByte();
+                while ((char)character != '#')
+                {
+                    message.Append((char)character);
+                    character = _stream.ReadByte();
+                }
+                return message.ToString();
             }
-            return message.ToString();
+            catch (IOException) {
+                ThisPlayerDisconnected?.Invoke(this, EventArgs.Empty);
+                return null;
+            }
         }
 
         private void WriteMessageToServer(string message)
         {
-            if (!_stream.CanWrite)
+            try
             {
-                throw new InvalidOperationException();
+                byte[] msg = Encoding.ASCII.GetBytes($"{message}#");
+                _stream.Write(msg, 0, msg.Length);
             }
-
-            byte[] msg = Encoding.ASCII.GetBytes($"{message}#");
-            _stream.Write(msg, 0, msg.Length);
+            catch (IOException)
+            {
+                ThisPlayerDisconnected?.Invoke(this, EventArgs.Empty);
+            }
         }
 
         #endregion

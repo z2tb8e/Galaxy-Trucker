@@ -16,7 +16,7 @@ namespace GalaxyTrucker.Views
             }
             else
             {
-                return new ValidationResult(false, "A játékos neve csak betűket és számokat tartalmazhat!");
+                return new ValidationResult(false, "A játékos neve csak betűket tartalmazhat!");
             }
         }
     }

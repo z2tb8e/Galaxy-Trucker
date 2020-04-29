@@ -58,9 +58,11 @@ namespace GalaxyTrucker.NetworkTest
     {
         #region fields
 
-        private readonly int _maxPlayerCount = Enum.GetValues(typeof(PlayerColor)).Length;
-        private const string _partPath = "Resources/Parts.txt";
-        private const string _cardPath = "Resources/Cards.txt";
+        private const string PartPath = "Resources/Parts.txt";
+        private const string CardPath = "Resources/Cards.txt";
+        private const double PingInterval = 500;
+
+        private readonly System.Timers.Timer _pingTimer;
 
         private readonly TcpListener _listener;
 
@@ -88,9 +90,12 @@ namespace GalaxyTrucker.NetworkTest
 
         #endregion
 
-        public GTTcpListener(IPEndPoint endPonint)
+        public GTTcpListener(int port)
         {
-            _listener = new TcpListener(endPonint);
+            _pingTimer = new System.Timers.Timer(PingInterval);
+            _pingTimer.Elapsed += PingTimer_Elapsed;
+
+            _listener = new TcpListener(IPAddress.Any, port);
             _connections = new ConcurrentDictionary<PlayerColor, ConnectionInfo>();
 
             _random = new Random();
@@ -107,8 +112,9 @@ namespace GalaxyTrucker.NetworkTest
             {
                 _listener.Start(4);
                 _stage = ServerStage.Lobby;
+                _pingTimer.Start();
                 Task shuffle = ShufflePartsAsync();
-                while (_connections.Count < _maxPlayerCount && _stage == ServerStage.Lobby)
+                while (_connections.Count < 4 && _stage == ServerStage.Lobby)
                 {
                     if (_listener.Pending())
                     {
@@ -116,26 +122,35 @@ namespace GalaxyTrucker.NetworkTest
                         PlayerColor assignedColor = Enum.GetValues(typeof(PlayerColor)).Cast<PlayerColor>()
                             .Where(color => !_connections.ContainsKey(color)).First();
 
-                        _connections[assignedColor] = new ConnectionInfo(client);
+                        ConnectionInfo newConnection = new ConnectionInfo(client);
+                        
+                        //Send the assigned color
+                        byte[] colorMessage = Encoding.ASCII.GetBytes($"{assignedColor}#");
+                        newConnection.Stream.Write(colorMessage, 0, colorMessage.Length);
 
-                        WriteMessageToPlayer(assignedColor, assignedColor.ToString());
+                        //Receive the client's display name
+                        StringBuilder name = new StringBuilder();
+                        int character = newConnection.Stream.ReadByte();
+                        while ((char)character != '#')
+                        {
+                            name.Append((char)character);
+                            character = newConnection.Stream.ReadByte();
+                        }
+                        newConnection.DisplayName = name.ToString();
 
-                        string displayName = ReadMessageFromPlayer(assignedColor);
-                        _connections[assignedColor].DisplayName = displayName;
-
-                        StringBuilder otherPlayers = new StringBuilder($"{_connections.Count - 1}");
-                        string announcement = $"PlayerConnected,{assignedColor},{displayName}";
+                        //Send the other connected clients' information
+                        StringBuilder otherPlayers = new StringBuilder($"{_connections.Count}");
+                        string announcement = $"PlayerConnected,{assignedColor},{name}";
                         foreach(PlayerColor key in _connections.Keys)
                         {
-                            if(key != assignedColor)
-                            {
-                                ConnectionInfo connection = _connections[key];
-                                otherPlayers.Append($",{key},{connection.DisplayName},{connection.IsReady}");
-                                WriteMessageToPlayer(key, announcement);
-                            }
+                            ConnectionInfo connection = _connections[key];
+                            otherPlayers.Append($",{key},{connection.DisplayName},{connection.IsReady}");
+                            WriteMessageToPlayer(key, announcement);
                         }
-                        WriteMessageToPlayer(assignedColor, otherPlayers.ToString());
+                        byte[] otherPlayersMessage = Encoding.ASCII.GetBytes($"{otherPlayers}#");
+                        newConnection.Stream.Write(otherPlayersMessage, 0, otherPlayersMessage.Length);
 
+                        _connections[assignedColor] = newConnection;
                         Task.Factory.StartNew(() => HandleClientMessages(assignedColor), TaskCreationOptions.LongRunning);
                     }
                 }
@@ -180,11 +195,11 @@ namespace GalaxyTrucker.NetworkTest
 
         public void Close()
         {
+            _pingTimer.Stop();
             foreach(ConnectionInfo connection in _connections.Values)
             {
                 if(connection.Client != null)
                 {
-                    connection.Stream.Close();
                     connection.Client.Close();
                 }
             }
@@ -234,6 +249,14 @@ namespace GalaxyTrucker.NetworkTest
             Console.WriteLine("FlightStage started");
         }
 
+        private void PingTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            foreach (PlayerColor key in _connections.Keys)
+            {
+                WriteMessageToPlayer(key, "Ping");
+            }
+        }
+
         private void HandleClientMessages(PlayerColor player)
         {
             string message;
@@ -246,6 +269,12 @@ namespace GalaxyTrucker.NetworkTest
                 {
                     connection.HasMessage = true;
                     message = ReadMessageFromPlayer(player);
+
+                    //Connection closed
+                    if (message == null)
+                    {
+                        return;
+                    }
                     parts = message.Split(',');
                     Console.WriteLine($"Message received from ({connection.DisplayName}, {player}): {message}");
                     switch (parts[0])
@@ -264,6 +293,9 @@ namespace GalaxyTrucker.NetworkTest
 
                         case "StartFlightStage":
                             StartFlightStageResolve(player, parts);
+                            break;
+
+                        case "Ping":
                             break;
 
                         default:
@@ -395,24 +427,57 @@ namespace GalaxyTrucker.NetworkTest
 
         private string ReadMessageFromPlayer(PlayerColor player)
         {
-            NetworkStream ns = _connections[player].Stream;
-            StringBuilder message = new StringBuilder();
-            int character = ns.ReadByte();
-            while((char) character != '#')
+            try
             {
-                message.Append((char)character);
-                character = ns.ReadByte();
+                NetworkStream ns = _connections[player].Stream;
+                StringBuilder message = new StringBuilder();
+                int character = ns.ReadByte();
+                while((char) character != '#')
+                {
+                    message.Append((char)character);
+                    character = ns.ReadByte();
+                }
+                return message.ToString();
             }
-            return message.ToString();
+            //Connection closed
+            catch(IOException)
+            {
+                _connections.Remove(player, out _);
+                if (_playerOrder != null)
+                {
+                    _playerOrder.Remove(player);
+                }
+                foreach (PlayerColor otherPlayer in _connections.Keys)
+                {
+                    WriteMessageToPlayer(otherPlayer, $"PlayerDisconnect,{player}");
+                }
+                return null;
+            }
         }
 
         private void WriteMessageToPlayer(PlayerColor player, string message)
         {
-            _connections[player].SendSemaphore.WaitOne();
-            NetworkStream ns = _connections[player].Stream;
-            byte[] msg = Encoding.ASCII.GetBytes($"{message}#");
-            ns.Write(msg, 0, msg.Length);
-            _connections[player].SendSemaphore.Release();
+            try
+            {
+                _connections[player].SendSemaphore.WaitOne();
+                NetworkStream ns = _connections[player].Stream;
+                byte[] msg = Encoding.ASCII.GetBytes($"{message}#");
+                ns.Write(msg, 0, msg.Length);
+                _connections[player].SendSemaphore.Release();
+            }
+            //Connection closed
+            catch (IOException)
+            {
+                _connections.Remove(player, out _);
+                if (_playerOrder != null)
+                {
+                    _playerOrder.Remove(player);
+                }
+                foreach (PlayerColor otherPlayer in _connections.Keys)
+                {
+                    WriteMessageToPlayer(otherPlayer, $"PlayerDisconnect,{player}");
+                }
+            }
         }
 
         private void RefuseFurtherConnections()
@@ -434,7 +499,7 @@ namespace GalaxyTrucker.NetworkTest
         {
             List<string> parts = new List<string>();
             string line;
-            StreamReader sr = new StreamReader(_partPath);
+            StreamReader sr = new StreamReader(PartPath);
             while((line = await sr.ReadLineAsync()) != null)
             {
                 parts.Add(line);

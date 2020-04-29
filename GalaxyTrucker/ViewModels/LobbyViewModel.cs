@@ -5,10 +5,12 @@ using System.Linq;
 using System.Collections.ObjectModel;
 using System.Net;
 using System.Windows.Data;
+using System.Net.Sockets;
+using System.Threading.Tasks;
 
 namespace GalaxyTrucker.ViewModels
 {
-    public class ConnectViewModel : NotifyBase
+    public class LobbyViewModel : NotifyBase
     {
         private const int DefaultPort = 11000;
         private const string DefaultIp = "192.168.1.110";
@@ -23,6 +25,8 @@ namespace GalaxyTrucker.ViewModels
         private readonly GTTcpClient _client;
 
         #region properties
+
+        #region shared
 
         public string ConnectionStatus { get; set; }
 
@@ -104,12 +108,41 @@ namespace GalaxyTrucker.ViewModels
 
         #endregion
 
-        public event EventHandler BackToMenu;
+        #region onlyhost
 
-        public event EventHandler BuildingStarted;
+        public GTTcpListener Server { get; private set; }
 
-        public ConnectViewModel(GTTcpClient client)
+        public string HostIp { get; set; }
+
+        public bool CanStart
         {
+            get
+            {
+                if (Server != null && !Server.NotReadyPlayers.Any())
+                {
+                    return true;
+                }
+                return false;
+            }
+        }
+
+        public DelegateCommand HostCommand { get; set; }
+
+        public DelegateCommand LaunchBuilding { get; set; }
+
+        #endregion
+
+        #endregion
+
+        public event EventHandler<bool> BackToMenu;
+
+        public event EventHandler<bool> BuildingStarted;
+
+        public LobbyViewModel(GTTcpClient client)
+        {
+            IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
+            HostIp = ipHostInfo.AddressList.Where(ip => ip.AddressFamily == AddressFamily.InterNetwork).First().ToString();
+            //OnPropertyChanged("HostIp");
             ConnectInProgress = false;
             _lock = new object();
             RemotePort = DefaultPort;
@@ -120,6 +153,16 @@ namespace GalaxyTrucker.ViewModels
             _client.PlayerConnected += Client_PlayerConnected;
             _client.PlayerReadied += Client_PlayerReadied;
             _client.BuildingBegun += Client_BuildingBegun;
+            _client.PlayerDisconnected += Client_PlayerDisconnected;
+            _client.ThisPlayerDisconnected += Client_ThisPlayerDisconnected;
+
+            HostCommand = new DelegateCommand(param =>
+            {
+                Server = new GTTcpListener(RemotePort);
+                Task.Factory.StartNew(() => Server.Start(), TaskCreationOptions.LongRunning);
+
+                ConnectCommand.Execute(param);
+            });
 
             ConnectCommand = new DelegateCommand(async param =>
             {
@@ -171,6 +214,7 @@ namespace GalaxyTrucker.ViewModels
                     ConnectedPlayers.Where(info => info.Name == PlayerName).First().IsReady = _client.IsReady;
                     OnPropertyChanged("ConnectedPlayers");
                     OnPropertyChanged("IsReady");
+                    OnPropertyChanged("CanStart");
                 }
                 catch (Exception e)
                 {
@@ -181,19 +225,34 @@ namespace GalaxyTrucker.ViewModels
 
             BackToMenuCommand = new DelegateCommand(param =>
             {
-                BackToMenu?.Invoke(this, EventArgs.Empty);
+                BackToMenu?.Invoke(this, Server != null);
             });
+        }
+
+        private void Client_ThisPlayerDisconnected(object sender, EventArgs e)
+        {
+            Error = "A szerverrel való kapcsolat megszakadt.";
+            OnPropertyChanged("Error");
+            OnPropertyChanged("IsConnected");
+        }
+
+        private void Client_PlayerDisconnected(object sender, PlayerDisconnectedEventArgs e)
+        {
+            PlayerInfoViewModel playerToRemove = ConnectedPlayers.Where(item => item.Color == e.Color).First();
+            ConnectedPlayers.Remove(playerToRemove);
+            OnPropertyChanged("ConnectedPlayers");
         }
 
         private void Client_BuildingBegun(object sender, BuildingBegunEventArgs e)
         {
-            BuildingStarted?.Invoke(this, EventArgs.Empty);
+            BuildingStarted?.Invoke(this, Server != null);
         }
 
         private void Client_PlayerReadied(object sender, PlayerReadiedEventArgs e)
         {
             ConnectedPlayers.Where(info => info.Color == e.Player).First().IsReady = _client.PlayerInfos[e.Player].IsReady;
             OnPropertyChanged("ConnectedPlayers");
+            OnPropertyChanged("CanStart");
         }
 
         private void Client_PlayerConnected(object sender, PlayerConnectedEventArgs e)

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -60,6 +61,7 @@ namespace GalaxyTrucker.NetworkTest
         public bool IsReady { get; private set; }
 
         public Dictionary<PlayerColor, PlayerInfo> PlayerInfos { get; }
+
         public List<PlayerColor> PlayerOrder { get; }
 
         #endregion
@@ -82,6 +84,10 @@ namespace GalaxyTrucker.NetworkTest
 
         public event EventHandler<PlayerConnectedEventArgs> PlayerConnected;
 
+        public event EventHandler<PlayerDisconnectedEventArgs> PlayerDisconnected;
+
+        public event EventHandler ThisPlayerDisconnected;
+
         #endregion
 
         public GTTcpClient()
@@ -97,6 +103,7 @@ namespace GalaxyTrucker.NetworkTest
 
         public async Task Connect(IPEndPoint endPoint, string displayName)
         {
+            string otherPlayerInfo = "";
             if (displayName.Contains('#'))
             {
                 throw new FormatException("Argument \"displayName\" contains illegal '#' character.");
@@ -122,7 +129,7 @@ namespace GalaxyTrucker.NetworkTest
                 //own client's info
                 PlayerInfos[Player] = new PlayerInfo(Player, DisplayName, false);
 
-                string otherPlayerInfo = ReadMessageFromServer();
+                otherPlayerInfo = ReadMessageFromServer();
                 string[] parts = otherPlayerInfo.Split(',');
                 int otherPlayerCount = int.Parse(parts[0]);
                 for(int i = 0; i < otherPlayerCount; ++i)
@@ -136,15 +143,22 @@ namespace GalaxyTrucker.NetworkTest
             }
             catch (ArgumentNullException e)
             {
-                Console.WriteLine("ArgumentNullException: {0}", e);
+                Console.WriteLine($"ArgumentNullException: {e}");
+                Close();
             }
             catch(ArgumentException e)
             {
-                Console.WriteLine("ArgumentException: {0}", e);
+                Console.WriteLine($"ArgumentException: {e}");
+                Close();
             }
             catch (SocketException e)
             {
-                Console.WriteLine("SocketException: {0}", e);
+                Console.WriteLine($"SocketException: {e}");
+                Close();
+            }
+            catch(FormatException e)
+            {
+                Console.WriteLine($"FormatException: {e}, string: {otherPlayerInfo}");
             }
         }
 
@@ -194,8 +208,10 @@ namespace GalaxyTrucker.NetworkTest
 
         public void Close()
         {
-            _stream.Close();
-            _client.Close();
+            if (_client.Connected)
+            {
+                _client.Close();
+            }
         }
 
         #endregion
@@ -211,7 +227,10 @@ namespace GalaxyTrucker.NetworkTest
                 if (_stream.DataAvailable)
                 {
                     message = ReadMessageFromServer();
-                    //Console.WriteLine("{0} received message from server: {1}.", _color, message);
+                    if(message == null)
+                    {
+                        return;
+                    }
                     parts = message.Split(',');
                     switch (parts[0])
                     {
@@ -251,7 +270,15 @@ namespace GalaxyTrucker.NetworkTest
                             break;
 
                         case "PlayerToggledReady":
-                            PlayerToggledReady(parts);
+                            PlayerToggledReadyResolve(parts);
+                            break;
+
+                        case "PlayerDisconnect":
+                            PlayerDisconnectResolve(parts);
+                            break;
+
+                        case "Ping":
+                            WriteMessageToServer("Ping");
                             break;
 
                         default:
@@ -260,6 +287,18 @@ namespace GalaxyTrucker.NetworkTest
                     }
                 }
             }
+        }
+
+        private void PlayerDisconnectResolve(string[] parts)
+        {
+            PlayerColor disconnectedPlayer = Enum.Parse<PlayerColor>(parts[1]);
+            PlayerInfos.Remove(disconnectedPlayer);
+            if(PlayerOrder != null)
+            {
+                PlayerOrder.Remove(disconnectedPlayer);
+            }
+            PlayerDisconnected?.Invoke(this, new PlayerDisconnectedEventArgs(disconnectedPlayer));
+            Console.WriteLine($"{Player} is informed that {disconnectedPlayer} disconnected.");
         }
 
         private void PlayerConnectedResolve(string[] parts)
@@ -397,7 +436,7 @@ namespace GalaxyTrucker.NetworkTest
         /// Method called when the server sends a message signaling that another player toggled their ready state 
         /// </summary>
         /// <param name="parts"></param>
-        private void PlayerToggledReady(string[] parts)
+        private void PlayerToggledReadyResolve(string[] parts)
         {
             PlayerColor player = Enum.Parse<PlayerColor>(parts[1]);
             PlayerInfos[player].IsReady = !PlayerInfos[player].IsReady;
@@ -406,25 +445,35 @@ namespace GalaxyTrucker.NetworkTest
 
         private string ReadMessageFromServer()
         {
-            StringBuilder message = new StringBuilder();
-            int character = _stream.ReadByte();
-            while ((char)character != '#')
+            try
             {
-                message.Append((char)character);
-                character = _stream.ReadByte();
+                StringBuilder message = new StringBuilder();
+                int character = _stream.ReadByte();
+                while ((char)character != '#')
+                {
+                    message.Append((char)character);
+                    character = _stream.ReadByte();
+                }
+                return message.ToString();
             }
-            return message.ToString();
+            catch (IOException)
+            {
+                ThisPlayerDisconnected?.Invoke(this, EventArgs.Empty);
+                return null;
+            }
         }
 
         private void WriteMessageToServer(string message)
         {
-            if (!_stream.CanWrite)
+            try
             {
-                throw new InvalidOperationException();
+                byte[] msg = Encoding.ASCII.GetBytes($"{message}#");
+                _stream.Write(msg, 0, msg.Length);
             }
-
-            byte[] msg = Encoding.ASCII.GetBytes($"{message}#");
-            _stream.Write(msg, 0, msg.Length);
+            catch (IOException)
+            {
+                ThisPlayerDisconnected?.Invoke(this, EventArgs.Empty);
+            }
         }
 
         #endregion
