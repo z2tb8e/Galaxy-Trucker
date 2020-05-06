@@ -60,19 +60,21 @@ namespace GalaxyTrucker.Model
         });
 
         public List<(int, int)> InactiveShields => _activatableParts.Cast<Part>()
-            .Where(x => x is Shield && !(x as Shield).Activated).Select(x => (x.Pos1, x.Pos2)).ToList();
+            .Where(x => x is Shield && !(x as Shield).Activated).Select(x => (x.Row, x.Column)).ToList();
 
         public List<(int, int)> InactiveLasers => _activatableParts.Cast<Part>()
-            .Where(x => x is LaserDouble && !(x as LaserDouble).Activated).Select(x => (x.Pos1, x.Pos2)).ToList();
+            .Where(x => x is LaserDouble && !(x as LaserDouble).Activated).Select(x => (x.Row, x.Column)).ToList();
 
         public List<(int, int)> InactiveEngines => _activatableParts.Cast<Part>()
-            .Where(x => x is EngineDouble && !(x as EngineDouble).Activated).Select(x => (x.Pos1, x.Pos2)).ToList();
+            .Where(x => x is EngineDouble && !(x as EngineDouble).Activated).Select(x => (x.Row, x.Column)).ToList();
 
         #endregion
 
         #region events
 
         public event EventHandler<WreckedSource> ShipWrecked;
+
+        public event EventHandler<PartRemovedEventArgs> PartRemoved;
 
         #endregion
 
@@ -90,7 +92,11 @@ namespace GalaxyTrucker.Model
             _activatableParts = new List<Part>();
             _storages = new List<Storage>();
             _parts = new Part[11, 11];
-            _parts[cockpit.Item1, cockpit.Item2] = new Cockpit(color);
+            _parts[cockpit.Item1, cockpit.Item2] = new Cockpit(color)
+            {
+                Row = cockpit.Item1,
+                Column = cockpit.Item2
+            };
             _penalty = 0;
             _penaltyCap = layout switch
             {
@@ -101,6 +107,50 @@ namespace GalaxyTrucker.Model
         }
 
         #region public methods
+
+        public void HighlightCabinsForAlien(Personnel alien)
+        {
+            if((alien == Personnel.EngineAlien && _hasEngineAlien) || (alien == Personnel.LaserAlien && _hasLaserAlien))
+            {
+                return;
+            }
+
+            IEnumerable<Part> cabins = _parts.Cast<Part>().Where(p => p is Cabin && !(p is Cockpit));
+            foreach(Part cabin in cabins)
+            {
+                (Part, Direction)[] neighbours = new (Part, Direction)[]
+                {
+                    (_parts[cabin.Row - 1, cabin.Column], Direction.Top),
+                    (_parts[cabin.Row, cabin.Column + 1], Direction.Right),
+                    (_parts[cabin.Row + 1, cabin.Column], Direction.Bottom),
+                    (_parts[cabin.Row, cabin.Column - 1], Direction.Left)
+                };
+                foreach((Part, Direction) pair in neighbours)
+                {
+                    if(cabin.GetConnector(pair.Item2) != Connector.None)
+                    {
+                        if(alien == Personnel.EngineAlien && pair.Item1 is EngineCabin)
+                        {
+                            cabin.Highlight();
+                        }
+                        else if (alien == Personnel.LaserAlien && pair.Item1 is LaserCabin)
+                        {
+                            cabin.Highlight();
+                        }
+                    }
+                }
+            }
+        }
+
+        public Part GetCockpit()
+        {
+            return _parts.Cast<Part>().Where(p => p is Cockpit).FirstOrDefault();
+        }
+
+        public bool IsFieldValid(int row, int column)
+        {
+            return _movableFields[row, column];
+        }
 
         /// <summary>
         /// Method to get the number of connectors facing empty fields
@@ -113,10 +163,10 @@ namespace GalaxyTrucker.Model
             {
                 (Part, Direction)[] neighbours = new (Part, Direction)[]
                 {
-                    (_parts[p.Pos1 - 1, p.Pos2], Direction.Top),
-                    (_parts[p.Pos1, p.Pos2 + 1], Direction.Right),
-                    (_parts[p.Pos1 + 1, p.Pos2], Direction.Bottom),
-                    (_parts[p.Pos1, p.Pos2 - 1], Direction.Left)
+                    (_parts[p.Row - 1, p.Column], Direction.Top),
+                    (_parts[p.Row, p.Column + 1], Direction.Right),
+                    (_parts[p.Row + 1, p.Column], Direction.Bottom),
+                    (_parts[p.Row, p.Column - 1], Direction.Left)
                 };
                 foreach((Part, Direction) pair in neighbours)
                 {
@@ -132,28 +182,28 @@ namespace GalaxyTrucker.Model
         /// <summary>
         /// Method to add to the cabin at the supplied indices, given it has the neccessary alien cabin neighbouring it.
         /// </summary>
-        /// <param name="pos1">The first index of the cabin</param>
-        /// <param name="pos2">The second index of the cabin</param>
+        /// <param name="row">The row of the cabin</param>
+        /// <param name="column">The column of the cabin</param>
         /// <param name="alien">The type of alien to add</param>
-        public void AddAlien(int pos1, int pos2, Personnel alien)
+        public void AddAlien(int row, int column, Personnel alien)
         {
             if (_hasEngineAlien && alien == Personnel.EngineAlien || _hasLaserAlien && alien == Personnel.LaserAlien)
             {
-                throw new DuplicateAlienException(alien, (pos1, pos2));
+                throw new DuplicateAlienException(alien, (row, column));
             }
 
-            if (!(_parts[pos1, pos2] is Cabin))
-                throw new InvalidIndexException($"Part at ({pos1},{pos2}) is not a cabin.");
+            if (!(_parts[row, column] is Cabin))
+                throw new InvalidIndexException($"Part at ({row},{column}) is not a cabin.");
 
-            else if(_parts[pos1,pos2] is Cockpit)
+            else if(_parts[row,column] is Cockpit)
                 throw new InvalidIndexException("The cockpit must have humans as personnel");
 
             Part[] neighbours = new Part[]
             {
-                _parts[pos1 - 1, pos2],
-                _parts[pos1, pos2 + 1],
-                _parts[pos1 + 1, pos2],
-                _parts[pos1, pos2 - 1]
+                _parts[row - 1, column],
+                _parts[row, column + 1],
+                _parts[row + 1, column],
+                _parts[row, column - 1]
             };
 
             if (alien == Personnel.EngineAlien)
@@ -162,17 +212,13 @@ namespace GalaxyTrucker.Model
                 try
                 {
                     cabin = neighbours.Cast<Part>().Where(x => x is EngineCabin).First();
+                    _hasEngineAlien = true;
+                    (_parts[row, column] as Cabin).Personnel = Personnel.EngineAlien;
                 }
                 catch (Exception)
                 {
-                    cabin = null;
+                    throw new InvalidIndexException($"Cabin at ({row},{column}) does not have the required neighbouring alien cabin");
                 }
-                if (cabin != null)
-                {
-                    _hasEngineAlien = true;
-                    (_parts[pos1, pos2] as Cabin).Personnel = Personnel.EngineAlien;
-                }
-                else throw new InvalidIndexException($"Cabin at ({pos1},{pos2}) does not have the required neighbouring alien cabin");
             }
             else if (alien == Personnel.LaserAlien)
             {
@@ -180,27 +226,27 @@ namespace GalaxyTrucker.Model
                 try
                 {
                     cabin = neighbours.Cast<Part>().Where(x => x is LaserCabin).First();
+                    _hasLaserAlien = true;
+                    (_parts[row, column] as Cabin).Personnel = Personnel.LaserAlien;
                 }
                 catch (Exception)
                 {
-                    cabin = null;
+                    throw new InvalidIndexException($"Cabin at ({row},{column}) does not have the required neighbouring alien cabin");
                 }
-                if (cabin != null)
-                {
-                    _hasLaserAlien = true;
-                    (_parts[pos1, pos2] as Cabin).Personnel = Personnel.LaserAlien;
-                }
-                else throw new InvalidIndexException($"Cabin at ({pos1},{pos2}) does not have the required neighbouring alien cabin");
             }
-            else throw new ArgumentException("Argument is not an alien", "alien");
+            else throw new ArgumentException("Argument is not an alien", nameof(alien));
         }
 
         /// <summary>
         /// Method to fill the unfilled cabins with human personnel.
         /// </summary>
         public void FillCabins()
-            => _parts.Cast<Part>().Where(x => x is Cabin && (x as Cabin).Personnel == Personnel.None)
-            .Select(x => (x as Cabin).Personnel = Personnel.HumanDouble);
+        {
+            foreach(Cabin c in _parts.Cast<Part>().Where(x => x is Cabin && (x as Cabin).Personnel == Personnel.None))
+            {
+                c.Personnel = Personnel.HumanDouble;
+            }
+        }
 
         /// <summary>
         /// Method to deactivate all activated parts.
@@ -275,13 +321,13 @@ namespace GalaxyTrucker.Model
         {
             //determine the part about to be hit
             //if the projectile comes from the left or from the top, we check starting from the index 0, else from the maximum index
-            int ind1 = dir switch
+            int row = dir switch
             {
                 Direction.Top => 0,
                 Direction.Bottom => _parts.GetLength(0),
                 _ => line
             };
-            int ind2 = dir switch
+            int column = dir switch
             {
                 Direction.Left => 0,
                 Direction.Right => _parts.GetLength(1),
@@ -291,15 +337,15 @@ namespace GalaxyTrucker.Model
             Part target = null;
             while (!endOfLine && target == null)
             {
-                target = _parts[ind1, ind2];
+                target = _parts[row, column];
                 if(target != null)
                 {
                     endOfLine = dir switch
                     {
-                        Direction.Top => ++ind1 < _parts.GetLength(0),
-                        Direction.Right => --ind2 >= 0,
-                        Direction.Bottom => --ind1 >= 0,
-                        _ => ++ind2 < _parts.GetLength(1)
+                        Direction.Top => ++row < _parts.GetLength(0),
+                        Direction.Right => --column >= 0,
+                        Direction.Bottom => --row >= 0,
+                        _ => ++column < _parts.GetLength(1)
                     };
                 }
             }
@@ -330,18 +376,18 @@ namespace GalaxyTrucker.Model
             {
                 case Projectile.AsteroidSmall:
                     if(target.GetConnector(dir) != Connector.None && !isShielded[(int)dir])
-                        RemovePartAtIndex(ind1, ind2);
+                        RemovePartAtIndex(row, column);
                     break;
                 case Projectile.AsteroidLarge:
                     if (IsLaserInLine(line, dir))
-                        RemovePartAtIndex(ind1, ind2);
+                        RemovePartAtIndex(row, column);
                     break;
                 case Projectile.ShotSmall:
                     if (!isShielded[(int)dir])
-                        RemovePartAtIndex(ind1, ind2);
+                        RemovePartAtIndex(row, column);
                     break;
                 default:
-                    RemovePartAtIndex(ind1, ind2);
+                    RemovePartAtIndex(row, column);
                     break;
             }
         }
@@ -383,12 +429,12 @@ namespace GalaxyTrucker.Model
         /// <summary>
         /// Method to remove a single personnel from cabin at the supplied indices.
         /// </summary>
-        /// <param name="pos1">The first index of the cabin</param>
-        /// <param name="pos2">The first index of the cabin</param>
+        /// <param name="row"></param>
+        /// <param name="column"></param>
         /// <returns>True, if the part was a cabin, and a crew member could be removed, false otherwise</returns>
-        public bool RemoveSinglePersonnel(int pos1, int pos2)
+        public bool RemoveSinglePersonnel(int row, int column)
         {
-            Part selected = _parts[pos1, pos2];
+            Part selected = _parts[row, column];
             if (selected is Cabin)
                 return (selected as Cabin).RemoveSinglePersonnel();
             return false;
@@ -397,13 +443,13 @@ namespace GalaxyTrucker.Model
         /// <summary>
         /// Method to activate the part at the given indices, given it is an activatable part and it's currently inactive.
         /// </summary>
-        /// <param name="pos1"></param>
-        /// <param name="pos2"></param>
-        public void ActivatePart(int pos1, int pos2)
+        /// <param name="row"></param>
+        /// <param name="column"></param>
+        public void ActivatePart(int row, int column)
         {
-            Part current = _parts[pos1, pos2];
+            Part current = _parts[row, column];
             if (!(current is IActivatable))
-                throw new InvalidIndexException($"Part at ({pos1},{pos2}) is not an activatable part.");
+                throw new InvalidIndexException($"Part at ({row},{column}) is not an activatable part.");
             switch (current)
             {
                 case LaserDouble l:
@@ -430,22 +476,25 @@ namespace GalaxyTrucker.Model
         /// <summary>
         /// Function to add a new part to the ship at the supplied indices.
         /// </summary>
-        /// <param name="part">The part to add</param>
-        /// <param name="pos1">The first index to add the part at</param>
-        /// <param name="pos2">The second index to add the part at</param>
+        /// <param name="part"></param>
+        /// <param name="row"></param>
+        /// <param name="column"></param>
         /// <returns>A logical value indicating whether the part could be added at the given location</returns>
-        public bool AddPart(Part part, int pos1, int pos2)
+        public PartAddProblems AddPart(Part part, int row, int column)
         {
+            PartAddProblems ret = PartAddProblems.None;
             //check if the target is within bounds and is not occupied yet
-            if (!_movableFields[pos1, pos2] || _parts[pos1, pos2] != null)
-                return false;
+            if (!_movableFields[row, column] || _parts[row, column] != null)
+            {
+                ret |= PartAddProblems.Occupied;
+            }
 
             (Part, Direction)[] neighbours = new (Part, Direction)[]
             {
-                (_parts[pos1 - 1, pos2], Direction.Bottom),
-                (_parts[pos1, pos2 + 1], Direction.Left),
-                (_parts[pos1 + 1, pos2], Direction.Top),
-                (_parts[pos1, pos2 - 1], Direction.Right)
+                (_parts[row - 1, column], Direction.Bottom),
+                (_parts[row, column + 1], Direction.Left),
+                (_parts[row + 1, column], Direction.Top),
+                (_parts[row, column - 1], Direction.Right)
             };
 
             //if the part is a laser it can't have a part right in front of it
@@ -454,46 +503,61 @@ namespace GalaxyTrucker.Model
                 switch (part.Rotation)
                 {
                     case Direction.Top:
-                        if (neighbours[1].Item1 != null) return false;
+                        if (neighbours[0].Item1 != null) ret |= PartAddProblems.BlockedAsLaser;
                         break;
                     case Direction.Right:
-                        if (neighbours[2].Item1 != null) return false;
+                        if (neighbours[1].Item1 != null) ret |= PartAddProblems.BlockedAsLaser;
                         break;
                     case Direction.Bottom:
-                        if (neighbours[3].Item1 != null) return false;
+                        if (neighbours[2].Item1 != null) ret |= PartAddProblems.BlockedAsLaser;
                         break;
                     default:
-                        if (neighbours[4].Item1 != null) return false;
+                        if (neighbours[3].Item1 != null) ret |= PartAddProblems.BlockedAsLaser;
                         break;
                 }
             }
 
             //if the part is an engine it can't have a part right behind it (note: you can only have engines facing top, thus no other directions need be checked)
-            if (part is Engine && neighbours[3].Item1 != null)
+            if (part is Engine && neighbours[2].Item1 != null)
             {
-                return false;
+                ret |= PartAddProblems.BlockedAsEngine;
             }
 
             //check if the part is not obscured from any direction but it has at least one valid connection, also check if the field is being blocked by a laser or engine
             Part matchingPart = null;
-            bool isMismatched = false;
 
             foreach ((Part, Direction) neighbour in neighbours)
             {
-                if (neighbour.Item1 is null)
+                if (neighbour.Item1 != null)
                 {
                     if (neighbour.Item2 == Direction.Bottom && neighbour.Item1 is Engine)
-                        return false;
+                    {
+                        ret |= PartAddProblems.BlocksEngine;
+                    }
+
                     if (neighbour.Item1 is Laser && neighbour.Item1.Rotation == neighbour.Item2)
-                        return false;
-                    Connector onPart = part.GetConnector((Direction)((int)neighbour.Item2 + 2 % 4));
+                    {
+                        ret |= PartAddProblems.BlocksLaser;
+                    }
+
+                    Connector onPart = part.GetConnector((Direction)(((int)neighbour.Item2 + 2) % 4));
                     int match = ConnectorsMatch(onPart, neighbour.Item1.GetConnector(neighbour.Item2));
-                    if (matchingPart == null && match == 1) matchingPart = neighbour.Item1;
-                    else if (match == -1) isMismatched = true;
+                    if (matchingPart == null && match == 1)
+                    {
+                        matchingPart = neighbour.Item1;
+                    }
+                    else if (match == -1)
+                    {
+                        ret |= PartAddProblems.ConnectorsDontMatch;
+                    }
                 }
             }
+            if (matchingPart == null)
+            {
+                ret |= PartAddProblems.HasNoConnection;
+            }
 
-            if (matchingPart != null && !isMismatched)
+            if (ret == PartAddProblems.None)
             {
                 if (part is IActivatable)
                 {
@@ -503,35 +567,30 @@ namespace GalaxyTrucker.Model
                 {
                     _storages.Add(part as Storage);
                 }
-                _parts[pos1, pos2] = part;
-                part.Pos1 = pos1;
-                part.Pos2 = pos2;
-                part.Path = matchingPart.Path;
+                _parts[row, column] = part;
+                part.Row = row;
+                part.Column = column;
                 part.AddToPath(matchingPart);
-                return true;
             }
-            else
-            {
-                return false;
-            }
+            return ret;
         }
 
         /// <summary>
         /// Method to remove the part at the supplied indices, 
         /// as well as removing all the parts which are no longer connected to the cockpit without the removed part.
         /// </summary>
-        /// <param name="pos1">The first index of the part to remove</param>
-        /// <param name="pos2">The second index of the part to remove</param>
-        public void RemovePartAtIndex(int pos1, int pos2)
+        /// <param name="row"></param>
+        /// <param name="column"></param>
+        public void RemovePartAtIndex(int row, int column)
         {
-            Part removedPart = _parts[pos1, pos2] ?? throw new InvalidIndexException($"Part at ({pos1},{pos2}) is null.");
+            Part removedPart = _parts[row, column] ?? throw new InvalidIndexException($"Part at ({row},{column}) is null.");
 
             ++_penalty;
-            _parts[pos1, pos2] = null;
+            _parts[row, column] = null;
 
             if (removedPart is Cockpit)
             {
-                ShipWrecked(this, WreckedSource.CockpitHit);
+                ShipWrecked?.Invoke(this, WreckedSource.CockpitHit);
                 _penalty = Math.Min(_penaltyCap, _parts.Cast<Part>().Where(p => p != null).Count());
                 return;
             }
@@ -544,12 +603,14 @@ namespace GalaxyTrucker.Model
                 _storages.Remove(removedPart as Storage);
             }
 
+            PartRemoved?.Invoke(this, new PartRemovedEventArgs(row, column));
+
             Part[] neighbours = new Part[]
             {
-                _parts[pos1 - 1, pos2],
-                _parts[pos1, pos2 + 1],
-                _parts[pos1 + 1, pos2],
-                _parts[pos1, pos2 - 1]
+                _parts[row - 1, column],
+                _parts[row, column + 1],
+                _parts[row + 1, column],
+                _parts[row, column - 1]
             };
 
             if (removedPart is EngineCabin || removedPart is LaserCabin)
@@ -576,12 +637,12 @@ namespace GalaxyTrucker.Model
             {
                 if (p != null && p.Path.Contains(removedPart))
                 {
-                    RemovePartsRecursive(p);
+                    RemovePartsRecursive(p, removedPart);
                 }
             }
             if (HumanCount == 0)
             {
-                ShipWrecked(this, WreckedSource.OutOfHumans);
+                ShipWrecked?.Invoke(this, WreckedSource.OutOfHumans);
             }
 
         }
@@ -595,35 +656,33 @@ namespace GalaxyTrucker.Model
         /// </summary>
         /// <param name="current">The current part being checked whether it's removed</param>
         /// <returns>A logical value indicating if the current part got removed</returns>
-        private bool RemovePartsRecursive(Part current)
+        private bool RemovePartsRecursive(Part current, Part origin)
         {
             (Part,Direction)[] neighbours = new (Part,Direction)[]
             {
-                (_parts[current.Pos1 - 1, current.Pos2], Direction.Bottom),
-                (_parts[current.Pos1, current.Pos2 + 1], Direction.Left),
-                (_parts[current.Pos1 + 1, current.Pos2], Direction.Top),
-                (_parts[current.Pos1, current.Pos2 - 1], Direction.Right)
+                (_parts[current.Row - 1, current.Column], Direction.Bottom),
+                (_parts[current.Row, current.Column + 1], Direction.Left),
+                (_parts[current.Row + 1, current.Column], Direction.Top),
+                (_parts[current.Row, current.Column - 1], Direction.Right)
             };
 
             //in each direction check if
             foreach((Part,Direction) neighbour in neighbours)
             {
-                if(neighbour.Item1 != null)
+                if(neighbour.Item1 != null && neighbour.Item1 != origin)
                 {
                     //we find a part which is connected through the current element, then check deeper down the path if there is an alternative
                     if (neighbour.Item1.Path.Contains(current))
                     {
-                        if (RemovePartsRecursive(neighbour.Item1))
+                        if (RemovePartsRecursive(neighbour.Item1, current))
                         {
-                            current.Path = neighbour.Item1.Path;
                             current.AddToPath(neighbour.Item1);
                             return true;
                         }
                     }
                     //we find a part which is not connected through the current element, but has a connection to it, then rebind to that path
-                    else if (1 == ConnectorsMatch(current.GetConnector((Direction)((int)neighbour.Item2 + 2 % 4)), neighbour.Item1.GetConnector(neighbour.Item2)))
+                    else if (1 == ConnectorsMatch(current.GetConnector((Direction)(((int)neighbour.Item2 + 2) % 4)), neighbour.Item1.GetConnector(neighbour.Item2)))
                     {
-                        current.Path = neighbour.Item1.Path;
                         current.AddToPath(neighbour.Item1);
                         return true;
                     }
@@ -660,7 +719,8 @@ namespace GalaxyTrucker.Model
             }
 
             ++_penalty;
-            _parts[current.Pos1, current.Pos2] = null;
+            _parts[current.Row, current.Column] = null;
+            PartRemoved?.Invoke(this, new PartRemovedEventArgs(current.Row, current.Column));
             return false;
         }
 
@@ -721,8 +781,10 @@ namespace GalaxyTrucker.Model
             => (c1, c2) switch
             {
                 (Connector.Single, Connector.Double) => -1,
+                (Connector.Double, Connector.Single) => -1,
                 (Connector.None, Connector.None) => 0,
                 (Connector.None, _) => -1,
+                (_, Connector.None) => -1,
                 (_, _) => 1
             };
 

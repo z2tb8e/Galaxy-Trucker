@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Threading;
 using System.Windows;
+using GalaxyTrucker.Model;
 using GalaxyTrucker.Network;
 using GalaxyTrucker.ViewModels;
 using GalaxyTrucker.Views;
@@ -11,10 +13,14 @@ namespace GalaxyTrucker
     /// </summary>
     public partial class App : Application
     {
+        const int BaseHeight = 450;
+        const int BaseWidth = 800;
+
         private MainWindow _mainWindow;
         private GTTcpClient _client;
         private GTTcpListener _listener;
         private LobbyViewModel _connectViewModel;
+        private BuildViewModel _buildViewModel;
 
         public App()
         {
@@ -43,6 +49,7 @@ namespace GalaxyTrucker
             _client = new GTTcpClient();
             _connectViewModel = new LobbyViewModel(_client);
             _connectViewModel.BackToMenu += ConnectViewModel_BackToMenu;
+            _connectViewModel.BuildingStarted += ConnectViewModel_BuildingStarted;
             ConnectControl connectControl = new ConnectControl
             {
                 DataContext = _connectViewModel
@@ -65,6 +72,7 @@ namespace GalaxyTrucker
             _client = new GTTcpClient();
             _connectViewModel = new LobbyViewModel(_client);
             _connectViewModel.BackToMenu += ConnectViewModel_BackToMenu;
+            _connectViewModel.BuildingStarted += ConnectViewModel_BuildingStarted;
             HostControl hostControl = new HostControl
             {
                 DataContext = _connectViewModel
@@ -72,11 +80,42 @@ namespace GalaxyTrucker
             _mainWindow.Content = hostControl;
         }
 
+        private void ConnectViewModel_BuildingStarted(object sender, bool isHost)
+        {
+            if (isHost)
+            {
+                _listener = _connectViewModel.Server;
+            }
+            Dispatcher.Invoke(() =>
+            {
+                _buildViewModel = new BuildViewModel(_client, _connectViewModel.ConnectedPlayers, ShipLayout.Small);
+                _buildViewModel.FatalErrorOccured += BuildViewModel_FatalErrorOccured;
+                BuildControl buildControl = new BuildControl
+                {
+                    DataContext = _buildViewModel
+                };
+                _mainWindow.Content = buildControl;
+                Current.MainWindow.WindowState = WindowState.Maximized;
+                Current.MainWindow.WindowStyle = WindowStyle.None;
+            });
+        }
+
+        private void BuildViewModel_FatalErrorOccured(object sender, EventArgs e)
+        {
+            _client.Close();
+            if(_listener != null)
+            {
+                _listener.Close();
+            }
+            Menu(null, null);
+        }
+
         private void Menu_Rules(object sender, EventArgs e)
         {
             RulesControl rulesControl = new RulesControl();
             rulesControl.BackToMenu += Menu;
             _mainWindow.Content = rulesControl;
+            
         }
     }
 }

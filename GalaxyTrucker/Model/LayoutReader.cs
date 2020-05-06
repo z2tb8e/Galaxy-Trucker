@@ -27,15 +27,15 @@ namespace GalaxyTrucker.Model
         public static ((int,int),bool[,]) GetLayout(ShipLayout layout)
         {
             string jsonString = File.ReadAllText(_path);
-            Layouts _obj = JsonSerializer.Deserialize<Layouts>(jsonString);
+            Layouts obj = JsonSerializer.Deserialize<Layouts>(jsonString);
             bool[,] ret = new bool[11, 11];
             var singleLayout = layout switch
             {
-                ShipLayout.Small => _obj.Small,
-                ShipLayout.Medium => _obj.Medium,
-                ShipLayout.BigWide => _obj.BigWide,
-                ShipLayout.BigLong => _obj.BigLong,
-                _ => _obj.Small,
+                ShipLayout.Small => obj.Small,
+                ShipLayout.Medium => obj.Medium,
+                ShipLayout.BigWide => obj.BigWide,
+                ShipLayout.BigLong => obj.BigLong,
+                _ => obj.Small,
             };
             foreach (Elem e in singleLayout)
             {
@@ -44,7 +44,7 @@ namespace GalaxyTrucker.Model
                     ret[e.Row, i] = true;
                 }
             }
-            return ((_obj.Cockpit[0], _obj.Cockpit[1]), ret);
+            return ((obj.Cockpit[0], obj.Cockpit[1]), ret);
         }
 
     }

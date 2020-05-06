@@ -4,8 +4,8 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
+using System.Timers;
 using GalaxyTrucker.Model;
 
 namespace GalaxyTrucker.Network
@@ -48,7 +48,10 @@ namespace GalaxyTrucker.Network
 
         #region fields
 
+        private const double PingInterval = 500;
+
         private readonly TcpClient _client;
+        private readonly Timer _pingTimer;
 
         private ServerStage _stage;
         private NetworkStream _stream;
@@ -72,24 +75,54 @@ namespace GalaxyTrucker.Network
 
         #region events
 
+        /// <summary>
+        /// Event raised when the building stage starts
+        /// </summary>
         public event EventHandler<BuildingBegunEventArgs> BuildingBegun;
 
+        /// <summary>
+        /// Event raised after everybody finished building
+        /// </summary>
         public event EventHandler<BuildingEndedEventArgs> BuildingEnded;
 
+        /// <summary>
+        /// Event raised when the flight stage starts
+        /// </summary>
         public event EventHandler<FlightBegunEventArgs> FlightBegun;
 
+        /// <summary>
+        /// Event raised when this client receives the answer for picking a part
+        /// </summary>
         public event EventHandler<PartPickedEventArgs> PartPicked;
 
+        /// <summary>
+        /// Event raised when another client picks a part
+        /// </summary>
         public event EventHandler<PartTakenEventArgs> PartTaken;
 
+        /// <summary>
+        /// Event raised when when another client puts back a part
+        /// </summary>
         public event EventHandler<PartPutBackEventArgs> PartPutBack;
 
+        /// <summary>
+        /// Event raised when another player toggles their ready state
+        /// </summary>
         public event EventHandler<PlayerReadiedEventArgs> PlayerReadied;
 
+        /// <summary>
+        /// Event raised when another player connects to the server
+        /// </summary>
         public event EventHandler<PlayerConnectedEventArgs> PlayerConnected;
 
+        /// <summary>
+        /// Event raised when another client disconnects from the server
+        /// </summary>
         public event EventHandler<PlayerDisconnectedEventArgs> PlayerDisconnected;
 
+        /// <summary>
+        /// Event raised when this client disconnects from the server
+        /// </summary>
         public event EventHandler ThisPlayerDisconnected;
 
         #endregion
@@ -101,6 +134,7 @@ namespace GalaxyTrucker.Network
             IsReady = false;
             _stage = ServerStage.Lobby;
             _client = new TcpClient();
+            _pingTimer = new Timer(PingInterval);
         }
 
         #region public methods
@@ -142,6 +176,8 @@ namespace GalaxyTrucker.Network
                 }
 
                 _ = Task.Factory.StartNew(() => HandleServerMessages(), TaskCreationOptions.LongRunning);
+                _pingTimer.Elapsed += PingTimer_Elapsed;
+                _pingTimer.Start();
 
             }
             catch (Exception)
@@ -154,6 +190,7 @@ namespace GalaxyTrucker.Network
         {
             if(_stage != currentStage)
             {
+                _pingTimer.Stop();
                 throw new InvalidOperationException();
             }
 
@@ -167,6 +204,7 @@ namespace GalaxyTrucker.Network
         {
             if(_stage != ServerStage.Build || IsReady)
             {
+                _pingTimer.Stop();
                 throw new InvalidOperationException();
             }
 
@@ -174,24 +212,26 @@ namespace GalaxyTrucker.Network
             IsReady = true;
         }
 
-        public void PutBackPart(int ind1, int ind2)
+        public void PutBackPart(int row, int column)
         {
             if(_stage != ServerStage.Build)
             {
+                _pingTimer.Stop();
                 throw new InvalidOperationException();
             }
 
-            WriteMessageToServer($"PutBackPart,{ind1},{ind2}");
+            WriteMessageToServer($"PutBackPart,{row},{column}");
         }
 
-        public void PickPart(int ind1, int ind2)
+        public void PickPart(int row, int column)
         {
             if (_stage != ServerStage.Build)
             {
+                _pingTimer.Stop();
                 throw new InvalidOperationException();
             }
 
-            WriteMessageToServer($"PickPart,{ind1},{ind2}");
+            WriteMessageToServer($"PickPart,{row},{column}");
         }
 
         public void Close()
@@ -262,13 +302,17 @@ namespace GalaxyTrucker.Network
                         break;
 
                     case "Ping":
-                        WriteMessageToServer("Ping");
                         break;
 
                     default:
                         throw new UnknownMessageException(message);
                 }
             }
+        }
+
+        private void PingTimer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            WriteMessageToServer("Ping");
         }
 
         private void PlayerDisconnectResolve(string[] parts)
@@ -286,6 +330,7 @@ namespace GalaxyTrucker.Network
         {
             if (_stage != ServerStage.Lobby)
             {
+                _pingTimer.Stop();
                 throw new OutOfSyncException();
             }
             PlayerColor color = Enum.Parse<PlayerColor>(parts[1]);
@@ -298,9 +343,14 @@ namespace GalaxyTrucker.Network
         {
             if (!IsReady)
             {
+                _pingTimer.Stop();
                 throw new OutOfSyncException();
             }
             IsReady = false;
+            foreach (PlayerInfo info in PlayerInfos.Values)
+            {
+                info.IsReady = false;
+            }
             _stage = ServerStage.Flight;
             //Format: FlightBegun,PlayerNumber,Color,Firepower,Enginepower,CrewCount,StorageSize,Batteries
             int playerNumber = int.Parse(parts[1]);
@@ -327,9 +377,14 @@ namespace GalaxyTrucker.Network
         {
             if (!IsReady)
             {
+                _pingTimer.Stop();
                 throw new OutOfSyncException();
             }
             IsReady = false;
+            foreach(PlayerInfo info in PlayerInfos.Values)
+            {
+                info.IsReady = false;
+            }
             _stage = ServerStage.Build;
             BuildingBegun?.Invoke(this, new BuildingBegunEventArgs());
         }
@@ -342,9 +397,14 @@ namespace GalaxyTrucker.Network
         {
             if (!IsReady)
             {
+                _pingTimer.Stop();
                 throw new OutOfSyncException();
             }
             IsReady = false;
+            foreach (PlayerInfo info in PlayerInfos.Values)
+            {
+                info.IsReady = false;
+            }
             for (int i = 1; i < parts.Length; ++i)
             {
                 PlayerOrder.Add(Enum.Parse<PlayerColor>(parts[i]));
@@ -360,6 +420,7 @@ namespace GalaxyTrucker.Network
         {
             if (_stage != ServerStage.Build)
             {
+                _pingTimer.Stop();
                 throw new OutOfSyncException();
             }
             Part picked = null;
@@ -377,6 +438,7 @@ namespace GalaxyTrucker.Network
         {
             if (_stage != ServerStage.Build)
             {
+                _pingTimer.Stop();
                 throw new OutOfSyncException();
             }
         }
@@ -389,12 +451,13 @@ namespace GalaxyTrucker.Network
         {
             if (_stage != ServerStage.Build)
             {
+                _pingTimer.Stop();
                 throw new OutOfSyncException();
             }
-            int ind1 = int.Parse(parts[1]);
-            int ind2 = int.Parse(parts[2]);
+            int row = int.Parse(parts[1]);
+            int column = int.Parse(parts[2]);
             Part putBack = parts[3].ToPart();
-            PartPutBack?.Invoke(this, new PartPutBackEventArgs(ind1, ind2, putBack));
+            PartPutBack?.Invoke(this, new PartPutBackEventArgs(row, column, putBack));
         }
 
         /// <summary>
@@ -405,11 +468,12 @@ namespace GalaxyTrucker.Network
         {
             if (_stage != ServerStage.Build)
             {
+                _pingTimer.Stop();
                 throw new OutOfSyncException();
             }
-            int ind1 = int.Parse(parts[1]);
-            int ind2 = int.Parse(parts[2]);
-            PartTaken?.Invoke(this, new PartTakenEventArgs(ind1, ind2));
+            int row = int.Parse(parts[1]);
+            int column = int.Parse(parts[2]);
+            PartTaken?.Invoke(this, new PartTakenEventArgs(row, column));
         }
 
         /// <summary>
@@ -437,6 +501,7 @@ namespace GalaxyTrucker.Network
                 return message.ToString();
             }
             catch (IOException) {
+                _pingTimer.Stop();
                 ThisPlayerDisconnected?.Invoke(this, EventArgs.Empty);
                 return null;
             }
@@ -451,6 +516,7 @@ namespace GalaxyTrucker.Network
             }
             catch (IOException)
             {
+                _pingTimer.Stop();
                 ThisPlayerDisconnected?.Invoke(this, EventArgs.Empty);
             }
         }

@@ -1,11 +1,13 @@
-﻿namespace GalaxyTrucker.Model
+﻿using System;
+
+namespace GalaxyTrucker.Model
 {
     public enum Direction
     {
-        Top = 0,
-        Right = 1,
-        Bottom = 2,
-        Left = 3
+        Top,
+        Right,
+        Bottom,
+        Left,
     };
 
     public enum Connector
@@ -83,5 +85,18 @@
         First = 0,
         Second = 1,
         Third = 2
+    }
+
+    [Flags]
+    public enum PartAddProblems
+    {
+        None,
+        Occupied,
+        HasNoConnection,
+        ConnectorsDontMatch,
+        BlockedAsLaser,
+        BlockedAsEngine,
+        BlocksLaser,
+        BlocksEngine
     }
 }

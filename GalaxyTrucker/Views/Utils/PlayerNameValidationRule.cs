@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Windows.Controls;
 
-namespace GalaxyTrucker.Views
+namespace GalaxyTrucker.Views.Utils
 {
     public class PlayerNameValidationRule : ValidationRule
     {

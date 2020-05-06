@@ -7,6 +7,7 @@ using System.Net;
 using System.Windows.Data;
 using System.Net.Sockets;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace GalaxyTrucker.ViewModels
 {
@@ -21,6 +22,9 @@ namespace GalaxyTrucker.ViewModels
         private string _remoteIp;
         private int _remotePort;
         private string _playerName;
+        private string _error;
+        private bool _connectInProgress;
+        private string _connectionStatus;
 
         private readonly GTTcpClient _client;
 
@@ -28,7 +32,18 @@ namespace GalaxyTrucker.ViewModels
 
         #region shared
 
-        public string ConnectionStatus { get; set; }
+        public string ConnectionStatus
+        {
+            get
+            {
+                return _connectionStatus;
+            }
+            set
+            {
+                _connectionStatus = value;
+                OnPropertyChanged();
+            }
+        }
 
         public ObservableCollection<PlayerInfoViewModel> ConnectedPlayers
         {
@@ -37,7 +52,7 @@ namespace GalaxyTrucker.ViewModels
             {
                 _connectedPlayers = value;
                 BindingOperations.EnableCollectionSynchronization(_connectedPlayers, _lock);
-                OnPropertyChanged("ConnectedPlayers");
+                OnPropertyChanged();
             }
         }
 
@@ -53,7 +68,6 @@ namespace GalaxyTrucker.ViewModels
                 {
                     _remoteIp = value;
                     OnPropertyChanged();
-                    OnPropertyChanged("CanConnect");
                 }
             }
         }
@@ -87,16 +101,35 @@ namespace GalaxyTrucker.ViewModels
 
                     _playerName = value;
                     OnPropertyChanged();
-                    OnPropertyChanged("CanConnect");
                 }
             }
         }
 
-        public string Error { get; set; }
+        public string Error
+        {
+            get
+            {
+                return _error;
+            }
+            set
+            {
+                _error = value;
+                OnPropertyChanged();
+            }
+        }
 
-        public bool IsReady => _client.IsReady;
-
-        public bool ConnectInProgress { get; set; }
+        public bool ConnectInProgress
+        {
+            get
+            {
+                return _connectInProgress;
+            }
+            set
+            {
+                _connectInProgress = value;
+                OnPropertyChanged();
+            }
+        }
 
         public bool IsConnected => _client.IsConnected;
 
@@ -118,7 +151,7 @@ namespace GalaxyTrucker.ViewModels
         {
             get
             {
-                if (Server != null && !Server.NotReadyPlayers.Any())
+                if (Server != null && !Server.NotReadyPlayers.Any() && _connectedPlayers.Count > 1)
                 {
                     return true;
                 }
@@ -128,7 +161,7 @@ namespace GalaxyTrucker.ViewModels
 
         public DelegateCommand HostCommand { get; set; }
 
-        public DelegateCommand LaunchBuilding { get; set; }
+        public DelegateCommand LaunchBuildingCommand { get; set; }
 
         #endregion
 
@@ -142,7 +175,6 @@ namespace GalaxyTrucker.ViewModels
         {
             IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
             HostIp = ipHostInfo.AddressList.Where(ip => ip.AddressFamily == AddressFamily.InterNetwork).First().ToString();
-            //OnPropertyChanged("HostIp");
             ConnectInProgress = false;
             _lock = new object();
             RemotePort = DefaultPort;
@@ -156,53 +188,44 @@ namespace GalaxyTrucker.ViewModels
             _client.PlayerDisconnected += Client_PlayerDisconnected;
             _client.ThisPlayerDisconnected += Client_ThisPlayerDisconnected;
 
-            HostCommand = new DelegateCommand(param =>
+            HostCommand = new DelegateCommand(param => Server == null, param =>
             {
                 Server = new GTTcpListener(RemotePort);
                 Task.Factory.StartNew(() => Server.Start(), TaskCreationOptions.LongRunning);
-
                 ConnectCommand.Execute(param);
             });
 
-            ConnectCommand = new DelegateCommand(async param =>
+            ConnectCommand = new DelegateCommand(param => !ConnectInProgress && !IsConnected, 
+                async param =>
             {
                 try
                 {
                     Error = "";
-                    OnPropertyChanged("Error");
                     IPEndPoint endpoint = new IPEndPoint(IPAddress.Parse(RemoteIp), RemotePort);
                     ConnectInProgress = true;
-                    OnPropertyChanged("ConnectInProgress");
                     await _client.Connect(endpoint, PlayerName);
                     ConnectionStatus = $"Csatlakozva, kapott szín: {_client.Player.ToUserString()}";
                     foreach (PlayerInfo info in _client.PlayerInfos.Values)
                     {
                         ConnectedPlayers.Add(new PlayerInfoViewModel(info));
                     }
-                    OnPropertyChanged("ConnectionStatus");
-                    OnPropertyChanged("Error");
-                    OnPropertyChanged("IsConnected");
-                    OnPropertyChanged("ConnectedPlayers");
+                    OnPropertyChanged(nameof(IsConnected));
                 }
                 catch (ConnectionRefusedException)
                 {
                     Error = "A megadott játékhoz már nem lehet csatlakozni.";
-                    OnPropertyChanged("Error");
                 }
                 catch (TimeoutException)
                 {
                     Error = "Nem jött létre a kapcsolat az időlimiten belül.";
-                    OnPropertyChanged("Error");
                 }
                 catch (Exception e)
                 {
                     Error = $"Hiba a csatlakozás közben:\n{e.Message}";
-                    OnPropertyChanged("Error");
                 }
                 finally
                 {
                     ConnectInProgress = false;
-                    OnPropertyChanged("ConnectInProgress");
                 }
             });
 
@@ -212,52 +235,69 @@ namespace GalaxyTrucker.ViewModels
                 {
                     _client.ToggleReady(ServerStage.Lobby);
                     ConnectedPlayers.Where(info => info.Name == PlayerName).First().IsReady = _client.IsReady;
-                    OnPropertyChanged("ConnectedPlayers");
-                    OnPropertyChanged("IsReady");
-                    OnPropertyChanged("CanStart");
+                    OnPropertyChanged(nameof(CanStart));
                 }
                 catch (Exception e)
                 {
                     Error = $"Hiba a szerverrel való kommunikáció közben:\n{e.Message}";
-                    OnPropertyChanged("Error");
                 }
             });
 
             BackToMenuCommand = new DelegateCommand(param =>
             {
+                UnsubscribeFromEvents();
                 BackToMenu?.Invoke(this, Server != null);
+            });
+
+            LaunchBuildingCommand = new DelegateCommand(param =>
+            {
+                if (!CanStart)
+                {
+                    MessageBox.Show("Nincs elég játékos, vagy nem mindenki áll készen!");
+                    return;
+                }
+                Task.Factory.StartNew(() => Server.StartBuildStage(), TaskCreationOptions.LongRunning);
             });
         }
 
         private void Client_ThisPlayerDisconnected(object sender, EventArgs e)
         {
+            UnsubscribeFromEvents();
             Error = "A szerverrel való kapcsolat megszakadt.";
-            OnPropertyChanged("Error");
-            OnPropertyChanged("IsConnected");
+            OnPropertyChanged(nameof(IsConnected));
         }
 
         private void Client_PlayerDisconnected(object sender, PlayerDisconnectedEventArgs e)
         {
             PlayerInfoViewModel playerToRemove = ConnectedPlayers.Where(item => item.Color == e.Color).First();
             ConnectedPlayers.Remove(playerToRemove);
-            OnPropertyChanged("ConnectedPlayers");
+            OnPropertyChanged(nameof(CanStart));
         }
 
         private void Client_BuildingBegun(object sender, BuildingBegunEventArgs e)
         {
+            UnsubscribeFromEvents();
             BuildingStarted?.Invoke(this, Server != null);
         }
 
         private void Client_PlayerReadied(object sender, PlayerReadiedEventArgs e)
         {
             ConnectedPlayers.Where(info => info.Color == e.Player).First().IsReady = _client.PlayerInfos[e.Player].IsReady;
-            OnPropertyChanged("ConnectedPlayers");
-            OnPropertyChanged("CanStart");
+            OnPropertyChanged(nameof(CanStart));
         }
 
         private void Client_PlayerConnected(object sender, PlayerConnectedEventArgs e)
         {
             ConnectedPlayers.Add(new PlayerInfoViewModel(new PlayerInfo(e.Color, e.PlayerName, false)));
+        }
+
+        private void UnsubscribeFromEvents()
+        {
+            _client.PlayerConnected -= Client_PlayerConnected;
+            _client.PlayerReadied -= Client_PlayerReadied;
+            _client.BuildingBegun -= Client_BuildingBegun;
+            _client.PlayerDisconnected -= Client_PlayerDisconnected;
+            _client.ThisPlayerDisconnected -= Client_ThisPlayerDisconnected;
         }
     }
 }

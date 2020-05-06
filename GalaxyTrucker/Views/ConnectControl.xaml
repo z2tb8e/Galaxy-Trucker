@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:GalaxyTrucker.Views"
+             xmlns:utils="clr-namespace:GalaxyTrucker.Views.Utils"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
     <UserControl.Resources>
@@ -41,7 +41,7 @@
             <TextBox.Text>
                 <Binding Path="PlayerName" UpdateSourceTrigger="PropertyChanged">
                     <Binding.ValidationRules>
-                        <local:PlayerNameValidationRule/>
+                        <utils:PlayerNameValidationRule/>
                     </Binding.ValidationRules>
                 </Binding>
             </TextBox.Text>
@@ -53,7 +53,7 @@
             <TextBox.Text>
                 <Binding Path="RemoteIp" UpdateSourceTrigger="PropertyChanged">
                     <Binding.ValidationRules>
-                        <local:RemoteIpValidationRule/>
+                        <utils:RemoteIpValidationRule/>
                     </Binding.ValidationRules>
                 </Binding>
             </TextBox.Text>
@@ -65,15 +65,21 @@
             <TextBox.Text>
                 <Binding Path="RemotePort" UpdateSourceTrigger="PropertyChanged">
                     <Binding.ValidationRules>
-                        <local:RemotePortValidationRule/>
+                        <utils:RemotePortValidationRule/>
                     </Binding.ValidationRules>
                 </Binding>
             </TextBox.Text>
         </TextBox>
 
-        <ListView Name="connectedPlayers" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding ConnectedPlayers}">
+        <ListView Margin="10" Name="connectedPlayers" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding ConnectedPlayers}">
             <ListView.View>
                 <GridView AllowsColumnReorder="False">
+                    <GridView.ColumnHeaderContainerStyle>
+                        <Style TargetType="GridViewColumnHeader">
+                            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                            <Setter Property="IsEnabled" Value="False"/>
+                        </Style>
+                    </GridView.ColumnHeaderContainerStyle>
                     <GridViewColumn Header="Név" Width="150">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -99,7 +105,7 @@
             </ListView.View>
         </ListView>
 
-        <TextBox Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Error}"></TextBox>
+        <TextBlock Margin="10" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Error}"></TextBlock>
         <Button Width="100"  Height="30" Grid.Column="2" Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,45"
                 Command="{Binding ConnectCommand}" Content="Csatlakozás">
             <Button.Style>
@@ -111,13 +117,9 @@
                                 <Condition Binding="{Binding Path=(Validation.HasError), ElementName=nameTextBox}" Value="False"/>
                                 <Condition Binding="{Binding Path=(Validation.HasError), ElementName=remoteIpTextBox}" Value="False"/>
                                 <Condition Binding="{Binding Path=(Validation.HasError), ElementName=remotePortTextBox}" Value="False"/>
-                                <Condition Binding="{Binding ConnectInProgress}" Value="False"/>
                             </MultiDataTrigger.Conditions>
                             <Setter Property="IsEnabled" Value="True"/>
                         </MultiDataTrigger>
-                        <DataTrigger Binding="{Binding IsConnected}" Value="True">
-                            <Setter Property="IsEnabled" Value="False"/>
-                        </DataTrigger>
                     </Style.Triggers>
                 </Style>
             </Button.Style>
@@ -125,6 +127,6 @@
 
         <Button Height="30" Grid.Column="2" Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,10"
                 IsEnabled="{Binding IsConnected}" Command="{Binding ReadyCommand}" Width="100" Content="Készenlét állítása"/>
-        <TextBox Grid.Row="4" Grid.Column="0" IsReadOnly="True" Text="{Binding ConnectionStatus}"></TextBox>
+        <TextBlock Margin="10" Grid.Row="4" Grid.Column="0" Text="{Binding ConnectionStatus}"></TextBlock>
     </Grid>
 </UserControl>

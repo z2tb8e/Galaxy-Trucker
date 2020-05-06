@@ -101,7 +101,7 @@ namespace GalaxyTrucker.Network
             _random = new Random();
             _orderSemaphore = new Semaphore(1, 1);
 
-            _parts = new PartAvailability[14, 10];
+            _parts = new PartAvailability[10, 14];
         }
 
         #region public methods
@@ -374,18 +374,18 @@ namespace GalaxyTrucker.Network
         /// <param name="parts"></param>
         private void PutBackPartResolve(PlayerColor player, string[] parts)
         {
-            int ind1 = int.Parse(parts[1]);
-            int ind2 = int.Parse(parts[2]);
-            _parts[ind1, ind2].Semaphore.WaitOne();
+            int row = int.Parse(parts[1]);
+            int column = int.Parse(parts[2]);
+            _parts[row, column].Semaphore.WaitOne();
 
-            if (_parts[ind1, ind2].IsAvailable)
+            if (_parts[row, column].IsAvailable)
             {
                 WriteMessageToPlayer(player, "PutBackPartConfirm");
             }
             else
             {
-                string partString = _parts[ind1, ind2].PartString;
-                _parts[ind1, ind2].IsAvailable = true;
+                string partString = _parts[row, column].PartString;
+                _parts[row, column].IsAvailable = true;
                 string response = "PutBackPartConfirm";
                 string announcement = $"PartPutBack,{parts[1]},{parts[2]},{partString}";
                 WriteMessageToPlayer(player, response);
@@ -400,7 +400,7 @@ namespace GalaxyTrucker.Network
                     }
                 });
             }
-            _parts[ind1, ind2].Semaphore.Release();
+            _parts[row, column].Semaphore.Release();
         }
 
         /// <summary>
@@ -410,20 +410,20 @@ namespace GalaxyTrucker.Network
         /// <param name="parts"></param>
         private void PickPartResolve(PlayerColor player, string[] parts)
         {
-            int ind1 = int.Parse(parts[1]);
-            int ind2 = int.Parse(parts[2]);
-            _parts[ind1, ind2].Semaphore.WaitOne();
+            int row = int.Parse(parts[1]);
+            int column = int.Parse(parts[2]);
+            _parts[row, column].Semaphore.WaitOne();
 
-            if (!_parts[ind1, ind2].IsAvailable)
+            if (!_parts[row, column].IsAvailable)
             {
                 WriteMessageToPlayer(player, "PickPartResult,null");
             }
             else
             {
-                string partString = _parts[ind1, ind2].PartString;
-                _parts[ind1, ind2].IsAvailable = false;
+                string partString = _parts[row, column].PartString;
+                _parts[row, column].IsAvailable = false;
                 string response = $"PickPartResult,{partString}";
-                string announcement = $"PartTaken,{ind1},{ind2}";
+                string announcement = $"PartTaken,{row},{column}";
                 WriteMessageToPlayer(player, response);
                 foreach (PlayerColor key in _connections.Keys)
                 {
@@ -433,7 +433,7 @@ namespace GalaxyTrucker.Network
                     }
                 }
             }
-            _parts[ind1, ind2].Semaphore.Release();
+            _parts[row, column].Semaphore.Release();
         }
 
         private string ReadMessageFromPlayer(PlayerColor player)
@@ -527,9 +527,9 @@ namespace GalaxyTrucker.Network
                 parts[n] = value;
             }
 
-            for (int i = 0; i < 14; ++i)
+            for (int i = 0; i < 10; ++i)
             {
-                for (int j = 0; j < 10; ++j)
+                for (int j = 0; j < 14; ++j)
                 {
                     _parts[i, j] = new PartAvailability(parts[i * 10 + j]);
                 }

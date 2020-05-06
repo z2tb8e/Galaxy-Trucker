@@ -10,7 +10,7 @@
                 throw new System.ArgumentException("Parameter can only be Connector.None for engines", "Bottom");
         }
 
-        public new void Rotate(Direction _) { }
+        public override void Rotate(int _) { }
 
         public override string ToString()
         {

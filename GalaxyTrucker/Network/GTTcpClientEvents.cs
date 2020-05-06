@@ -4,7 +4,7 @@ using System;
 namespace GalaxyTrucker.Network
 {
     /// <summary>
-    /// Event raised at the end of the lobby
+    /// Event args for signaling the start of the building stage
     /// </summary>
     public class BuildingBegunEventArgs : EventArgs
     {
@@ -12,7 +12,7 @@ namespace GalaxyTrucker.Network
     }
 
     /// <summary>
-    /// Event raised at the end of the building stage
+    /// Event args for signaling the end of the building stage
     /// </summary>
     public class BuildingEndedEventArgs : EventArgs
     {
@@ -20,42 +20,42 @@ namespace GalaxyTrucker.Network
     }
 
     /// <summary>
-    /// Event raised when a player takes the part
+    /// Event args for signaling that another client picked a part
     /// </summary>
     public class PartTakenEventArgs : EventArgs
     {
-        public int Ind1 { get; set; }
+        public int Row { get; set; }
 
-        public int Ind2 { get; set; }
+        public int Column { get; set; }
 
-        public PartTakenEventArgs(int ind1, int ind2)
+        public PartTakenEventArgs(int row, int column)
         {
-            Ind1 = ind1;
-            Ind2 = ind2;
+            Row = row;
+            Column = column;
         }
     }
 
     /// <summary>
-    /// Event raised when a different player puts back a part
+    /// Event args for signaling that another client put back a part
     /// </summary>
     public class PartPutBackEventArgs : EventArgs
     {
-        public int Ind1 { get; set; }
+        public int Row { get; set; }
 
-        public int Ind2 { get; set; }
+        public int Column { get; set; }
 
         public Part Part { get; set; }
 
-        public PartPutBackEventArgs(int ind1, int ind2, Part part)
+        public PartPutBackEventArgs(int row, int column, Part part)
         {
-            Ind1 = ind1;
-            Ind2 = ind2;
+            Row = row;
+            Column = column;
             Part = part;
         }
     }
 
     /// <summary>
-    /// Event raised when a player toggles ready state in building, or finishes their part of the turn in flight
+    /// Event args for signaling that another player toggled their ready state
     /// </summary>
     public class PlayerReadiedEventArgs : EventArgs
     {
@@ -66,7 +66,7 @@ namespace GalaxyTrucker.Network
     }
 
     /// <summary>
-    /// Event raised to send the result of the client picking a part
+    /// Event args for sending the response of this client picking a part
     /// </summary>
     public class PartPickedEventArgs : EventArgs
     {
@@ -77,7 +77,7 @@ namespace GalaxyTrucker.Network
     }
 
     /// <summary>
-    /// Event raised at the start of flight stage
+    /// Event args for signaling the start of the flight stage
     /// </summary>
     public class FlightBegunEventArgs : EventArgs
     {
@@ -85,7 +85,7 @@ namespace GalaxyTrucker.Network
     }
 
     /// <summary>
-    /// Event raised when another client joins during lobby
+    /// Event args for signaling that another player connected
     /// </summary>
     public class PlayerConnectedEventArgs : EventArgs
     {
@@ -101,7 +101,7 @@ namespace GalaxyTrucker.Network
     }
 
     /// <summary>
-    /// Event raised when another previously connected client disconnects
+    /// Event args for signaling that another player disconnected
     /// </summary>
     public class PlayerDisconnectedEventArgs : EventArgs
     {

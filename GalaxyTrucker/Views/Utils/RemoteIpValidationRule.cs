@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Net;
 using System.Windows.Controls;
 
-namespace GalaxyTrucker.Views
+namespace GalaxyTrucker.Views.Utils
 {
     public class RemoteIpValidationRule : ValidationRule
     {
@@ -14,12 +14,12 @@ namespace GalaxyTrucker.Views
             try
             {
                 IPAddress.Parse((string)value);
+                return ValidationResult.ValidResult;
             }
             catch (FormatException)
             {
                 return new ValidationResult(false, "A megadott ip cím nem megfelelő formátumú!");
             }
-            return ValidationResult.ValidResult;
         }
     }
 }

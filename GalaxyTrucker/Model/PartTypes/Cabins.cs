@@ -1,4 +1,6 @@
-﻿namespace GalaxyTrucker.Model.PartTypes
+﻿using System.Collections.Generic;
+
+namespace GalaxyTrucker.Model.PartTypes
 {
     public class Cabin : Part
     {
@@ -30,11 +32,9 @@
 
         public Cockpit(PlayerColor pc) : base(Connector.Universal, Connector.Universal, Connector.Universal, Connector.Universal)
         {
-            AddToPath(this);
+            Path = new Stack<Part>();
             Player = pc;
         }
-
-        public new void Rotate(Direction _) { }
 
         public override string ToString()
         {

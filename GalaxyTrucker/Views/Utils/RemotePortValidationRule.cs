@@ -2,7 +2,7 @@
 using System.Globalization;
 using System.Windows.Controls;
 
-namespace GalaxyTrucker.Views
+namespace GalaxyTrucker.Views.Utils
 {
     public class RemotePortValidationRule : ValidationRule
     {

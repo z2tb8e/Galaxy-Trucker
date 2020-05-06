@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace GalaxyTrucker.Model
 {
@@ -8,36 +10,54 @@ namespace GalaxyTrucker.Model
 
         private Stack<Part> _path;
 
-        public int Pos1 { get; set; }
+        public int Row { get; set; }
 
-        public int Pos2 { get; set; }
+        public int Column { get; set; }
 
         public Direction Rotation { get; private set; }
 
         public Connector[] Connectors => _connectors;
 
-        public Stack<Part> Path { get { return new Stack<Part>(_path); } set { _path = value; } }
+        public Stack<Part> Path { get { return _path; } protected set { _path = value; } }
+
+        public event EventHandler HighlightToggled;
 
         protected Part(Connector Top, Connector Right, Connector Bottom, Connector Left)
         {
-            _path = new Stack<Part>();
             _connectors = new Connector[4]
             {
                 Top, Right, Bottom, Left
             };
         }
 
-        public Connector GetConnector(Direction dir) => _connectors[((int)dir + (int)Rotation) % 4];
+        public Connector GetConnector(Direction dir)
+        {
+            int index = ((int)dir - (int)Rotation + 4) % 4;
+            return _connectors[index];
+        }
 
-        public void Rotate(Direction dir) => this.Rotation = (Direction)((int)Rotation + (int)dir % 4);
+        public void Highlight()
+        {
+            HighlightToggled?.Invoke(this, EventArgs.Empty);
+        }
 
-        public void AddToPath(Part p) => _path.Push(p);
+        public virtual void Rotate(int leftOrRight)
+        {
+            int enumValue = ((int)Rotation + leftOrRight + 4) % 4;
+            Rotation = (Direction)enumValue;
+        }
+
+        public void AddToPath(Part part)
+        {
+            Path = new Stack<Part>(part.Path);
+            Path.Push(part);
+        }
 
         public bool IsInPath(Part p) => _path.Contains(p);
 
         public override string ToString()
         {
-            return ((int)_connectors[0]).ToString() + ((int)_connectors[1]).ToString() + ((int)_connectors[2]).ToString() + ((int)_connectors[3]).ToString();
+            return $"{(int)_connectors[0]}{(int)_connectors[1]}{(int)_connectors[2]}{(int)_connectors[3]}";
         }
     }
 }

@@ -2,10 +2,7 @@
 using GalaxyTrucker.Model.PartTypes;
 using System;
 using System.Drawing;
-using System.Windows.Media.Imaging;
 using GalaxyTrucker.Exceptions;
-using System.IO;
-using System.Drawing.Imaging;
 
 namespace GalaxyTrucker.ViewModels
 {
@@ -13,7 +10,7 @@ namespace GalaxyTrucker.ViewModels
     {
         private static readonly string _startingPath = "Resources/PartBuilder/";
 
-        public static BitmapImage GetPartImage(Part part)
+        public static Image GetPartImage(Part part)
         {
             Image img = Image.FromFile($"{_startingPath}blank.png");
             Graphics g = Graphics.FromImage(img);
@@ -113,17 +110,7 @@ namespace GalaxyTrucker.ViewModels
             }
             g.DrawImage(partPiece, new Point(0, 0));
 
-            img.Save("tmp.png", ImageFormat.Png);
-
-            BitmapImage ret = null;
-
-            if (File.Exists("tmp.png"))
-            {
-                ret = new BitmapImage(new Uri(@"tmp.png", UriKind.Relative));
-            }
-
-            File.Delete("tmp.png");
-            return ret;
+            return img;
         }
     }
 }
