@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading;
 using System.Windows;
 using GalaxyTrucker.Model;
 using GalaxyTrucker.Network;
@@ -30,12 +29,13 @@ namespace GalaxyTrucker
         private void App_Startup(object sender, StartupEventArgs e)
         {
             _mainWindow = new MainWindow();
-            Menu(null, null);
+            Menu();
         }
 
-        private void Menu(object sender, EventArgs e)
+        private void Menu()
         {
-
+            _mainWindow.WindowState = WindowState.Normal;
+            _mainWindow.WindowStyle = WindowStyle.SingleBorderWindow;
             MenuControl menuControl = new MenuControl();
             menuControl.ConnectClick += Menu_JoinGame;
             menuControl.HostClick += Menu_HostGame;
@@ -64,7 +64,7 @@ namespace GalaxyTrucker
             {
                 _connectViewModel.Server.Close();
             }
-            Menu(null, null);
+            Menu();
         }
 
         private void Menu_HostGame(object sender, EventArgs e)
@@ -88,7 +88,7 @@ namespace GalaxyTrucker
             }
             Dispatcher.Invoke(() =>
             {
-                _buildViewModel = new BuildViewModel(_client, _connectViewModel.ConnectedPlayers, ShipLayout.Small);
+                _buildViewModel = new BuildViewModel(_client, _connectViewModel.PlayerList, ShipLayout.Small);
                 _buildViewModel.FatalErrorOccured += BuildViewModel_FatalErrorOccured;
                 BuildControl buildControl = new BuildControl
                 {
@@ -107,15 +107,20 @@ namespace GalaxyTrucker
             {
                 _listener.Close();
             }
-            Menu(null, null);
+            Dispatcher.Invoke(Menu);
         }
 
         private void Menu_Rules(object sender, EventArgs e)
         {
             RulesControl rulesControl = new RulesControl();
-            rulesControl.BackToMenu += Menu;
+            rulesControl.BackToMenu += Rules_BackToMenu;
             _mainWindow.Content = rulesControl;
             
+        }
+
+        private void Rules_BackToMenu(object sender, EventArgs e)
+        {
+            Menu();
         }
     }
 }

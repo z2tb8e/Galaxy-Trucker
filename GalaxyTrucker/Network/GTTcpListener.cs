@@ -509,13 +509,14 @@ namespace GalaxyTrucker.Network
         private async Task ShufflePartsAsync()
         {
             List<string> parts = new List<string>();
-            string line;
-            StreamReader sr = new StreamReader(PartPath);
-            while ((line = await sr.ReadLineAsync()) != null)
+            using(StreamReader sr = new StreamReader(PartPath))
             {
-                parts.Add(line);
+                string line;
+                while ((line = await sr.ReadLineAsync()) != null)
+                {
+                    parts.Add(line);
+                }
             }
-            sr.Close();
 
             int n = parts.Count;
             while (n > 1)

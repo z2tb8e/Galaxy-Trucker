@@ -90,13 +90,13 @@ namespace GalaxyTrucker.Model
     [Flags]
     public enum PartAddProblems
     {
-        None,
-        Occupied,
-        HasNoConnection,
-        ConnectorsDontMatch,
-        BlockedAsLaser,
-        BlockedAsEngine,
-        BlocksLaser,
-        BlocksEngine
+        None = 0,
+        Occupied = 1,
+        HasNoConnection = 2,
+        ConnectorsDontMatch = 4,
+        BlockedAsLaser = 8,
+        BlockedAsEngine = 16,
+        BlocksLaser = 32,
+        BlocksEngine = 64
     }
 }

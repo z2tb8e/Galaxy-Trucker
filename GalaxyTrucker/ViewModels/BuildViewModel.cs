@@ -1,6 +1,7 @@
 ﻿using GalaxyTrucker.Model;
 using GalaxyTrucker.Network;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Linq;
@@ -11,9 +12,9 @@ namespace GalaxyTrucker.ViewModels
 {
     public class BuildViewModel : NotifyBase
     {
+        private readonly PlayerListViewModel _playerList;
         private readonly GTTcpClient _client;
         private readonly Ship _ship;
-        private readonly object _playersLock;
         private readonly object _pickablePartsLock;
         private (int, int)? _lastPicked;
         private PartViewModel _selectedPart;
@@ -24,17 +25,13 @@ namespace GalaxyTrucker.ViewModels
         private Personnel _currentAlien;
         private bool _lastPickResolved;
 
-        private ObservableCollection<PlayerInfoViewModel> _connectedPlayers;
         private ObservableCollection<PickablePart> _pickableParts;
 
-        public ObservableCollection<PlayerInfoViewModel> ConnectedPlayers
+        public PlayerListViewModel PlayerList
         {
-            get { return _connectedPlayers; }
-            set
+            get
             {
-                _connectedPlayers = value;
-                BindingOperations.EnableCollectionSynchronization(_connectedPlayers, _playersLock);
-                OnPropertyChanged();
+                return _playerList;
             }
         }
 
@@ -156,30 +153,24 @@ namespace GalaxyTrucker.ViewModels
 
         public event EventHandler FatalErrorOccured;
 
-        public BuildViewModel(GTTcpClient client, ObservableCollection<PlayerInfoViewModel> connectedPlayers, ShipLayout layout)
+        public BuildViewModel(GTTcpClient client, PlayerListViewModel playerList, ShipLayout layout)
         {
-            foreach(PlayerInfoViewModel player in connectedPlayers)
-            {
-                player.IsReady = false;
-            }
+            _playerList = playerList;
+            _playerList.SynchronizeListWithClient();
+            _playerList.LostConnection += PlayerList_LostConnection;
 
             _lastPickResolved = true;
             _currentAlien = Personnel.None;
             BuildingEnded = false;
             _lastPicked = null;
             _pickablePartsLock = new object();
-            _playersLock = new object();
             _client = client;
             _client.PartPicked += Client_PartPicked;
             _client.PartPutBack += Client_PartPutBack;
             _client.PartTaken += Client_PartTaken;
             _client.BuildingEnded += Client_BuildingEnded;
-            _client.PlayerReadied += Client_PlayerReadied;
-            _client.PlayerDisconnected += Client_PlayerDisconnected;
-            _client.ThisPlayerDisconnected += Client_ThisPlayerDisconnected;
 
             ToggleReadyContent = "Építkezés befejezése";
-            ConnectedPlayers = connectedPlayers;
             _ship = new Ship(layout, _client.Player);
             _ship.PartRemoved += Ship_PartRemoved;
             ShipParts = new ObservableCollection<PartViewModel>();
@@ -232,7 +223,7 @@ namespace GalaxyTrucker.ViewModels
                     }
                     _lastPickResolved = false;
                     if (_lastPicked != null)
-                    {
+                    {   
                         PutBackSelected();
                     }
                     PickablePart pickedPart = param as PickablePart;
@@ -250,7 +241,7 @@ namespace GalaxyTrucker.ViewModels
                 try
                 {
                     _client.ToggleReady(ServerStage.Build);
-                    ConnectedPlayers.Where(info => info.Name == _client.DisplayName).First().IsReady = _client.IsReady;
+                    _playerList.ToggleClientReady();
                     ToggleReadyContent = (_client.IsReady, _buildingEnded) switch
                     {
                         (true, _) => "Mégsem kész",
@@ -267,18 +258,14 @@ namespace GalaxyTrucker.ViewModels
             AddAlienCommand = new DelegateCommand(param => BuildingEnded && !_client.IsReady, param => AddAlien(param as string));
         }
 
-        private void AddAlien(string alien)
-        {
-            _currentAlien = Enum.Parse<Personnel>(alien);
-            _ship.HighlightCabinsForAlien(_currentAlien);
-        }
+        #region private methods
 
         /// <summary>
-        /// Method called when this player disconnects
+        /// Method called through the PlayerListViewModel when the player loses connection to the server
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void Client_ThisPlayerDisconnected(object sender, EventArgs e)
+        private void PlayerList_LostConnection(object sender, EventArgs e)
         {
             Error = "Nincs kapcsolat.";
             MessageBox.Show("A szerverrel való kapcsolat megszakadt!\n");
@@ -286,26 +273,10 @@ namespace GalaxyTrucker.ViewModels
             UnsubscribeFromEvents();
         }
 
-        /// <summary>
-        /// Method called when another player disconnects from the game
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void Client_PlayerDisconnected(object sender, PlayerDisconnectedEventArgs e)
+        private void AddAlien(string alien)
         {
-            PlayerInfoViewModel playerToRemove = ConnectedPlayers.Where(item => item.Color == e.Color).First();
-            ConnectedPlayers.Remove(playerToRemove);
-            MessageBox.Show($"{playerToRemove.Name}({playerToRemove.Color}) játékossal megszakadt a kapcsolat!");
-        }
-
-        /// <summary>
-        /// Method called when another player toggles their ready state
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void Client_PlayerReadied(object sender, PlayerReadiedEventArgs e)
-        {
-            ConnectedPlayers.Where(info => info.Color == e.Player).First().IsReady = _client.PlayerInfos[e.Player].IsReady;
+            _currentAlien = Enum.Parse<Personnel>(alien);
+            _ship.HighlightCabinsForAlien(_currentAlien);
         }
 
         /// <summary>
@@ -316,14 +287,9 @@ namespace GalaxyTrucker.ViewModels
         private void Client_BuildingEnded(object sender, BuildingEndedEventArgs e)
         {
             BuildingEnded = true;
-            foreach(PlayerInfoViewModel item in ConnectedPlayers)
-            {
-                item.IsReady = false;
-            }
+            _playerList.SynchronizeListWithClient();
             ToggleReadyContent = "Tovább a repülésre";
         }
-
-        #region private methods
 
         /// <summary>
         /// Method called when a part is removed from the ship either from a chain-reaction or by being directly removed
@@ -358,7 +324,37 @@ namespace GalaxyTrucker.ViewModels
                 PartAddProblems result = _ship.AddPart(SelectedPart.Part, partViewModel.ShipRow, partViewModel.ShipColumn);
                 if (result != PartAddProblems.None)
                 {
-                    MessageBox.Show("A megadott helyre az alkatrész nem illeszkedik!");
+                    List<string> errorList = new List<string>();
+                    if (result.HasFlag(PartAddProblems.Occupied))
+                    {
+                        errorList.Add("A megadott mezőn már van elem!");
+                    }
+                    if (result.HasFlag(PartAddProblems.ConnectorsDontMatch))
+                    {
+                        errorList.Add("A megadott helyen a csatlakozók ütköznek!");
+                    }
+                    if (result.HasFlag(PartAddProblems.HasNoConnection))
+                    {
+                        errorList.Add("Az megadott helyen az elem nem csatlakozik a hajóhoz!");
+                    }
+                    if (result.HasFlag(PartAddProblems.BlocksEngine))
+                    {
+                        errorList.Add("A megadott helyen az elem közvetlenül egy motor alatt van!");
+                    }
+                    if (result.HasFlag(PartAddProblems.BlocksLaser))
+                    {
+                        errorList.Add("A megadott helyen az elem közvetlenül egy lézer előtt van!");
+                    }
+                    if (result.HasFlag(PartAddProblems.BlockedAsLaser))
+                    {
+                        errorList.Add("A megadott helyen a lézer előtt nem lenne üres hely!");
+                    }
+                    if (result.HasFlag(PartAddProblems.BlockedAsEngine))
+                    {
+                        errorList.Add("A megadott helyen a motor alatt nem lenne üres hely!");
+                    }
+
+                    MessageBox.Show(string.Join('\n', errorList));
                     return;
                 }
                 partViewModel.Part = SelectedPart.Part;
@@ -474,9 +470,6 @@ namespace GalaxyTrucker.ViewModels
             _client.PartPutBack -= Client_PartPutBack;
             _client.PartTaken -= Client_PartTaken;
             _client.BuildingEnded -= Client_BuildingEnded;
-            _client.PlayerReadied -= Client_PlayerReadied;
-            _client.PlayerDisconnected -= Client_PlayerDisconnected;
-            _client.ThisPlayerDisconnected -= Client_ThisPlayerDisconnected;
         }
 
         #endregion
