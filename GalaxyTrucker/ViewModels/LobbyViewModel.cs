@@ -4,10 +4,8 @@ using System;
 using System.Linq;
 using System.Collections.ObjectModel;
 using System.Net;
-using System.Windows.Data;
 using System.Net.Sockets;
 using System.Threading.Tasks;
-using System.Windows;
 
 namespace GalaxyTrucker.ViewModels
 {
@@ -18,6 +16,9 @@ namespace GalaxyTrucker.ViewModels
         private const string DefaultName = "Teszt";
 
         private readonly PlayerListViewModel _playerList;
+        private ObservableCollection<ShipLayout> _layoutOptions;
+        private ShipLayout _selectedLayout;
+        private GameStage _selectedGameStage;
         private string _remoteIp;
         private int _remotePort;
         private string _playerName;
@@ -30,6 +31,35 @@ namespace GalaxyTrucker.ViewModels
         #region properties
 
         #region shared
+
+        public ObservableCollection<ShipLayout> LayoutOptions
+        {
+            get
+            {
+                return _layoutOptions;
+            }
+            set
+            {
+                if (_layoutOptions != value)
+                {
+                    _layoutOptions = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public ShipLayout SelectedLayout
+        {
+            get
+            {
+                return _selectedLayout;
+            }
+            set
+            {
+                _selectedLayout = value;
+                OnPropertyChanged();
+            }
+        }
 
         public PlayerListViewModel PlayerList
         {
@@ -139,6 +169,19 @@ namespace GalaxyTrucker.ViewModels
 
         #region onlyhost
 
+        public GameStage SelectedGameStage
+        {
+            get
+            {
+                return _selectedGameStage;
+            }
+            set
+            {
+                _selectedGameStage = value;
+                OnPropertyChanged();
+            }
+        }
+
         public GTTcpListener Server { get; private set; }
 
         public string HostIp { get; set; }
@@ -157,6 +200,7 @@ namespace GalaxyTrucker.ViewModels
 
         public LobbyViewModel(GTTcpClient client)
         {
+            SelectedGameStage = GameStage.First;
             _playerList = new PlayerListViewModel(client);
             IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
             HostIp = ipHostInfo.AddressList.Where(ip => ip.AddressFamily == AddressFamily.InterNetwork).First().ToString();
@@ -170,41 +214,12 @@ namespace GalaxyTrucker.ViewModels
 
             HostCommand = new DelegateCommand(param => Server == null, param =>
             {
-                Server = new GTTcpListener(RemotePort);
+                Server = new GTTcpListener(RemotePort, SelectedGameStage);
                 Task.Factory.StartNew(() => Server.Start(), TaskCreationOptions.LongRunning);
-                ConnectCommand.Execute(param);
+                ConnectCommand.Execute(null);
             });
 
-            ConnectCommand = new DelegateCommand(param => !ConnectInProgress && !IsConnected, 
-                async param =>
-            {
-                try
-                {
-                    Error = "";
-                    IPEndPoint endpoint = new IPEndPoint(IPAddress.Parse(RemoteIp), RemotePort);
-                    ConnectInProgress = true;
-                    await _client.Connect(endpoint, PlayerName);
-                    ConnectionStatus = $"Csatlakozva, kapott szín: {_client.Player.ToUserString()}";
-                    _playerList.SynchronizeListWithClient();
-                    OnPropertyChanged(nameof(IsConnected));
-                }
-                catch (ConnectionRefusedException)
-                {
-                    Error = "A megadott játékhoz már nem lehet csatlakozni.";
-                }
-                catch (TimeoutException)
-                {
-                    Error = "Nem jött létre a kapcsolat az időlimiten belül.";
-                }
-                catch (Exception e)
-                {
-                    Error = $"Hiba a csatlakozás közben:\n{e.Message}";
-                }
-                finally
-                {
-                    ConnectInProgress = false;
-                }
-            });
+            ConnectCommand = new DelegateCommand(param => !ConnectInProgress && !IsConnected, param => Connect());
 
             ReadyCommand = new DelegateCommand(param =>
             {
@@ -230,6 +245,54 @@ namespace GalaxyTrucker.ViewModels
             {
                 Task.Factory.StartNew(() => Server.StartBuildStage(), TaskCreationOptions.LongRunning);
             });
+        }
+
+        private async void Connect()
+        {
+            try
+            {
+                Error = "";
+                IPEndPoint endpoint = new IPEndPoint(IPAddress.Parse(RemoteIp), RemotePort);
+                ConnectInProgress = true;
+                await _client.Connect(endpoint, PlayerName);
+                ConnectionStatus = $"Csatlakozva, kapott szín: {EnumHelpers.GetDescription(_client.Player)}\nJáték fázis: {EnumHelpers.GetDescription(_client.GameStage)}";
+                _playerList.SynchronizeListWithClient();
+                SelectedGameStage = _client.GameStage;
+                if(SelectedGameStage == GameStage.First)
+                {
+                    SelectedLayout = ShipLayout.Small;
+                }
+                else if(SelectedGameStage == GameStage.Second)
+                {
+                    SelectedLayout = ShipLayout.Medium;
+                }
+                else
+                {
+                    LayoutOptions = new ObservableCollection<ShipLayout>()
+                    {
+                        ShipLayout.BigLong,
+                        ShipLayout.BigWide
+                    };
+                    SelectedLayout = ShipLayout.BigWide;
+                }
+                OnPropertyChanged(nameof(IsConnected));
+            }
+            catch (ConnectionRefusedException)
+            {
+                Error = "A megadott játékhoz már nem lehet csatlakozni.";
+            }
+            catch (TimeoutException)
+            {
+                Error = "Nem jött létre a kapcsolat az időlimiten belül.";
+            }
+            catch (Exception e)
+            {
+                Error = $"Hiba a csatlakozás közben:\n{e.Message}";
+            }
+            finally
+            {
+                ConnectInProgress = false;
+            }
         }
 
         private void PlayerList_LostConnection(object sender, EventArgs e)

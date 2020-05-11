@@ -374,11 +374,11 @@ namespace GalaxyTrucker.Model
             //large shots always remove the part
             switch (projectile)
             {
-                case Projectile.AsteroidSmall:
+                case Projectile.MeteorSmall:
                     if(target.GetConnector(dir) != Connector.None && !isShielded[(int)dir])
                         RemovePartAtIndex(row, column);
                     break;
-                case Projectile.AsteroidLarge:
+                case Projectile.MeteorLarge:
                     if (IsLaserInLine(line, dir))
                         RemovePartAtIndex(row, column);
                     break;

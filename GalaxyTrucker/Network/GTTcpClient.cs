@@ -53,7 +53,7 @@ namespace GalaxyTrucker.Network
         private readonly TcpClient _client;
         private readonly Timer _pingTimer;
 
-        private ServerStage _stage;
+        private ServerStage _serverStage;
         private NetworkStream _stream;
 
         #endregion
@@ -65,6 +65,8 @@ namespace GalaxyTrucker.Network
         public string DisplayName { get; private set; }
 
         public PlayerColor Player { get; private set; }
+
+        public GameStage GameStage { get; private set; }
 
         public bool IsReady { get; private set; }
 
@@ -132,7 +134,7 @@ namespace GalaxyTrucker.Network
             PlayerInfos = new Dictionary<PlayerColor, PlayerInfo>();
             PlayerOrder = new List<PlayerColor>();
             IsReady = false;
-            _stage = ServerStage.Lobby;
+            _serverStage = ServerStage.Lobby;
             _client = new TcpClient();
             _pingTimer = new Timer(PingInterval);
         }
@@ -153,15 +155,18 @@ namespace GalaxyTrucker.Network
                 
                 _stream = _client.GetStream();
 
-                string color = ReadMessageFromServer();
-                if (color == "Connection refused")
+                string colorAndGameStageMessage = ReadMessageFromServer();
+                if (colorAndGameStageMessage == "Connection refused")
                 {
                     _client.Close();
                     throw new ConnectionRefusedException();
                 }
                 WriteMessageToServer(DisplayName);
 
-                Player = Enum.Parse<PlayerColor>(color);
+                string[] colorAndGameStage = colorAndGameStageMessage.Split(',');
+                Player = Enum.Parse<PlayerColor>(colorAndGameStage[0]);
+                GameStage = Enum.Parse<GameStage>(colorAndGameStage[1]);    
+
                 Console.WriteLine("Assigned color: {0}", Player);
                 //own client's info
                 PlayerInfos[Player] = new PlayerInfo(Player, DisplayName, false);
@@ -188,7 +193,7 @@ namespace GalaxyTrucker.Network
 
         public void ToggleReady(ServerStage currentStage)
         {
-            if(_stage != currentStage)
+            if(_serverStage != currentStage)
             {
                 _pingTimer.Stop();
                 throw new InvalidOperationException();
@@ -202,7 +207,7 @@ namespace GalaxyTrucker.Network
 
         public void StartFlightStage(int firepower, int enginepower, int crewCount, int storageSize, int batteries)
         {
-            if(_stage != ServerStage.Build || IsReady)
+            if(_serverStage != ServerStage.Build || IsReady)
             {
                 _pingTimer.Stop();
                 throw new InvalidOperationException();
@@ -214,7 +219,7 @@ namespace GalaxyTrucker.Network
 
         public void PutBackPart(int row, int column)
         {
-            if(_stage != ServerStage.Build)
+            if(_serverStage != ServerStage.Build)
             {
                 _pingTimer.Stop();
                 throw new InvalidOperationException();
@@ -225,7 +230,7 @@ namespace GalaxyTrucker.Network
 
         public void PickPart(int row, int column)
         {
-            if (_stage != ServerStage.Build)
+            if (_serverStage != ServerStage.Build)
             {
                 _pingTimer.Stop();
                 throw new InvalidOperationException();
@@ -328,7 +333,7 @@ namespace GalaxyTrucker.Network
 
         private void PlayerConnectedResolve(string[] parts)
         {
-            if (_stage != ServerStage.Lobby)
+            if (_serverStage != ServerStage.Lobby)
             {
                 _pingTimer.Stop();
                 throw new OutOfSyncException();
@@ -351,7 +356,7 @@ namespace GalaxyTrucker.Network
             {
                 info.IsReady = false;
             }
-            _stage = ServerStage.Flight;
+            _serverStage = ServerStage.Flight;
             //Format: FlightBegun,PlayerNumber,Color,Firepower,Enginepower,CrewCount,StorageSize,Batteries
             int playerNumber = int.Parse(parts[1]);
             for (int i = 0; i < playerNumber; ++i)
@@ -385,7 +390,7 @@ namespace GalaxyTrucker.Network
             {
                 info.IsReady = false;
             }
-            _stage = ServerStage.Build;
+            _serverStage = ServerStage.Build;
             BuildingBegun?.Invoke(this, new BuildingBegunEventArgs());
         }
 
@@ -418,7 +423,7 @@ namespace GalaxyTrucker.Network
         /// <param name="parts"></param>
         private void PickPartResultResolve(string[] parts)
         {
-            if (_stage != ServerStage.Build)
+            if (_serverStage != ServerStage.Build)
             {
                 _pingTimer.Stop();
                 throw new OutOfSyncException();
@@ -436,7 +441,7 @@ namespace GalaxyTrucker.Network
         /// </summary>
         private void PutBackPartResolve()
         {
-            if (_stage != ServerStage.Build)
+            if (_serverStage != ServerStage.Build)
             {
                 _pingTimer.Stop();
                 throw new OutOfSyncException();
@@ -449,7 +454,7 @@ namespace GalaxyTrucker.Network
         /// <param name="parts"></param>
         private void PartPutBackResolve(string[] parts)
         {
-            if (_stage != ServerStage.Build)
+            if (_serverStage != ServerStage.Build)
             {
                 _pingTimer.Stop();
                 throw new OutOfSyncException();
@@ -466,7 +471,7 @@ namespace GalaxyTrucker.Network
         /// <param name="parts"></param>
         private void PartTakenResolve(string[] parts)
         {
-            if (_stage != ServerStage.Build)
+            if (_serverStage != ServerStage.Build)
             {
                 _pingTimer.Stop();
                 throw new OutOfSyncException();
@@ -518,6 +523,10 @@ namespace GalaxyTrucker.Network
             {
                 _pingTimer.Stop();
                 ThisPlayerDisconnected?.Invoke(this, EventArgs.Empty);
+            }
+            catch (ObjectDisposedException)
+            {
+
             }
         }
 

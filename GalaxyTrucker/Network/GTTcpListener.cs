@@ -72,7 +72,9 @@ namespace GalaxyTrucker.Network
 
         private readonly Semaphore _orderSemaphore;
 
-        private volatile ServerStage _stage;
+        private volatile ServerStage _serverStage;
+
+        private readonly GameStage _gameStage;
 
         private List<PlayerColor> _playerOrder;
 
@@ -82,16 +84,15 @@ namespace GalaxyTrucker.Network
 
         #region properties
 
-        public IEnumerable<PlayerColor> PlayerOrder
-            => _playerOrder.AsReadOnly();
-
         public IEnumerable<PlayerColor> NotReadyPlayers
             => _connections.Keys.Where(p => !_connections[p].IsReady);
 
         #endregion
 
-        public GTTcpListener(int port)
+        public GTTcpListener(int port, GameStage gameStage)
         {
+            _gameStage = gameStage;
+
             _pingTimer = new System.Timers.Timer(PingInterval);
             _pingTimer.Elapsed += PingTimer_Elapsed;
 
@@ -111,10 +112,10 @@ namespace GalaxyTrucker.Network
             try
             {
                 _listener.Start(4);
-                _stage = ServerStage.Lobby;
+                _serverStage = ServerStage.Lobby;
                 _pingTimer.Start();
                 Task shuffle = ShufflePartsAsync();
-                while (_connections.Count < 4 && _stage == ServerStage.Lobby)
+                while (_connections.Count < 4 && _serverStage == ServerStage.Lobby)
                 {
                     if (_listener.Pending())
                     {
@@ -124,9 +125,9 @@ namespace GalaxyTrucker.Network
 
                         ConnectionInfo newConnection = new ConnectionInfo(client);
 
-                        //Send the assigned color
-                        byte[] colorMessage = Encoding.ASCII.GetBytes($"{assignedColor}#");
-                        newConnection.Stream.Write(colorMessage, 0, colorMessage.Length);
+                        //Send the assigned color and the selected gamestage
+                        byte[] colorAndStageMessage = Encoding.ASCII.GetBytes($"{assignedColor},{_gameStage}#");
+                        newConnection.Stream.Write(colorAndStageMessage, 0, colorAndStageMessage.Length);
 
                         //Receive the client's display name
                         StringBuilder name = new StringBuilder();
@@ -189,7 +190,7 @@ namespace GalaxyTrucker.Network
                 _connections[player].IsReady = false;
                 WriteMessageToPlayer(player, "BuildingBegun");
             }
-            _stage = ServerStage.Build;
+            _serverStage = ServerStage.Build;
 
             _playerOrder = new List<PlayerColor>();
 
@@ -231,7 +232,7 @@ namespace GalaxyTrucker.Network
         private void BeginFlightStage()
         {
             while (_connections.Values.Where(c => !c.IsReady).Any()) ;
-            _stage = ServerStage.Flight;
+            _serverStage = ServerStage.Flight;
 
             StringBuilder playerAttributes = new StringBuilder($"FlightBegun,{_connections.Count}");
             foreach (PlayerColor player in _connections.Keys)
@@ -342,7 +343,7 @@ namespace GalaxyTrucker.Network
         private void ToggleReadyResolve(PlayerColor player)
         {
             _connections[player].IsReady = !_connections[player].IsReady;
-            if (_stage == ServerStage.Build)
+            if (_serverStage == ServerStage.Build)
             {
                 _orderSemaphore.WaitOne();
                 if (_connections[player].IsReady)

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 
 namespace GalaxyTrucker.Model
 {
@@ -20,43 +21,65 @@ namespace GalaxyTrucker.Model
 
     public enum Ware
     {
+        [Description("Üres")]
         Empty = 0,
+        [Description("Kék")]
         Blue = 1,
+        [Description("Zöld")]
         Green = 2,
+        [Description("Sárga")]
         Yellow = 3,
+        [Description("Piros")]
         Red = 4
     };
 
     public enum Personnel
     {
+        [Description("Üres")]
         None = 0,
+        [Description("1 ember")]
         HumanSingle = 1,
+        [Description("2 ember")]
         HumanDouble = 2,
+        [Description("Lila űrlény")]
         LaserAlien = 3,
+        [Description("Barna űrlény")]
         EngineAlien = 4
     };
 
     public enum ShipLayout
     {
+        [Description("Kicsi")]
         Small,
+        [Description("Közepes")]
         Medium,
+        [Description("Széles")]
         BigWide,
+        [Description("Hosszú")]
         BigLong
     };
 
     public enum Projectile
     {
-        AsteroidSmall = 0,
-        AsteroidLarge = 1,
+        [Description("Kis meteor")]
+        MeteorSmall = 0,
+        [Description("Nagy meteor")]
+        MeteorLarge = 1,
+        [Description("Kis lövés")]
         ShotSmall = 2,
+        [Description("Nagy lövés")]
         ShotLarge = 3
     };
 
     public enum PlayerColor
     {
+        [Description("Sárga")]
         Yellow,
+        [Description("Piros")]
         Red,
+        [Description("Kék")]
         Blue,
+        [Description("Zöld")]
         Green
     }
 
@@ -68,22 +91,32 @@ namespace GalaxyTrucker.Model
 
     public enum CardCheckAttribute
     {
+        [Description("Tűzerő")]
         Firepower = 0,
+        [Description("Motorerő")]
         Enginepower = 1,
+        [Description("Legénységszám")]
         CrewCount = 2
     }
     public enum CardEventPenalty
     {
+        [Description("Késés")]
         Delay = 0,
+        [Description("Legénység")]
         Crew = 1,
+        [Description("Áruk")]
         Wares = 2,
+        [Description("Lövések")]
         Barrage = 3
     }
 
     public enum GameStage
     {
+        [Description("Első")]
         First = 0,
+        [Description("Második")]
         Second = 1,
+        [Description("Harmadik")]
         Third = 2
     }
 

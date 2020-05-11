@@ -5,9 +5,11 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:GalaxyTrucker.Views"
              xmlns:utils="clr-namespace:GalaxyTrucker.Views.Utils"
+             xmlns:model="clr-namespace:GalaxyTrucker.Model"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
     <UserControl.Resources>
+        <utils:EnumDescriptionTypeConverter x:Key="EnumConverter"/>
         <Style x:Key="TextBoxInError" TargetType="{x:Type TextBox}">
             <Style.Triggers>
                 <Trigger Property="Validation.HasError" Value="true">
@@ -73,39 +75,50 @@
         </TextBox>
 
         <local:PlayerListControl DataContext="{Binding PlayerList}" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"/>
-        <!--<ListView Margin="10" Name="connectedPlayers" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding ConnectedPlayers}">
-            <ListView.View>
-                <GridView AllowsColumnReorder="False">
-                    <GridView.ColumnHeaderContainerStyle>
-                        <Style TargetType="GridViewColumnHeader">
-                            <Setter Property="HorizontalContentAlignment" Value="Left"/>
-                            <Setter Property="IsEnabled" Value="False"/>
-                        </Style>
-                    </GridView.ColumnHeaderContainerStyle>
-                    <GridViewColumn Header="Név" Width="150">
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Name}" IsEnabled="False"/>
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                    <GridViewColumn Header="Szín" Width="50">
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Color}" IsEnabled="False"/>
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                    <GridViewColumn Header="Készen áll" Width="100">
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <CheckBox IsChecked="{Binding IsReady}" IsEnabled="False"/>
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                </GridView>
-            </ListView.View>
-        </ListView>-->
+
+        <Label Content="Hajó alaprajza" Target="{Binding ElementName=layoutComboBox}" Margin="10" Grid.Column="2" Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Top">
+            <Label.Style>
+                <Style TargetType="Label">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding SelectedGameStage}" Value="{x:Static model:GameStage.Third}"/>
+                                <Condition Binding="{Binding IsConnected}" Value="True"/>
+                            </MultiDataTrigger.Conditions>
+                            <MultiDataTrigger.Setters>
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </MultiDataTrigger.Setters>
+                        </MultiDataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Label.Style>
+        </Label>
+        <ComboBox Name="layoutComboBox" Grid.Row="3" Grid.Column="2" Margin="5 40 5 0" HorizontalAlignment="Center" VerticalAlignment="Top" Width="150"
+                  ItemsSource="{Binding LayoutOptions}"
+                  SelectedItem="{Binding SelectedLayout}">
+            <ComboBox.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding Path=., Converter={StaticResource EnumConverter}}"/>
+                </DataTemplate>
+            </ComboBox.ItemTemplate>
+            <ComboBox.Style>
+                <Style TargetType="ComboBox">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding SelectedGameStage}" Value="{x:Static model:GameStage.Third}"/>
+                                <Condition Binding="{Binding IsConnected}" Value="True"/>
+                            </MultiDataTrigger.Conditions>
+                            <MultiDataTrigger.Setters>
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </MultiDataTrigger.Setters>
+                        </MultiDataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ComboBox.Style>
+        </ComboBox>
 
         <TextBlock Margin="10" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Error}"></TextBlock>
         <Button Width="100"  Height="30" Grid.Column="2" Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,45"

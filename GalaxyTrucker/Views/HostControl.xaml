@@ -5,9 +5,11 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:GalaxyTrucker.Views"
              xmlns:utils="clr-namespace:GalaxyTrucker.Views.Utils"
+             xmlns:model="clr-namespace:GalaxyTrucker.Model"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
     <UserControl.Resources>
+        <utils:EnumDescriptionTypeConverter x:Key="EnumConverter"/>
         <Style x:Key="TextBoxInError" TargetType="{x:Type TextBox}">
             <Style.Triggers>
                 <Trigger Property="Validation.HasError" Value="true">
@@ -22,9 +24,10 @@
     </UserControl.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition/>
-            <ColumnDefinition/>
-            <ColumnDefinition/>
+            <ColumnDefinition Width="2*"/>
+            <ColumnDefinition Width="2*"/>
+            <ColumnDefinition Width="2*"/>
+            <ColumnDefinition Width="1*"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="30"/>
@@ -33,7 +36,7 @@
             <RowDefinition/>
             <RowDefinition Height="50"/>
         </Grid.RowDefinitions>
-        <Menu Grid.Row="0" Grid.ColumnSpan="3" HorizontalAlignment="Right" VerticalAlignment="Center">
+        <Menu Grid.Row="0" Grid.ColumnSpan="4" HorizontalAlignment="Right" VerticalAlignment="Center">
             <MenuItem Header="Vissza a menübe" Margin="5" Command="{Binding BackToMenuCommand}"/>
         </Menu>
         <Label Grid.Row="1" Grid.Column="0" FontSize="15" Margin="2" Target="{Binding ElementName=nameTextBox}"
@@ -52,9 +55,9 @@
                VerticalAlignment="Center" HorizontalAlignment="Center">Saját ip cím</Label>
         <TextBox IsEnabled="False" Grid.Row="2" Text="{Binding HostIp}" Grid.Column="1" Name="hostIpTextBox" Margin="10"/>
 
-        <Label Grid.Row="1" Grid.Column="2" FontSize="15" Margin="2" Target="{Binding ElementName=remotePortTextBox}"
+        <Label Grid.Row="1" Grid.Column="2" FontSize="15" Margin="2" Target="{Binding ElementName=hostPortTextBox}"
                VerticalAlignment="Center" HorizontalAlignment="Center">Használandó port(1024-65535)</Label>
-        <TextBox Style="{StaticResource TextBoxInError}" Grid.Row="2" Grid.Column="2" Name="remotePortTextBox" Margin="10">
+        <TextBox Style="{StaticResource TextBoxInError}" Grid.Row="2" Grid.Column="2" Name="hostPortTextBox" Margin="10">
             <TextBox.Text>
                 <Binding Path="RemotePort" UpdateSourceTrigger="PropertyChanged">
                     <Binding.ValidationRules>
@@ -64,43 +67,76 @@
             </TextBox.Text>
         </TextBox>
 
-        <local:PlayerListControl DataContext="{Binding PlayerList}" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"/>
-        <!--<ListView Margin="10" Name="connectedPlayers" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding ConnectedPlayers}">
-            <ListView.View>
-                <GridView AllowsColumnReorder="False">
-                    <GridView.ColumnHeaderContainerStyle>
-                        <Style TargetType="GridViewColumnHeader">
-                            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        <Label Grid.Row="1" Grid.Column="3" FontSize="15" Margin="2" Target="{Binding ElementName=gameStageComboBox}"
+               VerticalAlignment="Center" HorizontalAlignment="Center">Játékfázis</Label>
+        <ComboBox Name="gameStageComboBox" Grid.Row="2" Margin="10" Grid.Column="3"
+                  SelectedItem="{Binding SelectedGameStage, Converter={StaticResource EnumConverter}}"
+                  SelectedIndex="0"
+                  ItemsSource="{Binding Source={utils:EnumBindingSource {x:Type model:GameStage}}}">
+            <ComboBox.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding Converter={StaticResource EnumConverter}}"/>
+                </DataTemplate>
+            </ComboBox.ItemTemplate>
+            <ComboBox.Style>
+                <Style TargetType="ComboBox">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsConnected}" Value="True">
                             <Setter Property="IsEnabled" Value="False"/>
-                        </Style>
-                    </GridView.ColumnHeaderContainerStyle>
-                    <GridViewColumn Header="Név" Width="150">
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Name}" IsEnabled="False"/>
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                    <GridViewColumn Header="Szín" Width="50">
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Color}" IsEnabled="False"/>
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                    <GridViewColumn Header="Készen áll" Width="100">
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <CheckBox IsChecked="{Binding IsReady}" IsEnabled="False"/>
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                </GridView>
-            </ListView.View>
-        </ListView>-->
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ComboBox.Style>
+        </ComboBox>
 
-        <TextBlock Margin="10" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Error}"></TextBlock>
-        <Button Width="100"  Height="30" Grid.Column="2" Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,80"
+        <local:PlayerListControl DataContext="{Binding PlayerList}" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"/>
+
+        <Label Content="Hajó alaprajza" Target="{Binding ElementName=layoutComboBox}" Margin="10" Grid.Column="2" Grid.Row="3" Grid.ColumnSpan="2" HorizontalAlignment="Center" VerticalAlignment="Top">
+            <Label.Style>
+                <Style TargetType="Label">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding SelectedGameStage}" Value="{x:Static model:GameStage.Third}"/>
+                                <Condition Binding="{Binding IsConnected}" Value="True"/>
+                            </MultiDataTrigger.Conditions>
+                            <MultiDataTrigger.Setters>
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </MultiDataTrigger.Setters>
+                        </MultiDataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Label.Style>
+        </Label>
+        <ComboBox Name="layoutComboBox" Grid.Row="3" Grid.Column="2" Grid.ColumnSpan="2" Margin="5 40 5 0" HorizontalAlignment="Center" VerticalAlignment="Top" Width="150"
+                  ItemsSource="{Binding LayoutOptions}"
+                  SelectedItem="{Binding SelectedLayout}">
+            <ComboBox.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding Path=., Converter={StaticResource EnumConverter}}"/>
+                </DataTemplate>
+            </ComboBox.ItemTemplate>
+            <ComboBox.Style>
+                <Style TargetType="ComboBox">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding SelectedGameStage}" Value="{x:Static model:GameStage.Third}"/>
+                                <Condition Binding="{Binding IsConnected}" Value="True"/>
+                            </MultiDataTrigger.Conditions>
+                            <MultiDataTrigger.Setters>
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </MultiDataTrigger.Setters>
+                        </MultiDataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ComboBox.Style>
+        </ComboBox>
+
+        <TextBlock Margin="10" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding Error}"/>
+            <Button Width="100"  Height="30" Grid.Column="3" Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,80"
                 Command="{Binding HostCommand}" Content="Várakozó indítása">
             <Button.Style>
                 <Style TargetType="Button">
@@ -109,7 +145,7 @@
                         <MultiDataTrigger>
                             <MultiDataTrigger.Conditions>
                                 <Condition Binding="{Binding Path=(Validation.HasError), ElementName=nameTextBox}" Value="False"/>
-                                <Condition Binding="{Binding Path=(Validation.HasError), ElementName=remotePortTextBox}" Value="False"/>
+                                <Condition Binding="{Binding Path=(Validation.HasError), ElementName=hostPortTextBox}" Value="False"/>
                             </MultiDataTrigger.Conditions>
                             <Setter Property="IsEnabled" Value="True"/>
                         </MultiDataTrigger>
@@ -121,12 +157,12 @@
             </Button.Style>
         </Button>
 
-        <Button Height="30" Grid.Column="2" Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,45"
+        <Button Height="30" Grid.Column="3" Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,45"
                 IsEnabled="{Binding IsConnected}" Command="{Binding ReadyCommand}" Width="100" Content="Készenlét állítása"/>
         
-        <Button Height="30" Grid.Column="2" Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,10"
+        <Button Height="30" Grid.Column="3" Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,10"
                 Command="{Binding LaunchBuildingCommand}" Width="100" Content="Játék indítása"/>
         
-        <TextBlock Margin="10" Grid.Row="4" Grid.Column="0" Text="{Binding ConnectionStatus}"></TextBlock>
+        <TextBlock Margin="10" Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="1" Text="{Binding ConnectionStatus}"></TextBlock>
     </Grid>
 </UserControl>

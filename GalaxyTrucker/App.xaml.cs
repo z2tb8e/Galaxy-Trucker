@@ -12,9 +12,6 @@ namespace GalaxyTrucker
     /// </summary>
     public partial class App : Application
     {
-        const int BaseHeight = 450;
-        const int BaseWidth = 800;
-
         private MainWindow _mainWindow;
         private GTTcpClient _client;
         private GTTcpListener _listener;
@@ -88,7 +85,7 @@ namespace GalaxyTrucker
             }
             Dispatcher.Invoke(() =>
             {
-                _buildViewModel = new BuildViewModel(_client, _connectViewModel.PlayerList, ShipLayout.Small);
+                _buildViewModel = new BuildViewModel(_client, _connectViewModel.PlayerList, _connectViewModel.SelectedLayout);
                 _buildViewModel.FatalErrorOccured += BuildViewModel_FatalErrorOccured;
                 BuildControl buildControl = new BuildControl
                 {

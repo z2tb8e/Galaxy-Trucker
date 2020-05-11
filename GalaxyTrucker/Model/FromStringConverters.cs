@@ -7,17 +7,6 @@ namespace GalaxyTrucker.Model
 {
     public static class FromStringConverters
     {
-        public static string ToUserString(this PlayerColor color)
-        {
-            return color switch
-            {
-                PlayerColor.Blue => "Kék",
-                PlayerColor.Green => "Zöld",
-                PlayerColor.Red => "Piros",
-                _ => "Sárga",
-            };
-        }
-
         public static Part ToPart(this string str)
         {
             if (str[0] == 'C')
