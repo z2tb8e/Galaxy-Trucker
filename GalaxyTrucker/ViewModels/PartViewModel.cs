@@ -6,6 +6,7 @@ namespace GalaxyTrucker.ViewModels
 {
     public class PartViewModel : NotifyBase
     {
+        private string _partContentsDescription;
         private Part _part;
         private bool _highlighted;
         private bool _isValidField;
@@ -14,6 +15,19 @@ namespace GalaxyTrucker.ViewModels
         private int _shipColumn;
 
         #region properties
+
+        public string PartContentsDescription
+        {
+            get
+            {
+                return _partContentsDescription;
+            }
+            set
+            {
+                _partContentsDescription = value;
+                OnPropertyChanged();
+            }
+        }
 
         public Image PartImage
         {
@@ -68,26 +82,28 @@ namespace GalaxyTrucker.ViewModels
                 if (_part != value)
                 {
                     _part = value;
-                    OnPropertyChanged(nameof(Rotation));
+                    OnPropertyChanged(nameof(Angle));
                     if(value != null)
                     {
                         Part.HighlightToggled += Part_HighlightToggled;
+                        PartContentsDescription = Part.ContentsDescription;
+                        Part.ContentsChanged += Part_ContentsChanged;
                     }
                 }
             }
         }
 
-        public Direction Rotation
+        public int Angle
         {
             get
             {
                 if (Part == null)
                 {
-                    return Direction.Top;
+                    return 0;
                 }
                 else
                 {
-                    return Part.Rotation;
+                    return ((int)Part.Rotation) * 90;
                 }
             }
         }
@@ -139,12 +155,17 @@ namespace GalaxyTrucker.ViewModels
         public void Rotate(int leftOrRight)
         {
             Part.Rotate(leftOrRight);
-            OnPropertyChanged(nameof(Rotation));
+            OnPropertyChanged(nameof(Angle));
         }
 
         private void Part_HighlightToggled(object sender, EventArgs e)
         {
             Highlighted = !Highlighted;
+        }
+
+        private void Part_ContentsChanged(object sender, EventArgs e)
+        {
+            PartContentsDescription = Part.ContentsDescription;
         }
     }
 }

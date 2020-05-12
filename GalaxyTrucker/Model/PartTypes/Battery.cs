@@ -2,14 +2,36 @@
 {
     public class Battery : Part
     {
-        public int Charges { get; private set; }
+        private int _charges;
+
+        public int Charges
+        {
+            get
+            {
+                return _charges;
+            }
+            set
+            {
+                _charges = value;
+                ContentsDescription = $"Hátralevő töltések: {_charges}";
+                OnContentsChanged();
+            }
+        }
 
         public int Capacity { get; private set; }
 
         public Battery(Connector Top, Connector Right, Connector Bottom, Connector Left, int Capacity) : base(Top, Right, Bottom, Left)
-            => this.Capacity = Charges = Capacity;
+        {
+            this.Capacity = Charges = Capacity;
+        }
 
-        public void UseCharge() => Charges = Charges > 0 ? Charges - 1 : 0;
+        public void UseCharge()
+        {
+            if (Charges > 0)
+            {
+                --Charges;
+            }
+        }
 
         public override string ToString()
         {

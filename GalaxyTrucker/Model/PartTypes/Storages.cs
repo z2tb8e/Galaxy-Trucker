@@ -14,8 +14,11 @@ namespace GalaxyTrucker.Model.PartTypes
 
         public int Value => _storage.Cast<int>().Sum();
 
-        public Storage(Connector Top, Connector Right, Connector Bottom, Connector Left, int Capacity) : base(Top, Right, Bottom, Left) =>
+        public Storage(Connector Top, Connector Right, Connector Bottom, Connector Left, int Capacity) : base(Top, Right, Bottom, Left)
+        {
             _storage = Enumerable.Repeat(Ware.Empty, this.Capacity = Capacity).ToArray();
+            OnContentsChanged();
+        }
 
         protected virtual bool CanAdd(Ware w) => w != Ware.Red && w != Ware.Empty;
 
@@ -27,6 +30,7 @@ namespace GalaxyTrucker.Model.PartTypes
                 if(_storage[i] == Min)
                 {
                     _storage[i] = ware;
+                    OnContentsChanged();
                     return;
                 }
         }
@@ -37,6 +41,7 @@ namespace GalaxyTrucker.Model.PartTypes
                 if (_storage[i] == Max)
                 {
                     _storage[i] = Ware.Empty;
+                    OnContentsChanged();
                     return;
                 }
         }
@@ -46,6 +51,16 @@ namespace GalaxyTrucker.Model.PartTypes
         public override string ToString()
         {
             return base.ToString() + "s" + Capacity.ToString();
+        }
+
+        protected override void OnContentsChanged()
+        {
+            ContentsDescription = string.Join(' ', _storage.Where(w => w != Ware.Empty).Select(w => w.GetDescription()));
+            if(ContentsDescription.Length == 0)
+            {
+                ContentsDescription = "Üres";
+            }
+            base.OnContentsChanged();
         }
     }
 

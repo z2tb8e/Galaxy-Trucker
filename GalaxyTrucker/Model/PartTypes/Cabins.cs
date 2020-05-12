@@ -4,10 +4,26 @@ namespace GalaxyTrucker.Model.PartTypes
 {
     public class Cabin : Part
     {
-        public Personnel Personnel { get; set; }
+        private Personnel _personnel;
+
+        public Personnel Personnel
+        {
+            get
+            {
+                return _personnel;
+            }
+            set
+            {
+                _personnel = value;
+                ContentsDescription = $"Legénység: {Personnel.GetDescription()}";
+                OnContentsChanged();
+            }
+        }
 
         public Cabin(Connector Top, Connector Right, Connector Bottom, Connector Left) : base(Top, Right, Bottom, Left)
-            => Personnel = Personnel.None;
+        {
+            Personnel = Personnel.None;
+        }
 
         public bool RemoveSinglePersonnel()
         {

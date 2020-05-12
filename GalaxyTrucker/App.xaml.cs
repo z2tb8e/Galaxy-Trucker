@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Windows;
-using GalaxyTrucker.Model;
 using GalaxyTrucker.Network;
 using GalaxyTrucker.ViewModels;
 using GalaxyTrucker.Views;

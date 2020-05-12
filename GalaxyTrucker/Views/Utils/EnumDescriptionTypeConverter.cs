@@ -1,4 +1,4 @@
-﻿using GalaxyTrucker.ViewModels;
+﻿using GalaxyTrucker.Model;
 using System;
 using System.Globalization;
 using System.Windows;

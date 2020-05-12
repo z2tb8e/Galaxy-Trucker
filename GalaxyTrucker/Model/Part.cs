@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace GalaxyTrucker.Model
 {
@@ -14,6 +13,8 @@ namespace GalaxyTrucker.Model
 
         public int Column { get; set; }
 
+        public string ContentsDescription { get; set; }
+
         public Direction Rotation { get; private set; }
 
         public Connector[] Connectors => _connectors;
@@ -21,6 +22,8 @@ namespace GalaxyTrucker.Model
         public Stack<Part> Path { get { return _path; } protected set { _path = value; } }
 
         public event EventHandler HighlightToggled;
+
+        public event EventHandler ContentsChanged;
 
         protected Part(Connector Top, Connector Right, Connector Bottom, Connector Left)
         {
@@ -39,6 +42,11 @@ namespace GalaxyTrucker.Model
         public void Highlight()
         {
             HighlightToggled?.Invoke(this, EventArgs.Empty);
+        }
+
+        protected virtual void OnContentsChanged()
+        {
+            ContentsChanged?.Invoke(this, EventArgs.Empty);
         }
 
         public virtual void Rotate(int leftOrRight)

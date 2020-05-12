@@ -18,12 +18,28 @@
 
     public class LaserDouble : Laser, IActivatable
     {
+        private bool _activated;
+
         public override int Firepower => Activated ? base.Firepower * 2 : 0;
 
         public LaserDouble(Connector Top, Connector Right, Connector Bottom, Connector Left) : base(Top, Right, Bottom, Left)
-            => Activated = false;
+        {
+            Activated = false;
+        }
 
-        public bool Activated { get; private set; }
+        public bool Activated
+        {
+            get
+            {
+                return _activated;
+            }
+            set
+            {
+                _activated = value;
+                ContentsDescription = _activated ? "Aktív" : "Inaktív";
+                OnContentsChanged();
+            }
+        }
 
         public void Activate() => Activated = true;
 

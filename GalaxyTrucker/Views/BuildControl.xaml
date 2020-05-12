@@ -38,50 +38,15 @@
         </Grid.ColumnDefinitions>
 
         <local:PlayerListControl DataContext="{Binding PlayerList}" Margin="10" Grid.Row="0" Grid.Column="0"/>
-        <!--<ListView Name="connectedPlayers" Margin="10" Grid.Row="0" Grid.Column="0" ItemsSource="{Binding ConnectedPlayers}">
-            <ListView.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <StackPanel Orientation="Horizontal" Height="auto" HorizontalAlignment="Center"/>
-                </ItemsPanelTemplate>
-            </ListView.ItemsPanel>
-            <ListView.View>
-                <GridView AllowsColumnReorder="False">
-                    <GridView.ColumnHeaderContainerStyle>
-                        <Style TargetType="GridViewColumnHeader">
-                            <Setter Property="IsEnabled" Value="False"/>
-                            <Setter Property="Visibility" Value="Collapsed"/>
-                        </Style>
-                    </GridView.ColumnHeaderContainerStyle>
-                    <GridView.Columns>
-                        <GridViewColumn Width="50">
-                            <GridViewColumn.CellTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding Name}" IsEnabled="False"/>
-                                </DataTemplate>
-                            </GridViewColumn.CellTemplate>
-                        </GridViewColumn>
-                        <GridViewColumn Width="50">
-                            <GridViewColumn.CellTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding Color}" IsEnabled="False"/>
-                                </DataTemplate>
-                            </GridViewColumn.CellTemplate>
-                        </GridViewColumn>
-                        <GridViewColumn Width="50">
-                            <GridViewColumn.CellTemplate>
-                                <DataTemplate>
-                                    <CheckBox IsChecked="{Binding IsReady}" IsEnabled="False"/>
-                                </DataTemplate>
-                            </GridViewColumn.CellTemplate>
-                        </GridViewColumn>
-                    </GridView.Columns>
-                </GridView>
-            </ListView.View>
-        </ListView>-->
+        
         <Button Content="{Binding ToggleReadyContent}" Command="{Binding ToggleReadyCommand}" Margin="10" Grid.Row="0" Grid.Column="1" Width="200" Height="80" HorizontalAlignment="Right"/>
         <TextBlock Text="{Binding Error}" Foreground="Red" Grid.Row="0" Grid.Column="1" Margin="10" HorizontalAlignment="Left"/>
-        <Button Style="{StaticResource AlienButtonStyle}" Content="Lila űrlény felhelyezése" CommandParameter="LaserAlien" Grid.Row="2" Grid.Column="0" HorizontalAlignment="Left" Margin="666,0,0,0"/>
-        <Button Style="{StaticResource AlienButtonStyle}" Content="Barna űrlény felhelyezése" CommandParameter="EngineAlien" Grid.Row="2" Grid.Column="0" HorizontalAlignment="Left" Margin="276,0,0,0"/>
+        <Button Style="{StaticResource AlienButtonStyle}" Content="Lila űrlény felhelyezése"
+                CommandParameter="LaserAlien" Grid.Row="2" Grid.Column="0" HorizontalAlignment="Left" Margin="666,0,0,0"/>
+        
+        <Button Style="{StaticResource AlienButtonStyle}" Content="Barna űrlény felhelyezése"
+                CommandParameter="EngineAlien" Grid.Row="2" Grid.Column="0" HorizontalAlignment="Left" Margin="276,0,0,0"/>
+        
         <ItemsControl VerticalAlignment="Center" HorizontalAlignment="Center" ItemsSource="{Binding PickableParts}" Margin="10" Grid.Row="2" Grid.Column="0">
             <ItemsControl.Style>
                 <Style TargetType="ItemsControl">
@@ -129,46 +94,18 @@
                 (forgatás: Q E)
             </TextBlock>
         </Label>
-        <Button Name="selectedPartButton" Grid.Column="1" Grid.Row="1" HorizontalAlignment="Center" Margin="0,60,0,10" Width="200" Height="200" Command="{Binding PutBackSelectedCommand}">
+
+        <Button Name="selectedPartButton" Grid.Column="1" Grid.Row="1"
+                HorizontalAlignment="Center" Margin="0,60,0,10" Width="200" Height="200" Command="{Binding PutBackSelectedCommand}">
             <Button.Content>
                 <Image Source="{Binding SelectedPartImage, Converter={StaticResource ImageConverter}}">
-                    <Image.Style>
-                        <Style TargetType="Image">
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding SelectedPartRotation}" Value="0">
-                                    <Setter Property="LayoutTransform">
-                                        <Setter.Value>
-                                            <RotateTransform Angle="0"/>
-                                        </Setter.Value>
-                                    </Setter>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding SelectedPartRotation}" Value="1">
-                                    <Setter Property="LayoutTransform">
-                                        <Setter.Value>
-                                            <RotateTransform Angle="90"/>
-                                        </Setter.Value>
-                                    </Setter>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding SelectedPartRotation}" Value="2">
-                                    <Setter Property="LayoutTransform">
-                                        <Setter.Value>
-                                            <RotateTransform Angle="180"/>
-                                        </Setter.Value>
-                                    </Setter>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding SelectedPartRotation}" Value="3">
-                                    <Setter Property="LayoutTransform">
-                                        <Setter.Value>
-                                            <RotateTransform Angle="270"/>
-                                        </Setter.Value>
-                                    </Setter>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Image.Style>
+                    <Image.LayoutTransform>
+                        <RotateTransform Angle="{Binding SelectedPartAngle}"/>
+                    </Image.LayoutTransform>
                 </Image>
             </Button.Content>
         </Button>
+
         <ItemsControl VerticalAlignment="Center" HorizontalAlignment="Center" ItemsSource="{Binding ShipParts}" Margin="10" Grid.Row="2" Grid.Column="1">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
@@ -189,46 +126,18 @@
                                         <Setter Property="BorderBrush" Value="Yellow"/>
                                     </DataTrigger>
                                 </Style.Triggers>
+                                <Setter Property="Content">
+                                    <Setter.Value>
+                                        <Image Source="{Binding PartImage, Converter={StaticResource ImageConverter}}">
+                                            <Image.LayoutTransform>
+                                                <RotateTransform Angle="{Binding Angle}"/>
+                                            </Image.LayoutTransform>
+                                        </Image>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter Property="ToolTip" Value="{Binding PartContentsDescription}"/>
                             </Style>
                         </Button.Style>
-                        <Button.Content>
-                            <Image Source="{Binding PartImage, Converter={StaticResource ImageConverter}}" Stretch="Fill">
-                                <Image.Style>
-                                    <Style TargetType="Image">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Rotation}" Value="0">
-                                                <Setter Property="LayoutTransform">
-                                                    <Setter.Value>
-                                                        <RotateTransform Angle="0"/>
-                                                    </Setter.Value>
-                                                </Setter>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding Rotation}" Value="1">
-                                                <Setter Property="LayoutTransform">
-                                                    <Setter.Value>
-                                                        <RotateTransform Angle="90"/>
-                                                    </Setter.Value>
-                                                </Setter>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding Rotation}" Value="2">
-                                                <Setter Property="LayoutTransform">
-                                                    <Setter.Value>
-                                                        <RotateTransform Angle="180"/>
-                                                    </Setter.Value>
-                                                </Setter>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding Rotation}" Value="3">
-                                                <Setter Property="LayoutTransform">
-                                                    <Setter.Value>
-                                                        <RotateTransform Angle="270"/>
-                                                    </Setter.Value>
-                                                </Setter>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Image.Style>
-                            </Image>
-                        </Button.Content>
                     </Button>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>

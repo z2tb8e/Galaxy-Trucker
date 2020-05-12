@@ -2,11 +2,11 @@
 using System.ComponentModel;
 using System.Reflection;
 
-namespace GalaxyTrucker.ViewModels
+namespace GalaxyTrucker.Model
 {
     public static class EnumHelpers
     {
-        public static string GetDescription(Enum en)
+        public static string GetDescription(this Enum en)
         {
             Type type = en.GetType();
             MemberInfo[] memInfo = type.GetMember(en.ToString());

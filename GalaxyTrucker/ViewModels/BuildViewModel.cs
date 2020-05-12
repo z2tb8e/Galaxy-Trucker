@@ -114,7 +114,7 @@ namespace GalaxyTrucker.ViewModels
                     _selectedPart = value;
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(SelectedPartImage));
-                    OnPropertyChanged(nameof(SelectedPartRotation));
+                    OnPropertyChanged(nameof(SelectedPartAngle));
                 }
             }
         }
@@ -139,15 +139,15 @@ namespace GalaxyTrucker.ViewModels
 
         public DelegateCommand AddAlienCommand { get; private set; }
 
-        public Direction SelectedPartRotation
+        public int SelectedPartAngle
         {
             get
             {
-                if (SelectedPart != null)
+                if (SelectedPart == null)
                 {
-                    return SelectedPart.Rotation;
+                    return 0;
                 }
-                return Direction.Top;
+                return SelectedPart.Angle;
             }
         }
 
@@ -395,7 +395,7 @@ namespace GalaxyTrucker.ViewModels
                 return;
             }
             SelectedPart.Rotate(leftOrRight);
-            OnPropertyChanged(nameof(SelectedPartRotation));
+            OnPropertyChanged(nameof(SelectedPartAngle));
         }
 
         /// <summary>
