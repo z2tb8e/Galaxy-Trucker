@@ -4,7 +4,7 @@ using GalaxyTrucker.Model;
 
 namespace GalaxyTrucker.ViewModels
 {
-    public class PartViewModel : NotifyBase
+    public class BuildPartViewModel : NotifyBase
     {
         private string _partContentsDescription;
         private Part _part;
@@ -81,6 +81,11 @@ namespace GalaxyTrucker.ViewModels
             {
                 if (_part != value)
                 {
+                    if(_part != null)
+                    {
+                        _part.HighlightToggled -= Part_HighlightToggled;
+                        _part.ContentsChanged -= Part_ContentsChanged;
+                    }
                     _part = value;
                     OnPropertyChanged(nameof(Angle));
                     if(value != null)
@@ -147,7 +152,7 @@ namespace GalaxyTrucker.ViewModels
 
         #endregion
 
-        public PartViewModel()
+        public BuildPartViewModel()
         {
             Highlighted = false;
         }

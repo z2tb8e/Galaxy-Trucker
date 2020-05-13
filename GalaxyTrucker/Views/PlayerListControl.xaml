@@ -3,8 +3,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:utils="clr-namespace:GalaxyTrucker.Views.Utils"
              mc:Ignorable="d" 
              d:DesignHeight="200" d:DesignWidth="300">
+    <UserControl.Resources>
+        <utils:EnumDescriptionTypeConverter x:Key="EnumConverter"/>
+    </UserControl.Resources>
     <ListView Margin="10" Name="connectedPlayers" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding ConnectedPlayers}">
         <ListView.View>
             <GridView AllowsColumnReorder="False">
@@ -24,7 +28,7 @@
                 <GridViewColumn Header="Szín" Width="50">
                     <GridViewColumn.CellTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding Color}" IsEnabled="False"/>
+                            <TextBlock Text="{Binding Color, Converter={StaticResource EnumConverter}}" IsEnabled="False"/>
                         </DataTemplate>
                     </GridViewColumn.CellTemplate>
                 </GridViewColumn>

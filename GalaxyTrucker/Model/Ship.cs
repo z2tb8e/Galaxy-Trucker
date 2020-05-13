@@ -59,6 +59,10 @@ namespace GalaxyTrucker.Model
             _ => 1
         });
 
+        public int StorageCount => _parts.Cast<Part>().Where(x => x is Storage).Sum(x => (x as Storage).Capacity);
+
+        public int Batteries => _parts.Cast<Part>().Where(x => x is Battery).Sum(x => (x as Battery).Capacity);
+
         public List<(int, int)> InactiveShields => _activatableParts.Cast<Part>()
             .Where(x => x is Shield && !(x as Shield).Activated).Select(x => (x.Row, x.Column)).ToList();
 
@@ -108,13 +112,14 @@ namespace GalaxyTrucker.Model
 
         #region public methods
 
-        public void HighlightCabinsForAlien(Personnel alien)
+        public bool HighlightCabinsForAlien(Personnel alien)
         {
             if((alien == Personnel.EngineAlien && _hasEngineAlien) || (alien == Personnel.LaserAlien && _hasLaserAlien))
             {
-                return;
+                throw new ArgumentException("The Personnel argument is not an alien!");
             }
 
+            bool ret = false;
             IEnumerable<Part> cabins = _parts.Cast<Part>().Where(p => p is Cabin && !(p is Cockpit));
             foreach(Part cabin in cabins)
             {
@@ -131,15 +136,18 @@ namespace GalaxyTrucker.Model
                     {
                         if(alien == Personnel.EngineAlien && pair.Item1 is EngineCabin)
                         {
+                            ret = true;
                             cabin.Highlight();
                         }
                         else if (alien == Personnel.LaserAlien && pair.Item1 is LaserCabin)
                         {
+                            ret = true;
                             cabin.Highlight();
                         }
                     }
                 }
             }
+            return ret;
         }
 
         public Part GetCockpit()
@@ -147,7 +155,7 @@ namespace GalaxyTrucker.Model
             return _parts.Cast<Part>().Where(p => p is Cockpit).FirstOrDefault();
         }
 
-        public bool IsFieldValid(int row, int column)
+        public bool IsValidField(int row, int column)
         {
             return _movableFields[row, column];
         }

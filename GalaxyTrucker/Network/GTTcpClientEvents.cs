@@ -4,22 +4,6 @@ using System;
 namespace GalaxyTrucker.Network
 {
     /// <summary>
-    /// Event args for signaling the start of the building stage
-    /// </summary>
-    public class BuildingBegunEventArgs : EventArgs
-    {
-        public BuildingBegunEventArgs() { }
-    }
-
-    /// <summary>
-    /// Event args for signaling the end of the building stage
-    /// </summary>
-    public class BuildingEndedEventArgs : EventArgs
-    {
-        public BuildingEndedEventArgs() { }
-    }
-
-    /// <summary>
     /// Event args for signaling that another client picked a part
     /// </summary>
     public class PartTakenEventArgs : EventArgs
@@ -74,14 +58,6 @@ namespace GalaxyTrucker.Network
 
         public PartPickedEventArgs(Part part) =>
             Part = part;
-    }
-
-    /// <summary>
-    /// Event args for signaling the start of the flight stage
-    /// </summary>
-    public class FlightBegunEventArgs : EventArgs
-    {
-        public FlightBegunEventArgs() { }
     }
 
     /// <summary>

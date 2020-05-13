@@ -80,17 +80,17 @@ namespace GalaxyTrucker.Network
         /// <summary>
         /// Event raised when the building stage starts
         /// </summary>
-        public event EventHandler<BuildingBegunEventArgs> BuildingBegun;
+        public event EventHandler BuildingBegun;
 
         /// <summary>
         /// Event raised after everybody finished building
         /// </summary>
-        public event EventHandler<BuildingEndedEventArgs> BuildingEnded;
+        public event EventHandler BuildingEnded;
 
         /// <summary>
         /// Event raised when the flight stage starts
         /// </summary>
-        public event EventHandler<FlightBegunEventArgs> FlightBegun;
+        public event EventHandler FlightBegun;
 
         /// <summary>
         /// Event raised when this client receives the answer for picking a part
@@ -111,6 +111,11 @@ namespace GalaxyTrucker.Network
         /// Event raised when another player toggles their ready state
         /// </summary>
         public event EventHandler<PlayerReadiedEventArgs> PlayerReadied;
+
+        /// <summary>
+        /// Event raised when this client toggles their ready state
+        /// </summary>
+        public event EventHandler ThisPlayerReadied;
 
         /// <summary>
         /// Event raised when another player connects to the server
@@ -203,6 +208,7 @@ namespace GalaxyTrucker.Network
 
             IsReady = !IsReady;
             PlayerInfos[Player].IsReady = IsReady;
+            ThisPlayerReadied?.Invoke(this, EventArgs.Empty);
         }
 
         public void StartFlightStage(int firepower, int enginepower, int crewCount, int storageSize, int batteries)
@@ -213,8 +219,8 @@ namespace GalaxyTrucker.Network
                 throw new InvalidOperationException();
             }
 
+            ToggleReady(ServerStage.Build);
             WriteMessageToServer($"StartFlightStage,{firepower},{enginepower},{crewCount},{storageSize},{batteries}");
-            IsReady = true;
         }
 
         public void PutBackPart(int row, int column)
@@ -371,7 +377,7 @@ namespace GalaxyTrucker.Network
                     Batteries = int.Parse(parts[7 + i * 6]),
                 };
             }
-            FlightBegun?.Invoke(this, new FlightBegunEventArgs());
+            FlightBegun?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
@@ -391,7 +397,7 @@ namespace GalaxyTrucker.Network
                 info.IsReady = false;
             }
             _serverStage = ServerStage.Build;
-            BuildingBegun?.Invoke(this, new BuildingBegunEventArgs());
+            BuildingBegun?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
@@ -414,7 +420,7 @@ namespace GalaxyTrucker.Network
             {
                 PlayerOrder.Add(Enum.Parse<PlayerColor>(parts[i]));
             }
-            BuildingEnded?.Invoke(this, new BuildingEndedEventArgs());
+            BuildingEnded?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>

@@ -1,7 +1,7 @@
 ﻿namespace GalaxyTrucker.Model
 {
     /// <summary>
-    /// Class used to tell carry information about other players's ships
+    /// Class used to tell information about other players's ships
     /// </summary>
     public class PlayerAttributes
     {

@@ -14,8 +14,10 @@ namespace GalaxyTrucker
         private MainWindow _mainWindow;
         private GTTcpClient _client;
         private GTTcpListener _listener;
-        private LobbyViewModel _connectViewModel;
+        private PlayerListViewModel _playerListViewModel;
+        private LobbyViewModel _lobbyViewModel;
         private BuildViewModel _buildViewModel;
+        private FlightViewModel _flightViewModel;
 
         public App()
         {
@@ -40,52 +42,86 @@ namespace GalaxyTrucker
             _mainWindow.Show();
         }
 
-        private void Menu_JoinGame(object sender, EventArgs e)
-        {
-            _client = new GTTcpClient();
-            _connectViewModel = new LobbyViewModel(_client);
-            _connectViewModel.BackToMenu += ConnectViewModel_BackToMenu;
-            _connectViewModel.BuildingStarted += ConnectViewModel_BuildingStarted;
-            ConnectControl connectControl = new ConnectControl
-            {
-                DataContext = _connectViewModel
-            };
-            _mainWindow.Content = connectControl;
-        }
-
-        private void ConnectViewModel_BackToMenu(object sender, bool isHost)
-        {
-            _client.Close();
-            if (isHost)
-            {
-                _connectViewModel.Server.Close();
-            }
-            Menu();
-        }
+        #region Menu event handlers
 
         private void Menu_HostGame(object sender, EventArgs e)
         {
             _client = new GTTcpClient();
-            _connectViewModel = new LobbyViewModel(_client);
-            _connectViewModel.BackToMenu += ConnectViewModel_BackToMenu;
-            _connectViewModel.BuildingStarted += ConnectViewModel_BuildingStarted;
+            _playerListViewModel = new PlayerListViewModel(_client);
+            _playerListViewModel.LostConnection += PlayerListViewModel_LostConnection;
+
+            _lobbyViewModel = new LobbyViewModel(_client, _playerListViewModel);
+            _lobbyViewModel.BackToMenu += LobbyViewModel_BackToMenu;
+            _lobbyViewModel.BuildingStarted += LobbyViewModel_BuildingStarted;
             HostControl hostControl = new HostControl
             {
-                DataContext = _connectViewModel
+                DataContext = _lobbyViewModel
             };
             _mainWindow.Content = hostControl;
         }
 
-        private void ConnectViewModel_BuildingStarted(object sender, bool isHost)
+        private void Menu_JoinGame(object sender, EventArgs e)
+        {
+            _client = new GTTcpClient();
+            _playerListViewModel = new PlayerListViewModel(_client);
+            _playerListViewModel.LostConnection += PlayerListViewModel_LostConnection;
+            _lobbyViewModel = new LobbyViewModel(_client, _playerListViewModel);
+            _lobbyViewModel.BackToMenu += LobbyViewModel_BackToMenu;
+            _lobbyViewModel.BuildingStarted += LobbyViewModel_BuildingStarted;
+            ConnectControl connectControl = new ConnectControl
+            {
+                DataContext = _lobbyViewModel
+            };
+            _mainWindow.Content = connectControl;
+        }
+
+        private void Menu_Rules(object sender, EventArgs e)
+        {
+            RulesControl rulesControl = new RulesControl();
+            rulesControl.BackToMenu += Rules_BackToMenu;
+            _mainWindow.Content = rulesControl;
+
+        }
+
+        #endregion
+
+        private void Rules_BackToMenu(object sender, EventArgs e)
+        {
+            Menu();
+        }
+
+        private void PlayerListViewModel_LostConnection(object sender, EventArgs e)
+        {
+            _client.Close();
+            if (_listener != null)
+            {
+                _listener.Close();
+            }
+            MessageBox.Show("A szerverrel való kapcsolat megszakadt!\n");
+            Dispatcher.Invoke(Menu);
+        }
+
+        private void LobbyViewModel_BackToMenu(object sender, bool isHost)
+        {
+            _playerListViewModel.UnsubscribeFromEvents();
+            _client.Close();
+            if (isHost)
+            {
+                _lobbyViewModel.Server.Close();
+            }
+            Menu();
+        }
+
+        private void LobbyViewModel_BuildingStarted(object sender, bool isHost)
         {
             if (isHost)
             {
-                _listener = _connectViewModel.Server;
+                _listener = _lobbyViewModel.Server;
             }
             Dispatcher.Invoke(() =>
             {
-                _buildViewModel = new BuildViewModel(_client, _connectViewModel.PlayerList, _connectViewModel.SelectedLayout);
-                _buildViewModel.FatalErrorOccured += BuildViewModel_FatalErrorOccured;
+                _buildViewModel = new BuildViewModel(_client, _playerListViewModel, _lobbyViewModel.SelectedLayout);
+                _buildViewModel.FlightBegun += BuildViewModel_FlightBegun;
                 BuildControl buildControl = new BuildControl
                 {
                     DataContext = _buildViewModel
@@ -96,27 +132,17 @@ namespace GalaxyTrucker
             });
         }
 
-        private void BuildViewModel_FatalErrorOccured(object sender, EventArgs e)
+        private void BuildViewModel_FlightBegun(object sender, EventArgs e)
         {
-            _client.Close();
-            if(_listener != null)
+            Dispatcher.Invoke(() =>
             {
-                _listener.Close();
-            }
-            Dispatcher.Invoke(Menu);
-        }
-
-        private void Menu_Rules(object sender, EventArgs e)
-        {
-            RulesControl rulesControl = new RulesControl();
-            rulesControl.BackToMenu += Rules_BackToMenu;
-            _mainWindow.Content = rulesControl;
-            
-        }
-
-        private void Rules_BackToMenu(object sender, EventArgs e)
-        {
-            Menu();
+                _flightViewModel = new FlightViewModel(_client, _playerListViewModel);
+                FlightControl flightControl = new FlightControl
+                {
+                    DataContext = _flightViewModel
+                };
+                _mainWindow.Content = flightControl;
+            });
         }
     }
 }

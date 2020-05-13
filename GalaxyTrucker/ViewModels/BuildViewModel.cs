@@ -1,5 +1,7 @@
 ﻿using GalaxyTrucker.Model;
+using GalaxyTrucker.Model.PartTypes;
 using GalaxyTrucker.Network;
+using GalaxyTrucker.Views.Utils;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -16,24 +18,17 @@ namespace GalaxyTrucker.ViewModels
         private readonly GTTcpClient _client;
         private readonly Ship _ship;
         private readonly object _pickablePartsLock;
-        private (int, int)? _lastPicked;
-        private PartViewModel _selectedPart;
-        private ObservableCollection<PartViewModel> _shipParts;
+        private BuildPartViewModel _selectedPart;
+        private ObservableCollection<BuildPartViewModel> _shipParts;
         private string _toggleReadyContent;
         private string _error;
         private bool _buildingEnded;
         private Personnel _currentAlien;
         private bool _lastPickResolved;
 
-        private ObservableCollection<PickablePart> _pickableParts;
+        private ObservableCollection<BuildPartViewModel> _pickableParts;
 
-        public PlayerListViewModel PlayerList
-        {
-            get
-            {
-                return _playerList;
-            }
-        }
+        public PlayerListViewModel PlayerList { get { return _playerList; } }
 
         public bool BuildingEnded
         {
@@ -74,7 +69,7 @@ namespace GalaxyTrucker.ViewModels
             }
         }
 
-        public ObservableCollection<PickablePart> PickableParts
+        public ObservableCollection<BuildPartViewModel> PickableParts
         {
             get { return _pickableParts; }
             private set
@@ -85,7 +80,7 @@ namespace GalaxyTrucker.ViewModels
             }
         }
 
-        public ObservableCollection<PartViewModel> ShipParts
+        public ObservableCollection<BuildPartViewModel> ShipParts
         {
             get
             {
@@ -101,7 +96,7 @@ namespace GalaxyTrucker.ViewModels
             }
         }
 
-        public PartViewModel SelectedPart
+        public BuildPartViewModel SelectedPart
         {
             get
             {
@@ -151,7 +146,7 @@ namespace GalaxyTrucker.ViewModels
             }
         }
 
-        public event EventHandler FatalErrorOccured;
+        public event EventHandler FlightBegun;
 
         public BuildViewModel(GTTcpClient client, PlayerListViewModel playerList, ShipLayout layout)
         {
@@ -162,86 +157,91 @@ namespace GalaxyTrucker.ViewModels
             _lastPickResolved = true;
             _currentAlien = Personnel.None;
             BuildingEnded = false;
-            _lastPicked = null;
             _pickablePartsLock = new object();
             _client = client;
             _client.PartPicked += Client_PartPicked;
             _client.PartPutBack += Client_PartPutBack;
             _client.PartTaken += Client_PartTaken;
             _client.BuildingEnded += Client_BuildingEnded;
+            _client.FlightBegun += Client_FlightBegun;
 
             ToggleReadyContent = "Építkezés befejezése";
             _ship = new Ship(layout, _client.Player);
             _ship.PartRemoved += Ship_PartRemoved;
-            ShipParts = new ObservableCollection<PartViewModel>();
+            ShipParts = new ObservableCollection<BuildPartViewModel>();
 
             for(int i = 0; i < 11; ++i)
             {
                 for(int j = 0; j < 11; ++j)
                 {
-                    ShipParts.Add(new PartViewModel
+                    ShipParts.Add(new BuildPartViewModel
                     {
                         ShipRow = i,
                         ShipColumn = j,
-                        IsValidField = _ship.IsFieldValid(i, j)
+                        IsValidField = _ship.IsValidField(i, j)
                     });
                 }
             }
 
-            foreach(PartViewModel item in ShipParts)
+            foreach(BuildPartViewModel item in ShipParts)
             {
-                item.PartClickCommand = new DelegateCommand(param => !_client.IsReady, param => ShipPartClick(param as PartViewModel));
+                item.PartClickCommand = new DelegateCommand(param => !_client.IsReady, param => ShipPartClick(param as BuildPartViewModel));
             }
 
             Part cockpit = _ship.GetCockpit();
-            PartViewModel cockpitViewModel = ShipParts.Where(p => p.ShipRow == cockpit.Row && p.ShipColumn == cockpit.Column).First();
+            BuildPartViewModel cockpitViewModel = ShipParts.Where(p => p.ShipRow == cockpit.Row && p.ShipColumn == cockpit.Column).First();
             cockpitViewModel.Part = cockpit;
             cockpitViewModel.PartImage = PartBuilder.GetPartImage(cockpit);
             cockpitViewModel.PartClickCommand = null;
 
-            PickableParts = new ObservableCollection<PickablePart>();
+            PickableParts = new ObservableCollection<BuildPartViewModel>();
             for(int i = 0; i < 10; ++i)
             {
                 for(int j = 0; j < 14; ++j)
                 {
-                    PickableParts.Add(new PickablePart
+                    PickableParts.Add(new BuildPartViewModel
                     {
-                        Row = i,
-                        Column = j,
-                        IsPickable = true
+                        BuildRow = i,
+                        BuildColumn = j,
+                        IsValidField = true
                     });
                 }
             }
 
-            foreach(PickablePart item in PickableParts)
+            foreach(BuildPartViewModel item in PickableParts)
             {
-                item.PartPickCommand = new DelegateCommand(param => !_client.IsReady, param =>
+                item.PartClickCommand = new DelegateCommand(param => !_client.IsReady, param =>
                 {
                     if (!_lastPickResolved)
                     {
                         return;
                     }
                     _lastPickResolved = false;
-                    if (_lastPicked != null)
+                    if (SelectedPart != null)
                     {   
                         PutBackSelected();
                     }
-                    PickablePart pickedPart = param as PickablePart;
-                    _client.PickPart(pickedPart.Row, pickedPart.Column);
-                    _lastPicked = (item.Row, item.Column);
+                    BuildPartViewModel pickedPart = param as BuildPartViewModel;
+                    _client.PickPart(pickedPart.BuildRow, pickedPart.BuildColumn);
+                    SelectedPart = pickedPart;
                 });
             }
 
             PutBackSelectedCommand = new DelegateCommand(param => SelectedPart != null && !_client.IsReady, param => PutBackSelected());
 
-            RotateSelectedCommand = new DelegateCommand(param => SelectedPart != null && !_client.IsReady, param => RotateSelected(int.Parse(param as string)));
+            RotateSelectedCommand = new DelegateCommand(param => SelectedPart != null && !_client.IsReady && !(SelectedPart.Part is Engine), param => RotateSelected(int.Parse(param as string)));
 
-            ToggleReadyCommand = new DelegateCommand(param =>
+            ToggleReadyCommand = new DelegateCommand(param => !_buildingEnded || !_client.IsReady, param =>
             {
                 try
                 {
+                    if (!_client.IsReady && _buildingEnded)
+                    {
+                        _client.StartFlightStage(_ship.Firepower, _ship.Enginepower, _ship.CrewCount, _ship.StorageCount, _ship.Batteries);
+                        return;
+                    }
+
                     _client.ToggleReady(ServerStage.Build);
-                    _playerList.ToggleClientReady();
                     ToggleReadyContent = (_client.IsReady, _buildingEnded) switch
                     {
                         (true, _) => "Mégsem kész",
@@ -261,6 +261,17 @@ namespace GalaxyTrucker.ViewModels
         #region private methods
 
         /// <summary>
+        /// Method called when the client raises the FlightBegun event indicating that the server started the flight stage
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Client_FlightBegun(object sender, EventArgs e)
+        {
+            UnsubscribeFromEvents();
+            FlightBegun?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>
         /// Method called through the PlayerListViewModel when the player loses connection to the server
         /// </summary>
         /// <param name="sender"></param>
@@ -268,15 +279,16 @@ namespace GalaxyTrucker.ViewModels
         private void PlayerList_LostConnection(object sender, EventArgs e)
         {
             Error = "Nincs kapcsolat.";
-            MessageBox.Show("A szerverrel való kapcsolat megszakadt!\n");
-            FatalErrorOccured?.Invoke(this, EventArgs.Empty);
             UnsubscribeFromEvents();
         }
 
         private void AddAlien(string alien)
         {
             _currentAlien = Enum.Parse<Personnel>(alien);
-            _ship.HighlightCabinsForAlien(_currentAlien);
+            if (!_ship.HighlightCabinsForAlien(_currentAlien))
+            {
+                MessageBox.Show($"Nincs {_currentAlien.GetDescription()}-nek megfelelő kabin!");
+            }
         }
 
         /// <summary>
@@ -284,7 +296,7 @@ namespace GalaxyTrucker.ViewModels
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void Client_BuildingEnded(object sender, BuildingEndedEventArgs e)
+        private void Client_BuildingEnded(object sender, EventArgs e)
         {
             BuildingEnded = true;
             _playerList.SynchronizeListWithClient();
@@ -298,19 +310,19 @@ namespace GalaxyTrucker.ViewModels
         /// <param name="e"></param>
         private void Ship_PartRemoved(object sender, PartRemovedEventArgs e)
         {
-            PartViewModel removedPart = ShipParts.Where(p => p.ShipRow == e.Row && p.ShipColumn == e.Column).First();
+            BuildPartViewModel removedPart = ShipParts.Where(p => p.ShipRow == e.Row && p.ShipColumn == e.Column).First();
             removedPart.Part = null;
             removedPart.PartImage = null;
             _client.PutBackPart(removedPart.BuildRow, removedPart.BuildColumn);
-            PickablePart origin = PickableParts.Where(p => p.Row == removedPart.BuildRow && p.Column == removedPart.BuildColumn).First();
-            origin.IsPickable = true;
+            BuildPartViewModel origin = PickableParts.Where(p => p.BuildRow == removedPart.BuildRow && p.BuildColumn == removedPart.BuildColumn).First();
+            origin.IsValidField = true;
         }
 
         /// <summary>
         /// Method called when the client clicks on a ship part
         /// </summary>
         /// <param name="partViewModel"></param>
-        private void ShipPartClick(PartViewModel partViewModel)
+        private void ShipPartClick(BuildPartViewModel partViewModel)
         {
             //No part is selected, and the clicked partviewmodel has no associated part - do nothing
             if(partViewModel.Part == null && SelectedPart == null)
@@ -377,7 +389,7 @@ namespace GalaxyTrucker.ViewModels
             {
                 _ship.AddAlien(partViewModel.ShipRow, partViewModel.ShipColumn, _currentAlien);
                 _currentAlien = Personnel.None;
-                foreach(PartViewModel part in ShipParts)
+                foreach(BuildPartViewModel part in ShipParts)
                 {
                     if (part.Highlighted)
                     {
@@ -408,10 +420,8 @@ namespace GalaxyTrucker.ViewModels
                 return;
             }
             _client.PutBackPart(SelectedPart.BuildRow, SelectedPart.BuildColumn);
-            PickablePart pickedPart = PickableParts.ElementAt(SelectedPart.BuildRow * 14 + SelectedPart.BuildColumn);
-            pickedPart.IsPickable = true;
+            SelectedPart.IsValidField = true;
             SelectedPart = null;
-            _lastPicked = null;
         }
 
         /// <summary>
@@ -421,8 +431,8 @@ namespace GalaxyTrucker.ViewModels
         /// <param name="e"></param>
         private void Client_PartTaken(object sender, PartTakenEventArgs e)
         {
-            PickablePart pickedPart = PickableParts.ElementAt(e.Row * 14 + e.Column);
-            pickedPart.IsPickable = false;
+            BuildPartViewModel pickedPart = PickableParts.ElementAt(e.Row * 14 + e.Column);
+            pickedPart.IsValidField = false;
         }
 
         /// <summary>
@@ -432,9 +442,10 @@ namespace GalaxyTrucker.ViewModels
         /// <param name="e"></param>
         private void Client_PartPutBack(object sender, PartPutBackEventArgs e)
         {
-            PickablePart putBackPart = PickableParts.ElementAt(e.Row * 14 + e.Column);
+            BuildPartViewModel putBackPart = PickableParts.ElementAt(e.Row * 14 + e.Column);
             putBackPart.Part = e.Part;
-            putBackPart.IsPickable = true;
+            putBackPart.PartImage = PartBuilder.GetPartImage(e.Part);
+            putBackPart.IsValidField = true;
         }
 
         /// <summary>
@@ -451,17 +462,11 @@ namespace GalaxyTrucker.ViewModels
                 MessageBox.Show("Az adott alkatrészt már más elvitte!");
                 return;
             }
-            PickablePart pickedPart = PickableParts.Where(part => part.Row == _lastPicked.Value.Item1 && part.Column == _lastPicked.Value.Item2).First();
-            pickedPart.IsPickable = false;
-            pickedPart.Part = e.Part;
-            SelectedPart = new PartViewModel()
-            {
-                BuildColumn = pickedPart.Column,
-                BuildRow = pickedPart.Row,
-                Part = pickedPart.Part,
-                PartImage = pickedPart.PartImage
-            };
+            SelectedPart.IsValidField = false;
+            SelectedPart.Part = e.Part;
+            SelectedPart.PartImage = PartBuilder.GetPartImage(e.Part);
             _lastPickResolved = true;
+            OnPropertyChanged(nameof(SelectedPartImage));
         }
 
         private void UnsubscribeFromEvents()
@@ -470,6 +475,7 @@ namespace GalaxyTrucker.ViewModels
             _client.PartPutBack -= Client_PartPutBack;
             _client.PartTaken -= Client_PartTaken;
             _client.BuildingEnded -= Client_BuildingEnded;
+            _client.FlightBegun -= Client_FlightBegun;
         }
 
         #endregion

@@ -4,7 +4,7 @@ using System;
 using System.Drawing;
 using GalaxyTrucker.Exceptions;
 
-namespace GalaxyTrucker.ViewModels
+namespace GalaxyTrucker.Views.Utils
 {
     public static class PartBuilder
     {

@@ -36,6 +36,8 @@ namespace GalaxyTrucker.Network
 
         public bool IsReady { get; set; }
 
+        public bool ReadyToFly { get; set; }
+
         public bool HasMessage { get; set; }
 
         public Semaphore SendSemaphore { get; }
@@ -49,6 +51,7 @@ namespace GalaxyTrucker.Network
             Client = client;
             Stream = client.GetStream();
             IsReady = false;
+            ReadyToFly = false;
             HasMessage = false;
             SendSemaphore = new Semaphore(1, 1);
         }
@@ -231,7 +234,7 @@ namespace GalaxyTrucker.Network
 
         private void BeginFlightStage()
         {
-            while (_connections.Values.Where(c => !c.IsReady).Any()) ;
+            while (_connections.Values.Where(c => !c.IsReady || !c.ReadyToFly).Any()) ;
             _serverStage = ServerStage.Flight;
 
             StringBuilder playerAttributes = new StringBuilder($"FlightBegun,{_connections.Count}");
@@ -333,7 +336,7 @@ namespace GalaxyTrucker.Network
                 StorageSize = int.Parse(parts[4]),
                 Batteries = int.Parse(parts[5])
             };
-            _connections[player].IsReady = true;
+            _connections[player].ReadyToFly = true;
         }
 
         /// <summary>

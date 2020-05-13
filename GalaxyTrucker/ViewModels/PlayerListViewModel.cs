@@ -32,6 +32,7 @@ namespace GalaxyTrucker.ViewModels
             _client = client;
             _client.PlayerConnected += Client_PlayerConnected;
             _client.PlayerReadied += Client_PlayerReadied;
+            _client.ThisPlayerReadied += Client_ThisPlayerReadied;
             _client.PlayerDisconnected += Client_PlayerDisconnected;
             _client.ThisPlayerDisconnected += Client_ThisPlayerDisconnected;
         }
@@ -45,7 +46,15 @@ namespace GalaxyTrucker.ViewModels
             }
         }
 
-        public void ToggleClientReady()
+        public void UnsubscribeFromEvents()
+        {
+            _client.PlayerConnected -= Client_PlayerConnected;
+            _client.PlayerReadied -= Client_PlayerReadied;
+            _client.PlayerDisconnected -= Client_PlayerDisconnected;
+            _client.ThisPlayerDisconnected -= Client_ThisPlayerDisconnected;
+        }
+
+        private void Client_ThisPlayerReadied(object sender, EventArgs e)
         {
             ConnectedPlayers.Where(info => info.Color == _client.Player).First().IsReady = _client.IsReady;
         }
@@ -70,14 +79,6 @@ namespace GalaxyTrucker.ViewModels
         private void Client_PlayerConnected(object sender, PlayerConnectedEventArgs e)
         {
             ConnectedPlayers.Add(new PlayerInfoViewModel(new PlayerInfo(e.Color, e.PlayerName, false)));
-        }
-
-        private void UnsubscribeFromEvents()
-        {
-            _client.PlayerConnected -= Client_PlayerConnected;
-            _client.PlayerReadied -= Client_PlayerReadied;
-            _client.PlayerDisconnected -= Client_PlayerDisconnected;
-            _client.ThisPlayerDisconnected -= Client_ThisPlayerDisconnected;
         }
     }
 }

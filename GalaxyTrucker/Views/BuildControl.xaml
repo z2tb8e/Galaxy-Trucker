@@ -38,15 +38,15 @@
         </Grid.ColumnDefinitions>
 
         <local:PlayerListControl DataContext="{Binding PlayerList}" Margin="10" Grid.Row="0" Grid.Column="0"/>
-        
+
         <Button Content="{Binding ToggleReadyContent}" Command="{Binding ToggleReadyCommand}" Margin="10" Grid.Row="0" Grid.Column="1" Width="200" Height="80" HorizontalAlignment="Right"/>
         <TextBlock Text="{Binding Error}" Foreground="Red" Grid.Row="0" Grid.Column="1" Margin="10" HorizontalAlignment="Left"/>
         <Button Style="{StaticResource AlienButtonStyle}" Content="Lila űrlény felhelyezése"
                 CommandParameter="LaserAlien" Grid.Row="2" Grid.Column="0" HorizontalAlignment="Left" Margin="666,0,0,0"/>
-        
+
         <Button Style="{StaticResource AlienButtonStyle}" Content="Barna űrlény felhelyezése"
                 CommandParameter="EngineAlien" Grid.Row="2" Grid.Column="0" HorizontalAlignment="Left" Margin="276,0,0,0"/>
-        
+
         <ItemsControl VerticalAlignment="Center" HorizontalAlignment="Center" ItemsSource="{Binding PickableParts}" Margin="10" Grid.Row="2" Grid.Column="0">
             <ItemsControl.Style>
                 <Style TargetType="ItemsControl">
@@ -64,14 +64,14 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Button Background="Black" Width="60" Height="60" Command="{Binding PartPickCommand}" CommandParameter="{Binding}">
+                    <Button Background="Black" Width="60" Height="60" Command="{Binding PartClickCommand}" CommandParameter="{Binding}">
                         <Button.Content>
                             <Image Source="{Binding PartImage, Converter={StaticResource ImageConverter}}" Stretch="Fill"/>
                         </Button.Content>
                         <Button.Style>
                             <Style TargetType="Button">
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsPickable}" Value="False">
+                                    <DataTrigger Binding="{Binding IsValidField}" Value="False">
                                         <Setter Property="Visibility" Value="Hidden"/>
                                     </DataTrigger>
                                 </Style.Triggers>
@@ -82,19 +82,20 @@
             </ItemsControl.ItemTemplate>
             <ItemsControl.ItemContainerStyle>
                 <Style>
-                    <Setter Property="Grid.Row" Value="{Binding Row}"/>
-                    <Setter Property="Grid.Column" Value="{Binding Column}"/>
+                    <Setter Property="Grid.Row" Value="{Binding BuildRow}"/>
+                    <Setter Property="Grid.Column" Value="{Binding BuildColumn}"/>
                 </Style>
             </ItemsControl.ItemContainerStyle>
         </ItemsControl>
-        <Label Grid.Row="1" Grid.Column="1" HorizontalContentAlignment="Center" HorizontalAlignment="Center" Margin="0,19,0,196" Target="{Binding ElementName=selectedPartButton}" Width="150">
-            <TextBlock>
-                Kiválasztott elem
-                <LineBreak/>
-                (forgatás: Q E)
-            </TextBlock>
-        </Label>
+        <Label Grid.Row="1" Grid.Column="1" HorizontalContentAlignment="Center" HorizontalAlignment="Center" Margin="0,26,0,189"
+               Target="{Binding ElementName=selectedPartButton}" Width="150" Content="Kiválasztott elem"/>
 
+        <Button Command="{Binding RotateSelectedCommand}" CommandParameter="-1" Content="Forgatás balra (Q)"
+                Grid.Row="1" Grid.Column="1" VerticalAlignment="Top" HorizontalAlignment="Left"
+                Width="150" Height="50" Margin="111,130,0,0"/>
+        <Button Command="{Binding RotateSelectedCommand}" CommandParameter="11" Content="Forgatás jobbra (E)"
+                Grid.Row="1" Grid.Column="1" VerticalAlignment="Top" HorizontalAlignment="Left"
+                Width="150" Height="50" Margin="508,130,0,0"/>
         <Button Name="selectedPartButton" Grid.Column="1" Grid.Row="1"
                 HorizontalAlignment="Center" Margin="0,60,0,10" Width="200" Height="200" Command="{Binding PutBackSelectedCommand}">
             <Button.Content>

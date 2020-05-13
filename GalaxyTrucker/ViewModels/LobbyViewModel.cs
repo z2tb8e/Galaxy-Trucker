@@ -32,6 +32,8 @@ namespace GalaxyTrucker.ViewModels
 
         #region shared
 
+        public PlayerListViewModel PlayerList { get { return _playerList; } }
+
         public ObservableCollection<ShipLayout> LayoutOptions
         {
             get
@@ -58,14 +60,6 @@ namespace GalaxyTrucker.ViewModels
             {
                 _selectedLayout = value;
                 OnPropertyChanged();
-            }
-        }
-
-        public PlayerListViewModel PlayerList
-        {
-            get
-            {
-                return _playerList;
             }
         }
 
@@ -198,10 +192,10 @@ namespace GalaxyTrucker.ViewModels
 
         public event EventHandler<bool> BuildingStarted;
 
-        public LobbyViewModel(GTTcpClient client)
+        public LobbyViewModel(GTTcpClient client, PlayerListViewModel playerList)
         {
             SelectedGameStage = GameStage.First;
-            _playerList = new PlayerListViewModel(client);
+            _playerList = playerList;
             IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
             HostIp = ipHostInfo.AddressList.Where(ip => ip.AddressFamily == AddressFamily.InterNetwork).First().ToString();
             ConnectInProgress = false;
@@ -226,7 +220,6 @@ namespace GalaxyTrucker.ViewModels
                 try
                 {
                     _client.ToggleReady(ServerStage.Lobby);
-                    _playerList.ToggleClientReady();
                 }
                 catch (Exception e)
                 {
@@ -298,11 +291,9 @@ namespace GalaxyTrucker.ViewModels
         private void PlayerList_LostConnection(object sender, EventArgs e)
         {
             UnsubscribeFromEvents();
-            Error = "A szerverrel való kapcsolat megszakadt.";
-            OnPropertyChanged(nameof(IsConnected));
         }
 
-        private void Client_BuildingBegun(object sender, BuildingBegunEventArgs e)
+        private void Client_BuildingBegun(object sender, EventArgs e)
         {
             UnsubscribeFromEvents();
             BuildingStarted?.Invoke(this, Server != null);
