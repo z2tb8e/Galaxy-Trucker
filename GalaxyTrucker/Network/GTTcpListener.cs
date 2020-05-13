@@ -65,6 +65,10 @@ namespace GalaxyTrucker.Network
         private const string CardPath = "Resources/Cards.txt";
         private const double PingInterval = 500;
 
+        private readonly string _logPath;
+        private readonly Semaphore _logSemaphore;
+        private readonly bool _doLogging;
+
         private readonly System.Timers.Timer _pingTimer;
 
         private readonly TcpListener _listener;
@@ -92,9 +96,13 @@ namespace GalaxyTrucker.Network
 
         #endregion
 
-        public GTTcpListener(int port, GameStage gameStage)
+        public GTTcpListener(int port, GameStage gameStage, bool doLogging = true)
         {
             _gameStage = gameStage;
+            Directory.CreateDirectory("logs");
+            _logPath = $"logs/log_{DateTime.Now:yyyyMMddHHmmss}.log";
+            _logSemaphore = new Semaphore(1, 1);
+            _doLogging = doLogging;
 
             _pingTimer = new System.Timers.Timer(PingInterval);
             _pingTimer.Elapsed += PingTimer_Elapsed;
@@ -114,6 +122,7 @@ namespace GalaxyTrucker.Network
         {
             try
             {
+                Log("Server started listening");
                 _listener.Start(4);
                 _serverStage = ServerStage.Lobby;
                 _pingTimer.Start();
@@ -156,6 +165,7 @@ namespace GalaxyTrucker.Network
 
                         _connections[assignedColor] = newConnection;
                         Task.Factory.StartNew(() => HandleClientMessages(assignedColor), TaskCreationOptions.LongRunning);
+                        Log($"{assignedColor} player with name \"{name}\" connected.");
                     }
                 }
                 Task.Factory.StartNew(() => RefuseFurtherConnections(), TaskCreationOptions.LongRunning);
@@ -163,11 +173,11 @@ namespace GalaxyTrucker.Network
             }
             catch (SocketException e)
             {
-                Console.WriteLine($"SocketException {e}");
+                Log($"SocketException {e}");
             }
             catch (ArgumentException e)
             {
-                Console.WriteLine($"ArgumentException {e}");
+                Log($"ArgumentException {e}");
             }
             catch (ObjectDisposedException)
             {
@@ -179,12 +189,12 @@ namespace GalaxyTrucker.Network
         {
             if (_connections.Count < 2)
             {
-                Console.WriteLine("Less than 2 players are connected, BuildStage not started.");
+                Log("Less than 2 players are connected, BuildStage not started.");
                 return;
             }
             else if (_connections.Values.Where(c => !c.IsReady).Any())
             {
-                Console.WriteLine("Not all players are ready, BuildStage not started.");
+                Log("Not all players are ready, BuildStage not started.");
                 return;
             }
 
@@ -197,7 +207,7 @@ namespace GalaxyTrucker.Network
 
             _playerOrder = new List<PlayerColor>();
 
-            Console.WriteLine("StartBuildStage over");
+            Log("StartBuildStage over");
             BuildStage();
         }
 
@@ -212,6 +222,7 @@ namespace GalaxyTrucker.Network
                 }
             }
             _listener.Stop();
+            Log("Server successfully closed.");
         }
 
         #endregion
@@ -228,7 +239,7 @@ namespace GalaxyTrucker.Network
                 WriteMessageToPlayer(player, $"BuildingEnded,{playerOrder}");
                 _connections[player].IsReady = false;
             }
-            Console.WriteLine($"Building stage over, player order: ({playerOrder})");
+            Log($"Building stage over, player order: ({playerOrder})");
             BeginFlightStage();
         }
 
@@ -254,7 +265,7 @@ namespace GalaxyTrucker.Network
 
         private void FlightStage()
         {
-            Console.WriteLine("FlightStage started");
+            Log("FlightStage started");
         }
 
         private void PingTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
@@ -286,7 +297,6 @@ namespace GalaxyTrucker.Network
                             return;
                         }
                         parts = message.Split(',');
-                        Console.WriteLine($"Message received from ({connection.DisplayName}, {player}): {message}");
                         switch (parts[0])
                         {
                             case "ToggleReady":
@@ -309,7 +319,7 @@ namespace GalaxyTrucker.Network
                                 break;
 
                             default:
-                                Console.WriteLine($"Unhandled client message from {player}: {message}");
+                                Log($"Unhandled client message from {player}: {message}");
                                 break;
                         }
                     }
@@ -337,6 +347,7 @@ namespace GalaxyTrucker.Network
                 Batteries = int.Parse(parts[5])
             };
             _connections[player].ReadyToFly = true;
+            Log($"{player} added attributes with value ({_connections[player].Attributes}).");
         }
 
         /// <summary>
@@ -359,6 +370,7 @@ namespace GalaxyTrucker.Network
                 }
                 _orderSemaphore.Release();
             }
+            Log($"{player} toggled ready, new value: {_connections[player].IsReady}.");
             string response = "ToggleReadyConfirm";
             string announcement = $"PlayerToggledReady,{player}";
             WriteMessageToPlayer(player, response);
@@ -382,6 +394,7 @@ namespace GalaxyTrucker.Network
             int column = int.Parse(parts[2]);
             _parts[row, column].Semaphore.WaitOne();
 
+            Log($"{player} put back at ({row},{column})");
             if (_parts[row, column].IsAvailable)
             {
                 WriteMessageToPlayer(player, "PutBackPartConfirm");
@@ -418,6 +431,7 @@ namespace GalaxyTrucker.Network
             int column = int.Parse(parts[2]);
             _parts[row, column].Semaphore.WaitOne();
 
+            Log($"{player} picked part at ({row},{column}) with response: {(_parts[row, column].IsAvailable ? _parts[row, column].PartString : null)}.");
             if (!_parts[row, column].IsAvailable)
             {
                 WriteMessageToPlayer(player, "PickPartResult,null");
@@ -458,6 +472,7 @@ namespace GalaxyTrucker.Network
             catch (IOException)
             {
                 _connections.Remove(player, out _);
+                Log($"{player} player disconnected.");
                 if (_playerOrder != null)
                 {
                     _playerOrder.Remove(player);
@@ -484,6 +499,7 @@ namespace GalaxyTrucker.Network
             catch (IOException)
             {
                 _connections.Remove(player, out _);
+                Log($"{player} player disconnected.");
                 if (_playerOrder != null)
                 {
                     _playerOrder.Remove(player);
@@ -505,6 +521,7 @@ namespace GalaxyTrucker.Network
                     NetworkStream stream = client.GetStream();
                     byte[] message = Encoding.ASCII.GetBytes("Connection refused#");
                     stream.Write(message, 0, message.Length);
+                    Log($"Connection refused from {client.Client.RemoteEndPoint}");
                     client.Close();
                 }
             }
@@ -539,6 +556,20 @@ namespace GalaxyTrucker.Network
                     _parts[i, j] = new PartAvailability(parts[i * 10 + j]);
                 }
             }
+        }
+
+        private async void Log(string message)
+        {
+            if (!_doLogging)
+            {
+                return;
+            }
+            _logSemaphore.WaitOne();
+            using (StreamWriter sr = new StreamWriter(_logPath, true))
+            {
+                await sr.WriteLineAsync($"{ DateTime.Now:H:mm:ss}: {message}");
+            }
+            _logSemaphore.Release();
         }
 
         #endregion
