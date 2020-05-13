@@ -127,8 +127,8 @@ namespace GalaxyTrucker
                     DataContext = _buildViewModel
                 };
                 _mainWindow.Content = buildControl;
-                Current.MainWindow.WindowState = WindowState.Maximized;
-                Current.MainWindow.WindowStyle = WindowStyle.None;
+                _mainWindow.WindowState = WindowState.Maximized;
+                _mainWindow.WindowStyle = WindowStyle.None;
             });
         }
 
@@ -136,7 +136,7 @@ namespace GalaxyTrucker
         {
             Dispatcher.Invoke(() =>
             {
-                _flightViewModel = new FlightViewModel(_client, _playerListViewModel);
+                _flightViewModel = new FlightViewModel(_client, _playerListViewModel, _buildViewModel.Ship);
                 FlightControl flightControl = new FlightControl
                 {
                     DataContext = _flightViewModel

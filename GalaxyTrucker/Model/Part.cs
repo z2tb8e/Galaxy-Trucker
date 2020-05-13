@@ -49,19 +49,25 @@ namespace GalaxyTrucker.Model
             ContentsChanged?.Invoke(this, EventArgs.Empty);
         }
 
+        /// <summary>
+        /// Method to rotate the part 90° left or right
+        /// </summary>
+        /// <param name="leftOrRight">-1, if left, 1, if right</param>
         public virtual void Rotate(int leftOrRight)
         {
             int enumValue = ((int)Rotation + leftOrRight + 4) % 4;
             Rotation = (Direction)enumValue;
         }
 
-        public void AddToPath(Part part)
+        /// <summary>
+        /// Method to create the Part's path based off the given endpoint
+        /// </summary>
+        /// <param name="endpoint"></param>
+        public void CreatePath(Part endpoint)
         {
-            Path = new Stack<Part>(part.Path);
-            Path.Push(part);
+            Path = new Stack<Part>(endpoint.Path);
+            Path.Push(endpoint);
         }
-
-        public bool IsInPath(Part p) => _path.Contains(p);
 
         public override string ToString()
         {

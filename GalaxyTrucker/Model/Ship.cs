@@ -23,6 +23,14 @@ namespace GalaxyTrucker.Model
 
         #region properties
 
+        public IReadOnlyCollection<Part> Parts
+        {
+            get
+            {
+                return _parts.Cast<Part>().ToList().AsReadOnly();
+            }
+        }
+
         public int Penalty => _penalty > _penaltyCap ? _penaltyCap : _penalty;
 
         public int Firepower
@@ -578,7 +586,7 @@ namespace GalaxyTrucker.Model
                 _parts[row, column] = part;
                 part.Row = row;
                 part.Column = column;
-                part.AddToPath(matchingPart);
+                part.CreatePath(matchingPart);
             }
             return ret;
         }
@@ -611,7 +619,7 @@ namespace GalaxyTrucker.Model
                 _storages.Remove(removedPart as Storage);
             }
 
-            PartRemoved?.Invoke(this, new PartRemovedEventArgs(row, column));
+            PartRemoved?.Invoke(this, new PartRemovedEventArgs(removedPart.Row, removedPart.Column));
 
             Part[] neighbours = new Part[]
             {
@@ -684,14 +692,14 @@ namespace GalaxyTrucker.Model
                     {
                         if (RemovePartsRecursive(neighbour.Item1, current))
                         {
-                            current.AddToPath(neighbour.Item1);
+                            current.CreatePath(neighbour.Item1);
                             return true;
                         }
                     }
                     //we find a part which is not connected through the current element, but has a connection to it, then rebind to that path
                     else if (1 == ConnectorsMatch(current.GetConnector((Direction)(((int)neighbour.Item2 + 2) % 4)), neighbour.Item1.GetConnector(neighbour.Item2)))
                     {
-                        current.AddToPath(neighbour.Item1);
+                        current.CreatePath(neighbour.Item1);
                         return true;
                     }
                 }

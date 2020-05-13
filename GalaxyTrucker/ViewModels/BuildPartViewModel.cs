@@ -85,6 +85,7 @@ namespace GalaxyTrucker.ViewModels
                     {
                         _part.HighlightToggled -= Part_HighlightToggled;
                         _part.ContentsChanged -= Part_ContentsChanged;
+                        PartImage = null;
                     }
                     _part = value;
                     OnPropertyChanged(nameof(Angle));

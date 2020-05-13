@@ -1,8 +1,38 @@
 ﻿<Application x:Class="GalaxyTrucker.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:GalaxyTrucker">
+             xmlns:utils="clr-namespace:GalaxyTrucker.Views.Utils">
     <Application.Resources>
-         
+        <utils:ImageToBitmapSourceConverter x:Key="ImageConverter"/>
+        <utils:EnumDescriptionTypeConverter x:Key="EnumConverter"/>
+        
+        <Style x:Key="TextBoxInError" TargetType="{x:Type TextBox}">
+            <Style.Triggers>
+                <Trigger Property="Validation.HasError" Value="true">
+                    <Setter Property="ToolTip" Value="{Binding RelativeSource={x:Static RelativeSource.Self}, 
+                        Path=(Validation.Errors)[0].ErrorContent}"/>
+                </Trigger>
+                <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                    <Setter Property="IsEnabled" Value="False"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <ControlTemplate x:Key="DisabledBlackButton" TargetType="{x:Type Button}">
+            <Border Margin="1" BorderBrush="Black" x:Name="Border">
+                <Border.Background>
+                    <SolidColorBrush Color="Black"/>
+                </Border.Background>
+                <ContentPresenter />
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter TargetName="Border" Property="Background" Value="Black"/>
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="Border" Property="Background" Value="#FF575656"/>
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
     </Application.Resources>
 </Application>

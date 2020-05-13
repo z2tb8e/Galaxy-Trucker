@@ -30,6 +30,8 @@ namespace GalaxyTrucker.ViewModels
 
         public PlayerListViewModel PlayerList { get { return _playerList; } }
 
+        public Ship Ship { get { return _ship; } }
+
         public bool BuildingEnded
         {
             get
@@ -167,8 +169,9 @@ namespace GalaxyTrucker.ViewModels
 
             ToggleReadyContent = "Építkezés befejezése";
             _ship = new Ship(layout, _client.Player);
-            _ship.PartRemoved += Ship_PartRemoved;
             ShipParts = new ObservableCollection<BuildPartViewModel>();
+
+            _ship.PartRemoved += Ship_PartRemoved;
 
             for(int i = 0; i < 11; ++i)
             {
@@ -192,7 +195,7 @@ namespace GalaxyTrucker.ViewModels
             BuildPartViewModel cockpitViewModel = ShipParts.Where(p => p.ShipRow == cockpit.Row && p.ShipColumn == cockpit.Column).First();
             cockpitViewModel.Part = cockpit;
             cockpitViewModel.PartImage = PartBuilder.GetPartImage(cockpit);
-            cockpitViewModel.PartClickCommand = null;
+            cockpitViewModel.PartClickCommand = new DelegateCommand(param => false, param => { });
 
             PickableParts = new ObservableCollection<BuildPartViewModel>();
             for(int i = 0; i < 10; ++i)
@@ -260,6 +263,8 @@ namespace GalaxyTrucker.ViewModels
 
         #region private methods
 
+        #region client event handlers
+
         /// <summary>
         /// Method called when the client raises the FlightBegun event indicating that the server started the flight stage
         /// </summary>
@@ -269,26 +274,6 @@ namespace GalaxyTrucker.ViewModels
         {
             UnsubscribeFromEvents();
             FlightBegun?.Invoke(this, EventArgs.Empty);
-        }
-
-        /// <summary>
-        /// Method called through the PlayerListViewModel when the player loses connection to the server
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void PlayerList_LostConnection(object sender, EventArgs e)
-        {
-            Error = "Nincs kapcsolat.";
-            UnsubscribeFromEvents();
-        }
-
-        private void AddAlien(string alien)
-        {
-            _currentAlien = Enum.Parse<Personnel>(alien);
-            if (!_ship.HighlightCabinsForAlien(_currentAlien))
-            {
-                MessageBox.Show($"Nincs {_currentAlien.GetDescription()}-nek megfelelő kabin!");
-            }
         }
 
         /// <summary>
@@ -304,7 +289,65 @@ namespace GalaxyTrucker.ViewModels
         }
 
         /// <summary>
-        /// Method called when a part is removed from the ship either from a chain-reaction or by being directly removed
+        /// Method called when another player picks a part
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Client_PartTaken(object sender, PartTakenEventArgs e)
+        {
+            BuildPartViewModel pickedPart = PickableParts.ElementAt(e.Row * 14 + e.Column);
+            pickedPart.IsValidField = false;
+        }
+
+        /// <summary>
+        /// Method called when another player puts back a part
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Client_PartPutBack(object sender, PartPutBackEventArgs e)
+        {
+            BuildPartViewModel putBackPart = PickableParts.ElementAt(e.Row * 14 + e.Column);
+            putBackPart.Part = e.Part;
+            putBackPart.PartImage = PartBuilder.GetPartImage(e.Part);
+            putBackPart.IsValidField = true;
+        }
+
+        /// <summary>
+        /// Method called when this client receives the response to picking a part
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Client_PartPicked(object sender, PartPickedEventArgs e)
+        {
+            //If another client just took the part, the Part component is null
+            //The part taken event will be raised, so the part won't be removed here
+            if (e.Part == null)
+            {
+                MessageBox.Show("Az adott alkatrészt már más elvitte!");
+                return;
+            }
+            SelectedPart.IsValidField = false;
+            SelectedPart.Part = e.Part;
+            SelectedPart.PartImage = PartBuilder.GetPartImage(e.Part);
+            _lastPickResolved = true;
+            OnPropertyChanged(nameof(SelectedPartImage));
+        }
+
+        #endregion
+
+        /// <summary>
+        /// Method called through the PlayerListViewModel when the player loses connection to the server
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void PlayerList_LostConnection(object sender, EventArgs e)
+        {
+            Error = "Nincs kapcsolat.";
+            UnsubscribeFromEvents();
+        }
+
+        /// <summary>
+        /// Method called by the ship when a part was removed
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
@@ -312,10 +355,18 @@ namespace GalaxyTrucker.ViewModels
         {
             BuildPartViewModel removedPart = ShipParts.Where(p => p.ShipRow == e.Row && p.ShipColumn == e.Column).First();
             removedPart.Part = null;
-            removedPart.PartImage = null;
             _client.PutBackPart(removedPart.BuildRow, removedPart.BuildColumn);
             BuildPartViewModel origin = PickableParts.Where(p => p.BuildRow == removedPart.BuildRow && p.BuildColumn == removedPart.BuildColumn).First();
             origin.IsValidField = true;
+        }
+
+        private void AddAlien(string alien)
+        {
+            _currentAlien = Enum.Parse<Personnel>(alien);
+            if (!_ship.HighlightCabinsForAlien(_currentAlien))
+            {
+                MessageBox.Show($"Nincs {_currentAlien.GetDescription()}-nek megfelelő kabin!");
+            }
         }
 
         /// <summary>
@@ -424,51 +475,6 @@ namespace GalaxyTrucker.ViewModels
             SelectedPart = null;
         }
 
-        /// <summary>
-        /// Method called when another player picks a part
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void Client_PartTaken(object sender, PartTakenEventArgs e)
-        {
-            BuildPartViewModel pickedPart = PickableParts.ElementAt(e.Row * 14 + e.Column);
-            pickedPart.IsValidField = false;
-        }
-
-        /// <summary>
-        /// Method called when another player puts back a part
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void Client_PartPutBack(object sender, PartPutBackEventArgs e)
-        {
-            BuildPartViewModel putBackPart = PickableParts.ElementAt(e.Row * 14 + e.Column);
-            putBackPart.Part = e.Part;
-            putBackPart.PartImage = PartBuilder.GetPartImage(e.Part);
-            putBackPart.IsValidField = true;
-        }
-
-        /// <summary>
-        /// Method called when this client receives the response to picking a part
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void Client_PartPicked(object sender, PartPickedEventArgs e)
-        {
-            //If another client just took the part, the Part component is null
-            //The part taken event will be raised, so the part won't be removed here
-            if (e.Part == null)
-            {
-                MessageBox.Show("Az adott alkatrészt már más elvitte!");
-                return;
-            }
-            SelectedPart.IsValidField = false;
-            SelectedPart.Part = e.Part;
-            SelectedPart.PartImage = PartBuilder.GetPartImage(e.Part);
-            _lastPickResolved = true;
-            OnPropertyChanged(nameof(SelectedPartImage));
-        }
-
         private void UnsubscribeFromEvents()
         {
             _client.PartPicked -= Client_PartPicked;
@@ -476,6 +482,7 @@ namespace GalaxyTrucker.ViewModels
             _client.PartTaken -= Client_PartTaken;
             _client.BuildingEnded -= Client_BuildingEnded;
             _client.FlightBegun -= Client_FlightBegun;
+            _ship.PartRemoved -= Ship_PartRemoved;
         }
 
         #endregion
