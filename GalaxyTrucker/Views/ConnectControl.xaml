@@ -9,11 +9,6 @@
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition/>
-            <ColumnDefinition/>
-            <ColumnDefinition/>
-        </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="30"/>
             <RowDefinition Height="50"/>
@@ -21,6 +16,11 @@
             <RowDefinition/>
             <RowDefinition Height="80"/>
         </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition/>
+            <ColumnDefinition/>
+            <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
         <Menu Grid.Row="0" Grid.ColumnSpan="3" HorizontalAlignment="Right" VerticalAlignment="Center">
             <MenuItem Header="Vissza a menübe" Margin="5" Command="{Binding BackToMenuCommand}"/>
         </Menu>
@@ -60,7 +60,7 @@
             </TextBox.Text>
         </TextBox>
 
-        <local:PlayerListControl DataContext="{Binding PlayerList}" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"/>
+        <local:PlayerListControl Margin="10" DataContext="{Binding PlayerList}" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"/>
 
         <Label Content="Hajó alaprajza" Target="{Binding ElementName=layoutComboBox}" Margin="10" Grid.Column="2" Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Top">
             <Label.Style>

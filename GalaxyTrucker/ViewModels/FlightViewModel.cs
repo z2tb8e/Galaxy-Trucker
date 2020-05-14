@@ -1,4 +1,5 @@
 ﻿using GalaxyTrucker.Model;
+using GalaxyTrucker.Model.PartTypes;
 using GalaxyTrucker.Network;
 using System;
 using System.Collections.Generic;
@@ -59,9 +60,11 @@ namespace GalaxyTrucker.ViewModels
             _client = client;
             _playerList = playerList;
             _ship = ship;
-            var parts = _ship.Parts;
-            foreach(Part p in parts){
-                
+
+            ShipParts = new ObservableCollection<FlightPartViewModel>();
+            foreach(Part p in _ship.Parts)
+            {
+                ShipParts.Add(new FlightPartViewModel(p));
             }
 
             _playerList.LostConnection += PlayerList_LostConnection;

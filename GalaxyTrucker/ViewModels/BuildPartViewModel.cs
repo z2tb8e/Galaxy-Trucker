@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.Windows;
 using GalaxyTrucker.Model;
 
 namespace GalaxyTrucker.ViewModels
@@ -85,6 +86,7 @@ namespace GalaxyTrucker.ViewModels
                     {
                         _part.HighlightToggled -= Part_HighlightToggled;
                         _part.ContentsChanged -= Part_ContentsChanged;
+                        PartContentsDescription = null;
                         PartImage = null;
                     }
                     _part = value;

@@ -122,7 +122,7 @@ namespace GalaxyTrucker.Model
 
         public bool HighlightCabinsForAlien(Personnel alien)
         {
-            if((alien == Personnel.EngineAlien && _hasEngineAlien) || (alien == Personnel.LaserAlien && _hasLaserAlien))
+            if(alien != Personnel.EngineAlien && alien != Personnel.LaserAlien)
             {
                 throw new ArgumentException("The Personnel argument is not an alien!");
             }

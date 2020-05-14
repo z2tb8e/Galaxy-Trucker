@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:utils="clr-namespace:GalaxyTrucker.Views.Utils">
     <Application.Resources>
+        
         <utils:ImageToBitmapSourceConverter x:Key="ImageConverter"/>
         <utils:EnumDescriptionTypeConverter x:Key="EnumConverter"/>
         
@@ -19,7 +20,7 @@
         </Style>
 
         <ControlTemplate x:Key="DisabledBlackButton" TargetType="{x:Type Button}">
-            <Border Margin="1" BorderBrush="Black" x:Name="Border">
+            <Border Margin="1" x:Name="Border">
                 <Border.Background>
                     <SolidColorBrush Color="Black"/>
                 </Border.Background>
@@ -32,7 +33,12 @@
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter TargetName="Border" Property="Background" Value="#FF575656"/>
                 </Trigger>
+                <DataTrigger Binding="{Binding Highlighted}" Value="True">
+                    <Setter TargetName="Border" Property="BorderThickness" Value="5"/>
+                    <Setter TargetName="Border" Property="BorderBrush" Value="Yellow"/>
+                </DataTrigger>
             </ControlTemplate.Triggers>
         </ControlTemplate>
+        
     </Application.Resources>
 </Application>

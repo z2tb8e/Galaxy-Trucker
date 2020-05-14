@@ -25,7 +25,7 @@ namespace GalaxyTrucker.ViewModels
             }
         }
 
-        public int Angle => (int)_part.Rotation * 90;
+        public int Angle => _part == null ? 0 : (int)_part.Rotation * 90;
 
         public bool Highlighted
         {
@@ -53,22 +53,25 @@ namespace GalaxyTrucker.ViewModels
             }
         }
 
-        public bool HasContent { get; private set; }
+        public int Row { get; }
 
-        public DelegateCommand ClickCommand { get; set; }
+        public int Column { get; }
+
+        public DelegateCommand PartClickCommand { get; set; }
 
         public FlightPartViewModel(Part part)
         {
-            if(_part == null)
+            if(part == null)
             {
-                HasContent = false;
                 return;
             }
 
-            HasContent = true;
             _part = part;
+            Row = _part.Row;
+            Column = _part.Column;
             PartImage = PartBuilder.GetPartImage(_part);
             Highlighted = false;
+            PartContentsDescription = _part.ContentsDescription;
 
             _part.HighlightToggled += Part_HighlightToggled;
             _part.ContentsChanged += Part_ContentsChanged;
@@ -78,8 +81,7 @@ namespace GalaxyTrucker.ViewModels
         {
             _part = null;
             _partImage = null;
-            ClickCommand = null;
-            HasContent = false;
+            PartClickCommand = null;
         }
 
         private void Part_ContentsChanged(object sender, EventArgs e)
