@@ -57,8 +57,7 @@
                VerticalAlignment="Center" HorizontalAlignment="Center">Játékfázis</Label>
         <ComboBox Name="gameStageComboBox" Grid.Row="2" Margin="10" Grid.Column="3"
                   SelectedItem="{Binding SelectedGameStage, Converter={StaticResource EnumConverter}}"
-                  SelectedIndex="0"
-                  ItemsSource="{Binding Source={utils:EnumBindingSource {x:Type model:GameStage}}}">
+                  SelectedIndex="0">
             <ComboBox.ItemTemplate>
                 <DataTemplate>
                     <TextBlock Text="{Binding Converter={StaticResource EnumConverter}}"/>

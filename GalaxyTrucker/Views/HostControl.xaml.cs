@@ -1,4 +1,6 @@
-﻿using System.Windows.Controls;
+﻿using GalaxyTrucker.Model;
+using System;
+using System.Windows.Controls;
 
 namespace GalaxyTrucker.Views
 {
@@ -10,6 +12,8 @@ namespace GalaxyTrucker.Views
         public HostControl()
         {
             InitializeComponent();
+
+            gameStageComboBox.ItemsSource = Enum.GetValues(typeof(GameStage));
         }
     }
 }
