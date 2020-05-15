@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -9,6 +10,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GalaxyTrucker.Model;
+using GalaxyTrucker.Properties;
 
 namespace GalaxyTrucker.Network
 {
@@ -61,31 +63,26 @@ namespace GalaxyTrucker.Network
     {
         #region fields
 
-        private const string PartPath = "Resources/Parts.txt";
-        private const string CardPath = "Resources/Cards.txt";
         private const double PingInterval = 500;
+
+        private readonly TcpListener _listener;
+        private readonly ConcurrentDictionary<PlayerColor, ConnectionInfo> _connections;
 
         private readonly string _logPath;
         private readonly Semaphore _logSemaphore;
         private readonly bool _doLogging;
 
         private readonly System.Timers.Timer _pingTimer;
-
-        private readonly TcpListener _listener;
-
         private readonly Random _random;
 
-        private readonly ConcurrentDictionary<PlayerColor, ConnectionInfo> _connections;
-
-        private readonly Semaphore _orderSemaphore;
-
         private volatile ServerStage _serverStage;
-
         private readonly GameStage _gameStage;
 
         private List<PlayerColor> _playerOrder;
+        private readonly Semaphore _orderSemaphore;
 
         private readonly PartAvailability[,] _parts;
+        private List<CardEvent> _deck;
 
         #endregion
 
@@ -122,11 +119,14 @@ namespace GalaxyTrucker.Network
         {
             try
             {
-                Log("Server started listening");
+                LogAsync($"Server started listening, GameStage: {((int)_gameStage) + 1}");
                 _listener.Start(4);
                 _serverStage = ServerStage.Lobby;
                 _pingTimer.Start();
-                Task shuffle = ShufflePartsAsync();
+                Task shuffle = new Task(ShuffleParts);
+                Task makeDeck = new Task(MakeDeck);
+                shuffle.Start();
+                makeDeck.Start();
                 while (_connections.Count < 4 && _serverStage == ServerStage.Lobby)
                 {
                     if (_listener.Pending())
@@ -165,19 +165,20 @@ namespace GalaxyTrucker.Network
 
                         _connections[assignedColor] = newConnection;
                         Task.Factory.StartNew(() => HandleClientMessages(assignedColor), TaskCreationOptions.LongRunning);
-                        Log($"{assignedColor} player with name \"{name}\" connected.");
+                        LogAsync($"{assignedColor} player with name \"{name}\" connected.");
                     }
                 }
                 Task.Factory.StartNew(() => RefuseFurtherConnections(), TaskCreationOptions.LongRunning);
                 shuffle.Wait();
+                makeDeck.Wait();
             }
             catch (SocketException e)
             {
-                Log($"SocketException {e}");
+                LogAsync($"SocketException {e}");
             }
             catch (ArgumentException e)
             {
-                Log($"ArgumentException {e}");
+                LogAsync($"ArgumentException {e}");
             }
             catch (ObjectDisposedException)
             {
@@ -189,12 +190,12 @@ namespace GalaxyTrucker.Network
         {
             if (_connections.Count < 2)
             {
-                Log("Less than 2 players are connected, BuildStage not started.");
+                LogAsync("Less than 2 players are connected, BuildStage not started.");
                 return;
             }
             else if (_connections.Values.Where(c => !c.IsReady).Any())
             {
-                Log("Not all players are ready, BuildStage not started.");
+                LogAsync("Not all players are ready, BuildStage not started.");
                 return;
             }
 
@@ -207,7 +208,7 @@ namespace GalaxyTrucker.Network
 
             _playerOrder = new List<PlayerColor>();
 
-            Log("StartBuildStage over");
+            LogAsync("StartBuildStage over");
             BuildStage();
         }
 
@@ -222,7 +223,7 @@ namespace GalaxyTrucker.Network
                 }
             }
             _listener.Stop();
-            Log("Server successfully closed.");
+            LogAsync("Server successfully closed.");
         }
 
         #endregion
@@ -239,7 +240,7 @@ namespace GalaxyTrucker.Network
                 WriteMessageToPlayer(player, $"BuildingEnded,{playerOrder}");
                 _connections[player].IsReady = false;
             }
-            Log($"Building stage over, player order: ({playerOrder})");
+            LogAsync($"Building stage over, player order: ({playerOrder})");
             BeginFlightStage();
         }
 
@@ -265,7 +266,7 @@ namespace GalaxyTrucker.Network
 
         private void FlightStage()
         {
-            Log("FlightStage started");
+            LogAsync("FlightStage started");
         }
 
         private void PingTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
@@ -319,16 +320,14 @@ namespace GalaxyTrucker.Network
                                 break;
 
                             default:
-                                Log($"Unhandled client message from {player}: {message}");
+                                LogAsync($"Unhandled client message from {player}: {message}");
                                 break;
                         }
                     }
                 }
-                catch (ObjectDisposedException)
-                {
-                    return;
-                }
+                catch (ObjectDisposedException) { }
             }
+            LogAsync($"Handler thread for client {player} finished.");
         }
 
         /// <summary>
@@ -347,7 +346,7 @@ namespace GalaxyTrucker.Network
                 Batteries = int.Parse(parts[5])
             };
             _connections[player].ReadyToFly = true;
-            Log($"{player} added attributes with value ({_connections[player].Attributes}).");
+            LogAsync($"{player} added attributes with value ({_connections[player].Attributes}).");
         }
 
         /// <summary>
@@ -370,7 +369,7 @@ namespace GalaxyTrucker.Network
                 }
                 _orderSemaphore.Release();
             }
-            Log($"{player} toggled ready, new value: {_connections[player].IsReady}.");
+            LogAsync($"{player} toggled ready, new value: {_connections[player].IsReady}.");
             string response = "ToggleReadyConfirm";
             string announcement = $"PlayerToggledReady,{player}";
             WriteMessageToPlayer(player, response);
@@ -394,7 +393,7 @@ namespace GalaxyTrucker.Network
             int column = int.Parse(parts[2]);
             _parts[row, column].Semaphore.WaitOne();
 
-            Log($"{player} put back at ({row},{column})");
+            LogAsync($"{player} put back at ({row},{column})");
             if (_parts[row, column].IsAvailable)
             {
                 WriteMessageToPlayer(player, "PutBackPartConfirm");
@@ -431,7 +430,7 @@ namespace GalaxyTrucker.Network
             int column = int.Parse(parts[2]);
             _parts[row, column].Semaphore.WaitOne();
 
-            Log($"{player} picked part at ({row},{column}) with response: {(_parts[row, column].IsAvailable ? _parts[row, column].PartString : null)}.");
+            LogAsync($"{player} picked part at ({row},{column}) with response: {(_parts[row, column].IsAvailable ? _parts[row, column].PartString : null)}.");
             if (!_parts[row, column].IsAvailable)
             {
                 WriteMessageToPlayer(player, "PickPartResult,null");
@@ -472,7 +471,7 @@ namespace GalaxyTrucker.Network
             catch (IOException)
             {
                 _connections.Remove(player, out _);
-                Log($"{player} player disconnected.");
+                LogAsync($"{player} player disconnected.");
                 if (_playerOrder != null)
                 {
                     _playerOrder.Remove(player);
@@ -499,7 +498,7 @@ namespace GalaxyTrucker.Network
             catch (IOException)
             {
                 _connections.Remove(player, out _);
-                Log($"{player} player disconnected.");
+                LogAsync($"{player} player disconnected.");
                 if (_playerOrder != null)
                 {
                     _playerOrder.Remove(player);
@@ -521,23 +520,16 @@ namespace GalaxyTrucker.Network
                     NetworkStream stream = client.GetStream();
                     byte[] message = Encoding.ASCII.GetBytes("Connection refused#");
                     stream.Write(message, 0, message.Length);
-                    Log($"Connection refused from {client.Client.RemoteEndPoint}");
+                    LogAsync($"Connection refused from {client.Client.RemoteEndPoint}");
                     client.Close();
                 }
             }
         }
 
-        private async Task ShufflePartsAsync()
+        private void ShuffleParts()
         {
-            List<string> parts = new List<string>();
-            using(StreamReader sr = new StreamReader(PartPath))
-            {
-                string line;
-                while ((line = await sr.ReadLineAsync()) != null)
-                {
-                    parts.Add(line);
-                }
-            }
+            List<string> parts = Resources.Parts.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None).ToList();
+            parts.Remove(parts.Last());
 
             int n = parts.Count;
             while (n > 1)
@@ -558,7 +550,69 @@ namespace GalaxyTrucker.Network
             }
         }
 
-        private async void Log(string message)
+        private void MakeDeck()
+        {
+            List<CardEvent>[] cardsByStage = new List<CardEvent>[3]
+            {
+                new List<CardEvent>(),
+                new List<CardEvent>(),
+                new List<CardEvent>()
+            };
+
+            List<string> cardStrings = Resources.Cards.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None).ToList();
+            cardStrings.Remove(cardStrings.Last());
+            foreach (string cardString in cardStrings)
+            {
+                CardEvent card = cardString.ToCardEvent();
+                cardsByStage[(int)card.Stage].Add(card);
+            }
+
+            List<int> deckComposition = new List<int>();
+            switch (_gameStage)
+            {
+                case GameStage.First:
+                    deckComposition.Add(0);
+                    deckComposition.Add(0);
+                    break;
+                case GameStage.Second:
+                    deckComposition.Add(1);
+                    deckComposition.Add(1);
+                    deckComposition.Add(0);
+                    break;
+                case GameStage.Third:
+                    deckComposition.Add(2);
+                    deckComposition.Add(2);
+                    deckComposition.Add(1);
+                    deckComposition.Add(0);
+                    break;
+                default:
+                    throw new InvalidEnumArgumentException(nameof(_gameStage), (int)_gameStage, typeof(GameStage));
+            }
+
+            _deck = new List<CardEvent>();
+            for (int i = 0; i < 4; ++i)
+            {
+                foreach (int stage in deckComposition)
+                {
+                    List<CardEvent> stageCards = cardsByStage[stage];
+                    int index = _random.Next(stageCards.Count);
+                    _deck.Add(stageCards[index]);
+                }
+            }
+
+            int n = _deck.Count;
+            while (n > 1)
+            {
+                n--;
+                int k = _random.Next(n + 1);
+                CardEvent value = _deck[k];
+                _deck[k] = _deck[n];
+                _deck[n] = value;
+            }
+            LogAsync($"Deck assembled, cards:\n {string.Join("\n ", _deck)}");
+        }
+
+        private async void LogAsync(string message)
         {
             if (!_doLogging)
             {

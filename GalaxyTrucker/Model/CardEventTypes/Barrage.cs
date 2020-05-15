@@ -11,7 +11,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
 
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder(base.ToString() + "b" + Projectiles.Count.ToString());
+            StringBuilder sb = new StringBuilder($"{(int)Stage}b{Projectiles.Count}");
             foreach((Projectile, Direction) pair in Projectiles)
             {
                 sb.Append(((int)pair.Item1).ToString() + ((int)pair.Item2).ToString());

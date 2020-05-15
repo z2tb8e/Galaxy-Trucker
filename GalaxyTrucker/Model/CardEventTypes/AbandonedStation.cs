@@ -20,7 +20,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
 
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder(base.ToString() + "A" + MinimumCrew.ToString("X") + DayCost.ToString() + Wares.Count);
+            StringBuilder sb = new StringBuilder(((int)Stage).ToString() + "A" + MinimumCrew.ToString("X") + DayCost.ToString() + Wares.Count);
             foreach(Ware w in Wares)
             {
                 sb.Append((int)w);

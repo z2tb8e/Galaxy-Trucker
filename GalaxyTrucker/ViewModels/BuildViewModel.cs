@@ -240,6 +240,7 @@ namespace GalaxyTrucker.ViewModels
                 {
                     if (!_client.IsReady && _buildingEnded)
                     {
+                        _ship.FillCabins();
                         _client.StartFlightStage(_ship.Firepower, _ship.Enginepower, _ship.CrewCount, _ship.StorageCount, _ship.Batteries);
                         return;
                     }

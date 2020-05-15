@@ -6,7 +6,7 @@
 
         public override string ToString()
         {
-            return base.ToString() + "p";
+            return $"{(int)Stage}p";
         }
     }
 }

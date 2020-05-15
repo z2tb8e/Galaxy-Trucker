@@ -6,9 +6,6 @@
 
         public CardEvent(GameStage stage) => Stage = stage;
 
-        public override string ToString()
-        {
-            return ((int)Stage).ToString();
-        }
+        public abstract override string ToString();
     }
 }

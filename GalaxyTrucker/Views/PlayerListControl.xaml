@@ -6,10 +6,7 @@
              xmlns:utils="clr-namespace:GalaxyTrucker.Views.Utils"
              mc:Ignorable="d" 
              d:DesignHeight="200" d:DesignWidth="300">
-    <UserControl.Resources>
-        <utils:EnumDescriptionTypeConverter x:Key="EnumConverter"/>
-    </UserControl.Resources>
-    <ListView Margin="10" Name="connectedPlayers" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding ConnectedPlayers}">
+    <ListView Margin="10" Name="connectedPlayers" ItemsSource="{Binding ConnectedPlayers}">
         <ListView.View>
             <GridView AllowsColumnReorder="False">
                 <GridView.ColumnHeaderContainerStyle>

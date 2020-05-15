@@ -17,7 +17,7 @@
 
         public override string ToString()
         {
-            return base.ToString() + "a" + CrewCost.ToString("X") + DayCost.ToString() + Reward.ToString("X");
+            return ((int)Stage).ToString() + "a" + CrewCost.ToString("X") + DayCost.ToString() + Reward.ToString("X");
         }
     }
 }

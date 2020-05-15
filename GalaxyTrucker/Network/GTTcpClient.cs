@@ -71,6 +71,7 @@ namespace GalaxyTrucker.Network
         public bool IsReady { get; private set; }
 
         public Dictionary<PlayerColor, PlayerInfo> PlayerInfos { get; }
+
         public List<PlayerColor> PlayerOrder { get; }
 
         #endregion

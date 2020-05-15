@@ -21,10 +21,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
             Reward = reward;
         }
 
-        public override string ToString()
-        {
-            return base.ToString();
-        }
+        public abstract override string ToString();
     }
 
     public class Pirates : Encounter<List<(Projectile,Direction)>, int>
@@ -33,7 +30,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
 
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder(base.ToString() + "y" + Firepower.ToString("X") + DayCost.ToString() + Reward.ToString("X") + Penalty.Count.ToString());
+            StringBuilder sb = new StringBuilder(((int)Stage).ToString() + "y" + Firepower.ToString("X") + DayCost.ToString() + Reward.ToString("X") + Penalty.Count.ToString());
             foreach((Projectile, Direction) pair in Penalty)
             {
                 sb.Append(((int)pair.Item1).ToString() + ((int)pair.Item2).ToString());
@@ -48,7 +45,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
 
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder(base.ToString() + "d" + Firepower.ToString("X") + DayCost.ToString() + Reward.Count.ToString());
+            StringBuilder sb = new StringBuilder(((int)Stage).ToString() + "d" + Firepower.ToString("X") + DayCost.ToString() + Reward.Count.ToString());
             foreach(Ware w in Reward)
             {
                 sb.Append((int)w);
@@ -64,7 +61,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
 
         public override string ToString()
         {
-            return base.ToString() + "S" + Firepower.ToString("X") + DayCost.ToString() + Reward.ToString("X") + Penalty.ToString();
+            return ((int)Stage).ToString() + "S" + Firepower.ToString("X") + DayCost.ToString() + Reward.ToString("X") + Penalty.ToString();
         }
     }
 }

@@ -9,4 +9,10 @@
     <ProjectReference Include="..\GalaxyTrucker\GalaxyTrucker.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Cards.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

@@ -41,7 +41,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
 
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder(base.ToString() + "w");
+            StringBuilder sb = new StringBuilder($"{(int)Stage}w");
             sb.Append(Event1.ToString() + Event1.Penalty.ToString());
             sb.Append(Event2.ToString() + Event2.Penalty.ToString());
             sb.Append(Event3.ToString() + Event3.Penalty.Count.ToString());

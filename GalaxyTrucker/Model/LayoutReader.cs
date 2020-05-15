@@ -1,5 +1,6 @@
-﻿using System.Collections.Generic;
-using System.IO;
+﻿using GalaxyTrucker.Properties;
+using System;
+using System.Collections.Generic;
 using System.Text.Json;
 
 namespace GalaxyTrucker.Model
@@ -22,12 +23,17 @@ namespace GalaxyTrucker.Model
 
     public static class LayoutReader
     {
-        private static readonly string _path = "Resources/ShipLayouts.json";
+        private static ReadOnlySpan<byte> Utf8Bom => new byte[] { 0xEF, 0xBB, 0xBF };
 
         public static ((int,int),bool[,]) GetLayout(ShipLayout layout)
         {
-            string jsonString = File.ReadAllText(_path);
-            Layouts obj = JsonSerializer.Deserialize<Layouts>(jsonString);
+            ReadOnlySpan<byte> bytes = Resources.ShipLayouts;
+            if (bytes.StartsWith(Utf8Bom))
+            {
+                bytes = bytes.Slice(Utf8Bom.Length);
+            }
+
+            Layouts obj = JsonSerializer.Deserialize<Layouts>(bytes);
             bool[,] ret = new bool[11, 11];
             var singleLayout = layout switch
             {

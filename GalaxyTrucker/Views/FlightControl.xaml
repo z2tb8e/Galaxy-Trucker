@@ -9,7 +9,8 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="160"/>
-            <RowDefinition/>
+            <RowDefinition Height="1*"/>
+            <RowDefinition Height="160"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition/>
@@ -18,7 +19,9 @@
 
         <local:PlayerListControl HorizontalAlignment="Left" DataContext="{Binding PlayerList}" Grid.Row="0" Grid.Column="0"/>
 
-        <Grid Grid.Row="1" Grid.Column="1">
+        <local:PlayerAttributesControl HorizontalAlignment="Left" Grid.Row="2" Grid.Column="0" DataContext="{Binding PlayerList}"/>
+
+        <Grid Grid.Row="1" Grid.Column="1" Grid.RowSpan="2">
             <Grid.RowDefinitions>
                 <RowDefinition Height="auto"/>
                 <RowDefinition Height="auto"/>

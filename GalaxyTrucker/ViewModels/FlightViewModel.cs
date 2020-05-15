@@ -12,18 +12,33 @@ namespace GalaxyTrucker.ViewModels
 {
     public class FlightViewModel : NotifyBase
     {
-        private readonly object _lock;
+        private readonly object _shipPartsLock;
+        private readonly object _playerPlacesLock;
         private readonly GTTcpClient _client;
         private readonly PlayerListViewModel _playerList;
         private readonly Ship _ship;
         private ObservableCollection<FlightPartViewModel> _shipParts;
-        private ObservableCollection<PlayerAttributes> _playerAttributes;
+        private ObservableCollection<PlaceProperty> _playerPlaces;
 
         public PlayerListViewModel PlayerList
         {
             get
             {
                 return _playerList;
+            }
+        }
+
+        public ObservableCollection<PlaceProperty> PlayerPlaces
+        {
+            get
+            {
+                return _playerPlaces;
+            }
+            private set
+            {
+                _playerPlaces = value;
+                BindingOperations.EnableCollectionSynchronization(_playerPlaces, _playerPlacesLock);
+                OnPropertyChanged();
             }
         }
 
@@ -36,7 +51,7 @@ namespace GalaxyTrucker.ViewModels
             private set
             {
                 _shipParts = value;
-                BindingOperations.EnableCollectionSynchronization(_shipParts, _lock);
+                BindingOperations.EnableCollectionSynchronization(_shipParts, _shipPartsLock);
                 OnPropertyChanged();
             }
         }
@@ -45,18 +60,16 @@ namespace GalaxyTrucker.ViewModels
         {
             get
             {
-                return _playerAttributes;
-            }
-            private set
-            {
-                _playerAttributes = value;
-                OnPropertyChanged();
+                return new ObservableCollection<PlayerAttributes>(
+                    _client.PlayerInfos.Values.Where(info => info.Color != _client.Player).Select(info => info.Attributes)
+                    );
             }
         }
 
         public FlightViewModel(GTTcpClient client, PlayerListViewModel playerList, Ship ship)
         {
-            _lock = new object();
+            _shipPartsLock = new object();
+            _playerPlacesLock = new object();
             _client = client;
             _playerList = playerList;
             _ship = ship;
@@ -68,6 +81,8 @@ namespace GalaxyTrucker.ViewModels
             }
 
             _playerList.LostConnection += PlayerList_LostConnection;
+
+            PlayerPlaces = new ObservableCollection<PlaceProperty>();
         }
 
         private void PlayerList_LostConnection(object sender, EventArgs e)

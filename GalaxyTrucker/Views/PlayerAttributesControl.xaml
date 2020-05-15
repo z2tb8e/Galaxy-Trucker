@@ -1,0 +1,63 @@
+﻿<UserControl x:Class="GalaxyTrucker.Views.PlayerAttributesControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:GalaxyTrucker.Views"
+             mc:Ignorable="d" 
+             d:DesignHeight="200" d:DesignWidth="420">
+    <ListView Grid.Column="1" Margin="10" Name="connectedPlayers" ItemsSource="{Binding ConnectedPlayers}">
+        <ListView.View>
+            <GridView AllowsColumnReorder="False">
+                <GridView.ColumnHeaderContainerStyle>
+                    <Style TargetType="GridViewColumnHeader">
+                        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                        <Setter Property="IsEnabled" Value="False"/>
+                    </Style>
+                </GridView.ColumnHeaderContainerStyle>
+                <GridViewColumn Header="Szín" Width="70">
+                    <GridViewColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Color, Converter={StaticResource EnumConverter}}" IsEnabled="False"/>
+                        </DataTemplate>
+                    </GridViewColumn.CellTemplate>
+                </GridViewColumn>
+                <GridViewColumn Header="Tűzerő" Width="70">
+                    <GridViewColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Attributes.Firepower}" IsEnabled="False"/>
+                        </DataTemplate>
+                    </GridViewColumn.CellTemplate>
+                </GridViewColumn>
+                <GridViewColumn Header="Motorok" Width="70">
+                    <GridViewColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Attributes.Enginepower}" IsEnabled="False"/>
+                        </DataTemplate>
+                    </GridViewColumn.CellTemplate>
+                </GridViewColumn>
+                <GridViewColumn Header="Legénység" Width="70">
+                    <GridViewColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Attributes.CrewCount}" IsEnabled="False"/>
+                        </DataTemplate>
+                    </GridViewColumn.CellTemplate>
+                </GridViewColumn>
+                <GridViewColumn Header="Raktér" Width="70">
+                    <GridViewColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Attributes.StorageSize}" IsEnabled="False"/>
+                        </DataTemplate>
+                    </GridViewColumn.CellTemplate>
+                </GridViewColumn>
+                <GridViewColumn Header="Energia" Width="70">
+                    <GridViewColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Attributes.Batteries}" IsEnabled="False"/>
+                        </DataTemplate>
+                    </GridViewColumn.CellTemplate>
+                </GridViewColumn>
+            </GridView>
+        </ListView.View>
+    </ListView>
+</UserControl>

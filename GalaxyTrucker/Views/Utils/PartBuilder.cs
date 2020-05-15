@@ -1,30 +1,28 @@
 ﻿using GalaxyTrucker.Model;
 using GalaxyTrucker.Model.PartTypes;
-using System;
 using System.Drawing;
 using GalaxyTrucker.Exceptions;
+using GalaxyTrucker.Properties;
 
 namespace GalaxyTrucker.Views.Utils
 {
     public static class PartBuilder
     {
-        private static readonly string _startingPath = "Resources/PartBuilder/";
-
         public static Image GetPartImage(Part part)
         {
-            Image img = Image.FromFile($"{_startingPath}blank.png");
+            Image img = Resources.blank;
             Graphics g = Graphics.FromImage(img);
 
             for(int i = 0; i < 4; ++i)
             {
-                string connectorPath = part.Connectors[i] switch
+                Image connector = part.Connectors[i] switch
                 {
-                    Connector.Single => $"{_startingPath}connector_single.png",
-                    Connector.Double => $"{_startingPath}connector_double.png",
-                    Connector.Universal => $"{_startingPath}connector_universal.png",
+                    Connector.Single => Resources.connector_single,
+                    Connector.Double => Resources.connector_double,
+                    Connector.Universal => Resources.connector_universal,
                     _ => null
                 };
-                if(connectorPath != null)
+                if (connector != null)
                 {
                     RotateFlipType rotation = i switch
                     {
@@ -33,80 +31,73 @@ namespace GalaxyTrucker.Views.Utils
                         2 => RotateFlipType.Rotate180FlipNone,
                         _ => RotateFlipType.Rotate270FlipNone
                     };
-                    Image connector = Image.FromFile(connectorPath);
+                    
                     connector.RotateFlip(rotation);
                     g.DrawImage(connector, new Point(0, 0));
                 }
             }
-            string partPath = _startingPath;
+            Image partPiece = null;
             switch (part)
             {
                 case Battery b:
-                    partPath += b.Capacity == 2 ? "part_battery2.png" : "part_battery3.png";
+                    partPiece = b.Capacity == 2 ? Resources.part_battery2 : Resources.part_battery3;
                     break;
                 case Cockpit c:
-                    partPath += c.Player switch
+                    partPiece = c.Player switch
                     {
-                        PlayerColor.Blue => "part_cockpitblue.png",
-                        PlayerColor.Red => "part_cockpitred.png",
-                        PlayerColor.Green => "part_cockpitgreen.png",
-                        _ => "part_cockpityellow.png",
+                        PlayerColor.Blue => Resources.part_cockpitblue,
+                        PlayerColor.Red => Resources.part_cockpitred,
+                        PlayerColor.Green => Resources.part_cockpitgreen,
+                        _ => Resources.part_cockpityellow
                     };
                     break;
                 case Cabin _:
-                    partPath += "part_cabin.png";
+                    partPiece = Resources.part_cabin;
                     break;
                 case EngineDouble _:
-                    partPath += "part_enginedbl.png";
+                    partPiece = Resources.part_enginedbl;
                     break;
                 case Engine _:
-                    partPath += "part_engine.png";
+                    partPiece = Resources.part_engine;
                     break;
                 case LaserDouble _:
-                    partPath += "part_laserdbl.png";
+                    partPiece = Resources.part_laserdbl;
                     break;
                 case Laser _:
-                    partPath += "part_laser.png";
+                    partPiece = Resources.part_laser;
                     break;
                 case Pipe _:
-                    partPath += "part_pipe.png";
+                    partPiece = Resources.part_pipe;
                     break;
                 case EngineCabin _:
-                    partPath += "part_enginecabin.png";
+                    partPiece = Resources.part_enginecabin;
                     break;
                 case LaserCabin _:
-                    partPath += "part_lasercabin.png";
+                    partPiece = Resources.part_lasercabin;
                     break;
                 case Shield _:
-                    partPath += "part_shield.png";
+                    partPiece = Resources.part_shield;
                     break;
                 case SpecialStorage spStorage:
-                    partPath += spStorage.Capacity switch
+                    partPiece = spStorage.Capacity switch
                     {
-                        1 => "part_spstorage1.png",
-                        _ => "part_spstorage2.png"
+                        1 => Resources.part_spstorage1,
+                        _ => Resources.part_spstorage2
                     };
                     break;
                 case Storage storage:
-                    partPath += storage.Capacity switch
+                    partPiece = storage.Capacity switch
                     {
-                        2 => "part_storage2.png",
-                        _ => "part_storage3.png"
+                        2 => Resources.part_storage2,
+                        _ => Resources.part_storage3
                     };
                     break;
                 default:
-                    partPath = null;
                     break;
             }
-            if (partPath == null)
+            if (partPiece == null)
+            {
                 throw new PartBuilderException();
-            Image partPiece;
-            try
-            {
-                partPiece = Image.FromFile(partPath);
-            }catch(Exception)
-            {
-                partPiece = Image.FromFile($"{_startingPath}part_error.png");
             }
             g.DrawImage(partPiece, new Point(0, 0));
 
