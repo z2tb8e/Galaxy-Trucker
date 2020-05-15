@@ -68,6 +68,8 @@ namespace GalaxyTrucker.Network
 
         public GameStage GameStage { get; private set; }
 
+        public PlayerOrderManager OrderManager { get; private set; }
+
         public bool IsReady { get; private set; }
 
         public Dictionary<PlayerColor, PlayerInfo> PlayerInfos { get; }
@@ -421,6 +423,7 @@ namespace GalaxyTrucker.Network
             {
                 PlayerOrder.Add(Enum.Parse<PlayerColor>(parts[i]));
             }
+            OrderManager = new PlayerOrderManager(PlayerOrder, GameStage);
             BuildingEnded?.Invoke(this, EventArgs.Empty);
         }
 

@@ -45,7 +45,7 @@
         <Button Style="{StaticResource AlienButtonStyle}" Content="Barna űrlény felhelyezése"
                 CommandParameter="EngineAlien" Grid.Row="2" Grid.Column="0" HorizontalAlignment="Left" Margin="276,0,0,0"/>
 
-        <ItemsControl VerticalAlignment="Center" HorizontalAlignment="Center" ItemsSource="{Binding PickableParts}" Margin="10" Grid.Row="2" Grid.Column="0">
+        <ItemsControl Name="shipGrid" VerticalAlignment="Center" HorizontalAlignment="Center" ItemsSource="{Binding PickableParts}" Margin="10" Grid.Row="2" Grid.Column="0">
             <ItemsControl.Style>
                 <Style TargetType="ItemsControl">
                     <Style.Triggers>

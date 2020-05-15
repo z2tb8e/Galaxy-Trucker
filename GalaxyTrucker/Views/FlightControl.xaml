@@ -21,6 +21,8 @@
 
         <local:PlayerAttributesControl HorizontalAlignment="Left" Grid.Row="2" Grid.Column="0" DataContext="{Binding PlayerList}"/>
 
+        <local:PlayerOrderControl HorizontalAlignment="Left" VerticalAlignment="Center" Grid.Row="1" Grid.Column="0" Margin="10"/>
+
         <Grid Grid.Row="1" Grid.Column="1" Grid.RowSpan="2">
             <Grid.RowDefinitions>
                 <RowDefinition Height="auto"/>

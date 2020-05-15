@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 
@@ -25,7 +24,7 @@ namespace GalaxyTrucker.Model
         }
     }
 
-    public class ShipOrderManager
+    public class PlayerOrderManager
     {
         const int StartingValue = 20;
         const int LapSize = 40;
@@ -37,15 +36,15 @@ namespace GalaxyTrucker.Model
 
         public event EventHandler PlacesChanged;
 
-        public ReadOnlyCollection<PlaceProperty> PlaceProperties
+        public Dictionary<PlayerColor, PlaceProperty> Properties
         {
             get
             {
-                return _properties.Values.ToList().AsReadOnly();
+                return _properties;
             }
         }
 
-        public ShipOrderManager(List<PlayerColor> initialOrder, GameStage stage)
+        public PlayerOrderManager(List<PlayerColor> initialOrder, GameStage stage)
         {
             if(initialOrder.Distinct().Count() != initialOrder.Count)
             {
@@ -56,7 +55,7 @@ namespace GalaxyTrucker.Model
             _playerPlaces = new PlaceProperty[40];
             _properties = new Dictionary<PlayerColor, PlaceProperty>();
 
-            int spaceBetween = (int)stage + 1;
+            int spaceBetween = (int)stage + 2;
             for(int i = 0; i < initialOrder.Count; ++i)
             {
                 int spaceValue = StartingValue - (i * spaceBetween);

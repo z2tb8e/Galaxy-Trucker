@@ -5,7 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:GalaxyTrucker.Views"
              mc:Ignorable="d" 
-             d:DesignHeight="200" d:DesignWidth="420">
+             d:DesignHeight="200" d:DesignWidth="510">
     <ListView Grid.Column="1" Margin="10" Name="connectedPlayers" ItemsSource="{Binding ConnectedPlayers}">
         <ListView.View>
             <GridView AllowsColumnReorder="False">
@@ -54,6 +54,13 @@
                     <GridViewColumn.CellTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Attributes.Batteries}" IsEnabled="False"/>
+                        </DataTemplate>
+                    </GridViewColumn.CellTemplate>
+                </GridViewColumn>
+                <GridViewColumn Header="Repül még" Width="70">
+                    <GridViewColumn.CellTemplate>
+                        <DataTemplate>
+                            <CheckBox IsChecked="{Binding IsFlying}" IsEnabled="False"/>
                         </DataTemplate>
                     </GridViewColumn.CellTemplate>
                 </GridViewColumn>
