@@ -65,13 +65,13 @@ namespace GalaxyTrucker.ViewModels
             LostConnection?.Invoke(this, EventArgs.Empty);
         }
 
-        private void Client_PlayerDisconnected(object sender, PlayerDisconnectedEventArgs e)
+        private void Client_PlayerDisconnected(object sender, PlayerEventArgs e)
         {
-            PlayerInfoViewModel playerToRemove = ConnectedPlayers.Where(item => item.Color == e.Color).First();
+            PlayerInfoViewModel playerToRemove = ConnectedPlayers.Where(item => item.Color == e.Player).First();
             ConnectedPlayers.Remove(playerToRemove);
         }
 
-        private void Client_PlayerReadied(object sender, PlayerReadiedEventArgs e)
+        private void Client_PlayerReadied(object sender, PlayerEventArgs e)
         {
             ConnectedPlayers.Where(info => info.Color == e.Player).First().IsReady = _client.PlayerInfos[e.Player].IsReady;
         }

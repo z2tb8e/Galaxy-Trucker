@@ -39,13 +39,13 @@ namespace GalaxyTrucker.Network
     }
 
     /// <summary>
-    /// Event args for signaling that another player toggled their ready state
+    /// Event args to carry information regarding one player
     /// </summary>
-    public class PlayerReadiedEventArgs : EventArgs
+    public class PlayerEventArgs : EventArgs
     {
         public PlayerColor Player { get; set; }
 
-        public PlayerReadiedEventArgs(PlayerColor player) =>
+        public PlayerEventArgs(PlayerColor player) =>
             Player = player;
     }
 
@@ -72,19 +72,6 @@ namespace GalaxyTrucker.Network
         public PlayerConnectedEventArgs(string playerName, PlayerColor color)
         {
             PlayerName = playerName;
-            Color = color;
-        }
-    }
-
-    /// <summary>
-    /// Event args for signaling that another player disconnected
-    /// </summary>
-    public class PlayerDisconnectedEventArgs : EventArgs
-    {
-        public PlayerColor Color { get; set; }
-
-        public PlayerDisconnectedEventArgs(PlayerColor color)
-        {
             Color = color;
         }
     }

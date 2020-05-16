@@ -72,8 +72,11 @@ namespace GalaxyTrucker.Network
         private readonly TcpListener _listener;
         private readonly ConcurrentDictionary<PlayerColor, ConnectionInfo> _connections;
 
-        private readonly AutoResetEvent _proceedEvent;
-        private readonly Semaphore _proceedSemaphore;
+        private readonly AutoResetEvent _proceedStageEvent;
+        private readonly Semaphore _proceedStageSemaphore;
+
+        private readonly AutoResetEvent _proceedRoundEvent;
+        private readonly Semaphore _proceedRoundSemaphore;
 
         private readonly string _logPath;
         private readonly Semaphore _logSemaphore;
@@ -104,8 +107,11 @@ namespace GalaxyTrucker.Network
 
         public GTTcpListener(int port, GameStage gameStage, bool doLogging = true)
         {
-            _proceedEvent = new AutoResetEvent(false);
-            _proceedSemaphore = new Semaphore(1, 1);
+            _proceedStageEvent = new AutoResetEvent(false);
+            _proceedStageSemaphore = new Semaphore(1, 1);
+
+            _proceedRoundEvent = new AutoResetEvent(false);
+            _proceedRoundSemaphore = new Semaphore(1, 1);
 
             _gameStage = gameStage;
             Directory.CreateDirectory("logs");
@@ -244,7 +250,7 @@ namespace GalaxyTrucker.Network
 
         private void BuildStage()
         {
-            _proceedEvent.WaitOne();
+            _proceedStageEvent.WaitOne();
 
             string playerOrder = string.Join(',', _playerOrder);
             foreach (PlayerColor player in _connections.Keys)
@@ -260,7 +266,7 @@ namespace GalaxyTrucker.Network
 
         private void BeginFlightStage()
         {
-            _proceedEvent.WaitOne();
+            _proceedStageEvent.WaitOne();
             //while (_connections.Values.Where(c => !c.IsReady || !c.ReadyToFly).Any()) ;
             _serverStage = ServerStage.Flight;
 
@@ -300,48 +306,48 @@ namespace GalaxyTrucker.Network
 
                 switch (_currentCard)
                 {
-                    case Sabotage s:
+                    case Sabotage _:
                         ResolveSabotage();
                         break;
                 }
                 //wait until everyone signals that they are ready for the next card
-                _proceedEvent.WaitOne();
+                _proceedStageEvent.WaitOne();
+            }
+        }
+
+        private void GetTargetPlayer(Func<PlayerColor> condition)
+        {
+            _proceedRoundEvent.WaitOne();
+
+            PlayerColor target = condition();
+
+            LogAsync($"Target for current card resolved to be {target}.");
+
+            WriteMessageToPlayer(target, "TargetedPlayer");
+
+            foreach(PlayerColor key in _connections.Keys)
+            {
+                if (key != target)
+                {
+                    WriteMessageToPlayer(key, $"OtherTarget,{target}");
+                }
             }
         }
 
         private void ResolveSabotage()
         {
-            List<(int, int)> attempts = new List<(int, int)>
+            PlayerColor getLowestCrewPlayer()
             {
-                (_random.Next(12), _random.Next(12)),
-                (_random.Next(12), _random.Next(12)),
-                (_random.Next(12), _random.Next(12)),
-            };
-            //Encode the attemptlist as groups of 2 hex numbers
-            string attemptString = string.Join(',', attempts.Select(pair => pair.Item1.ToString("X") + "" + pair.Item2.ToString("X")));
+                int minCrewValue = _connections.Values.Where(conn => !conn.Crashed).Select(conn => conn.Attributes.CrewCount).Min();
 
-            LogAsync($"Sabotage resolve started with attemtps {attemptString}.");
-
-            //wait until every still playing player sends their attributes
-            while (_connections.Values.Where(conn => !conn.Crashed && !conn.ReadyToFly).Any()) ;
-
-            //The player with the smallest crew is the target, if multiple players have the min value, the one who is ahead in the turn is the target
-            int minCrewValue = _connections.Values.Where(conn => !conn.Crashed).Select(conn => conn.Attributes.CrewCount).Min();
-
-            PlayerColor target = _playerOrderManager.GetCurrentOrder()
+                PlayerColor target = _playerOrderManager.GetCurrentOrder()
                 .Where(player => !_connections[player].Crashed && _connections[player].Attributes.CrewCount == minCrewValue)
                 .First();
 
-
-            LogAsync($"{target} got sabotaged.");
-            WriteMessageToPlayer(target, $"SabotagedTarget,{attemptString}");
-            foreach(PlayerColor key in _connections.Keys)
-            {
-                if(key != target)
-                {
-                    WriteMessageToPlayer(key, $"SabotagedPlayer,{target}");
-                }
+                return target;
             }
+
+            GetTargetPlayer(getLowestCrewPlayer);
         }
 
         private void PingTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
@@ -394,7 +400,7 @@ namespace GalaxyTrucker.Network
                             case "Ping":
                                 break;
 
-                            case "AttributeUpdate":
+                            case "AttributesUpdate":
                                 StartFlightStageResolve(player, parts);
                                 break;
 
@@ -421,6 +427,13 @@ namespace GalaxyTrucker.Network
         {
             _connections[player].Crashed = true;
             _playerOrderManager.Properties[player].CanMove = false;
+            foreach(PlayerColor key in _connections.Keys)
+            {
+                if (key != player)
+                {
+                    WriteMessageToPlayer(key, $"OtherPlayerCrash,{player}");
+                }
+            }
         }
 
         /// <summary>
@@ -444,15 +457,40 @@ namespace GalaxyTrucker.Network
                 Batteries = int.Parse(parts[5])
             };
             _connections[player].ReadyToFly = true;
+            if(_serverStage == ServerStage.Flight)
+            {
+                Task.Run(CheckIfProceedRound);
+            }
             LogAsync($"{player} added/updated attributes with value ({_connections[player].Attributes}).");
         }
 
         /// <summary>
-        /// Method to check if the proceed event should be signaled
+        /// Method to check if the proceed round event should be signaled
         /// </summary>
-        private void CheckIfProceed()
+        private void CheckIfProceedRound()
         {
-            if (!_proceedSemaphore.WaitOne(0))
+            if (!_proceedRoundSemaphore.WaitOne(0))
+            {
+                return;
+            }
+            bool proceed = true;
+            foreach (var item in _connections.Values)
+            {
+                proceed &= item.ReadyToFly || item.Crashed;
+            }
+            if (proceed)
+            {
+                _proceedRoundEvent.Set();
+            }
+            _proceedRoundSemaphore.Release();
+        }
+
+        /// <summary>
+        /// Method to check if the proceed stage event should be signaled
+        /// </summary>
+        private void CheckIfProceedStage()
+        {
+            if (!_proceedStageSemaphore.WaitOne(0))
             {
                 return;
             }
@@ -468,9 +506,9 @@ namespace GalaxyTrucker.Network
             }
             if (proceed)
             {
-                _proceedEvent.Set();
+                _proceedStageEvent.Set();
             }
-            _proceedSemaphore.Release();
+            _proceedStageSemaphore.Release();
         }
 
         /// <summary>
@@ -507,7 +545,7 @@ namespace GalaxyTrucker.Network
             }
             if (_connections[player].IsReady && _serverStage != ServerStage.Lobby)
             {
-                Task.Run(CheckIfProceed);
+                Task.Run(CheckIfProceedStage);
             }
         }
 

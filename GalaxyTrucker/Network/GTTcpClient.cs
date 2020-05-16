@@ -76,6 +76,10 @@ namespace GalaxyTrucker.Network
 
         public List<PlayerColor> PlayerOrder { get; }
 
+        public bool Crashed { get; private set; }
+
+        public CardEvent Card { get; private set; }
+
         #endregion
 
         #region events
@@ -113,7 +117,7 @@ namespace GalaxyTrucker.Network
         /// <summary>
         /// Event raised when another player toggles their ready state
         /// </summary>
-        public event EventHandler<PlayerReadiedEventArgs> PlayerReadied;
+        public event EventHandler<PlayerEventArgs> PlayerReadied;
 
         /// <summary>
         /// Event raised when this client toggles their ready state
@@ -128,12 +132,32 @@ namespace GalaxyTrucker.Network
         /// <summary>
         /// Event raised when another client disconnects from the server
         /// </summary>
-        public event EventHandler<PlayerDisconnectedEventArgs> PlayerDisconnected;
+        public event EventHandler<PlayerEventArgs> PlayerDisconnected;
 
         /// <summary>
         /// Event raised when this client disconnects from the server
         /// </summary>
         public event EventHandler ThisPlayerDisconnected;
+
+        /// <summary>
+        /// Event raised when the server sends a message that a card was picked
+        /// </summary>
+        public event EventHandler CardPicked;
+
+        /// <summary>
+        /// Event raised when the server sends a message that this player received the effects of the current card
+        /// </summary>
+        public event EventHandler PlayerTargeted;
+
+        /// <summary>
+        /// Event raised when the server sends a message that another player received the effects of the current card
+        /// </summary>
+        public event EventHandler<PlayerColor> OtherTargeted;
+
+        /// <summary>
+        /// Event raised when the server sends a message that another player crashed
+        /// </summary>
+        public event EventHandler<PlayerColor> OtherPlayerCrashed;
 
         #endregion
 
@@ -145,6 +169,7 @@ namespace GalaxyTrucker.Network
             _serverStage = ServerStage.Lobby;
             _client = new TcpClient();
             _pingTimer = new Timer(PingInterval);
+            Crashed = false;
         }
 
         #region public methods
@@ -212,6 +237,28 @@ namespace GalaxyTrucker.Network
             IsReady = !IsReady;
             PlayerInfos[Player].IsReady = IsReady;
             ThisPlayerReadied?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void UpdateAttributes(int firepower, int enginepower, int crewCount, int storageSize, int batteries)
+        {
+            if (_serverStage != ServerStage.Flight)
+            {
+                _pingTimer.Stop();
+                throw new InvalidOperationException();
+            }
+            WriteMessageToServer($"AttributesUpdate,{firepower},{enginepower},{crewCount},{storageSize},{batteries}");
+        }
+
+        public void CrashPlayer()
+        {
+            if (_serverStage != ServerStage.Flight || Crashed)
+            {
+                _pingTimer.Stop();
+                throw new InvalidOperationException();
+            }
+            WriteMessageToServer("PlayerCrash");
+            Crashed = true;
+            PlayerInfos[Player].IsFlying = false;
         }
 
         public void StartFlightStage(int firepower, int enginepower, int crewCount, int storageSize, int batteries)
@@ -318,10 +365,109 @@ namespace GalaxyTrucker.Network
                     case "Ping":
                         break;
 
+                    case "CardPicked":
+                        CardPickedResolve(parts);
+                        break;
+
+                    case "OtherPlayerCrash":
+                        OtherPlayerCrashResolve(parts);
+                        break;
+
+                    case "TargetedPlayer":
+                        TargetedPlayerResolve();
+                        break;
+
+                    case "OtherTarget":
+                        OtherTargetResolve(parts);
+                        break;
+
+                    case "OtherMoved":
+                        OtherMovedResolve(parts);
+                        break;
+
                     default:
                         throw new UnknownMessageException(message);
                 }
             }
+        }
+
+        /// <summary>
+        /// Method called when the server sends a message that another player moved
+        /// </summary>
+        /// <param name="parts"></param>
+        private void OtherMovedResolve(string[] parts)
+        {
+            PlayerColor player = Enum.Parse<PlayerColor>(parts[1]);
+
+            if (_serverStage != ServerStage.Flight || !OrderManager.Properties[player].CanMove)
+            {
+                _pingTimer.Stop();
+                throw new OutOfSyncException();
+            }
+
+            int distance = int.Parse(parts[2]);
+
+            OrderManager.AddDistance(player, distance);
+        }
+
+        /// <summary>
+        /// Method called when the server sends a message that this player got targeted
+        /// </summary>
+        private void TargetedPlayerResolve()
+        {
+            if (_serverStage != ServerStage.Flight)
+            {
+                _pingTimer.Stop();
+                throw new OutOfSyncException();
+            }
+            PlayerTargeted?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Method called when the server sends a message that another player got targeted
+        /// </summary>
+        /// <param name="parts"></param>
+        private void OtherTargetResolve(string[] parts)
+        {
+            if(_serverStage != ServerStage.Flight)
+            {
+                _pingTimer.Stop();
+                throw new OutOfSyncException();
+            }
+            PlayerColor target = Enum.Parse<PlayerColor>(parts[1]);
+            OtherTargeted?.Invoke(this, target);
+        }
+
+        /// <summary>
+        /// Method called when the server sends a message that another player crashed
+        /// </summary>
+        /// <param name="parts"></param>
+        private void OtherPlayerCrashResolve(string[] parts)
+        {
+            if (_serverStage != ServerStage.Flight)
+            {
+                _pingTimer.Stop();
+                throw new OutOfSyncException();
+            }
+            PlayerColor crashedPlayer = Enum.Parse<PlayerColor>(parts[1]);
+            PlayerInfos[crashedPlayer].IsFlying = false;
+            OtherPlayerCrashed?.Invoke(this, crashedPlayer);
+        }
+
+        /// <summary>
+        /// Method called when the server sends a message that a new card has been picked
+        /// </summary>
+        /// <param name="parts"></param>
+        private void CardPickedResolve(string[] parts)
+        {
+            if (_serverStage != ServerStage.Flight)
+            {
+                _pingTimer.Stop();
+                throw new OutOfSyncException();
+            }
+            Card = parts[1].ToCardEvent();
+            IsReady = false;
+            CardPicked?.Invoke(this, EventArgs.Empty);
         }
 
         private void PingTimer_Elapsed(object sender, ElapsedEventArgs e)
@@ -329,6 +475,10 @@ namespace GalaxyTrucker.Network
             WriteMessageToServer("Ping");
         }
 
+        /// <summary>
+        /// Method called when the server sends a message that another player disconnected
+        /// </summary>
+        /// <param name="parts"></param>
         private void PlayerDisconnectResolve(string[] parts)
         {
             PlayerColor disconnectedPlayer = Enum.Parse<PlayerColor>(parts[1]);
@@ -337,9 +487,13 @@ namespace GalaxyTrucker.Network
             {
                 PlayerOrder.Remove(disconnectedPlayer);
             }
-            PlayerDisconnected?.Invoke(this, new PlayerDisconnectedEventArgs(disconnectedPlayer));
+            PlayerDisconnected?.Invoke(this, new PlayerEventArgs(disconnectedPlayer));
         }
 
+        /// <summary>
+        /// Method called when the server sends a message that another player connected
+        /// </summary>
+        /// <param name="parts"></param>
         private void PlayerConnectedResolve(string[] parts)
         {
             if (_serverStage != ServerStage.Lobby)
@@ -353,6 +507,10 @@ namespace GalaxyTrucker.Network
             PlayerConnected?.Invoke(this, new PlayerConnectedEventArgs(name, color));
         }
 
+        /// <summary>
+        /// Method called when the server sends a message that the flight stage started
+        /// </summary>
+        /// <param name="parts"></param>
         private void FlightBegunResolve(string[] parts)
         {
             if (!IsReady)
@@ -500,7 +658,7 @@ namespace GalaxyTrucker.Network
         {
             PlayerColor player = Enum.Parse<PlayerColor>(parts[1]);
             PlayerInfos[player].IsReady = !PlayerInfos[player].IsReady;
-            PlayerReadied?.Invoke(this, new PlayerReadiedEventArgs(player));
+            PlayerReadied?.Invoke(this, new PlayerEventArgs(player));
         }
 
         private string ReadMessageFromServer()
