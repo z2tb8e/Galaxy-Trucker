@@ -7,8 +7,6 @@ namespace GalaxyTrucker.Model
     {
         private readonly Connector[] _connectors;
 
-        private Stack<Part> _path;
-
         public int Row { get; set; }
 
         public int Column { get; set; }
@@ -19,7 +17,7 @@ namespace GalaxyTrucker.Model
 
         public Connector[] Connectors => _connectors;
 
-        public Stack<Part> Path { get { return _path; } protected set { _path = value; } }
+        public List<Part> Neighbours { get; set; }
 
         public event EventHandler HighlightToggled;
 
@@ -31,6 +29,7 @@ namespace GalaxyTrucker.Model
             {
                 Top, Right, Bottom, Left
             };
+            Neighbours = new List<Part>();
         }
 
         public Connector GetConnector(Direction dir)
@@ -57,16 +56,6 @@ namespace GalaxyTrucker.Model
         {
             int enumValue = ((int)Rotation + leftOrRight + 4) % 4;
             Rotation = (Direction)enumValue;
-        }
-
-        /// <summary>
-        /// Method to create the Part's path based off the given endpoint
-        /// </summary>
-        /// <param name="endpoint"></param>
-        public void CreatePath(Part endpoint)
-        {
-            Path = new Stack<Part>(endpoint.Path);
-            Path.Push(endpoint);
         }
 
         public override string ToString()

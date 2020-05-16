@@ -48,7 +48,7 @@ namespace GalaxyTrucker.Model.PartTypes
 
         public Cockpit(PlayerColor pc) : base(Connector.Universal, Connector.Universal, Connector.Universal, Connector.Universal)
         {
-            Path = new Stack<Part>();
+            Neighbours = new List<Part>();
             Player = pc;
         }
 

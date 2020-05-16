@@ -2,6 +2,8 @@
 using GalaxyTrucker.Model.PartTypes;
 using System;
 using System.Collections.Generic;
+using System.Drawing.Text;
+using System.IO;
 using System.Linq;
 
 namespace GalaxyTrucker.Model
@@ -586,7 +588,14 @@ namespace GalaxyTrucker.Model
                 _parts[row, column] = part;
                 part.Row = row;
                 part.Column = column;
-                part.CreatePath(matchingPart);
+                foreach((Part, Direction) tuple in neighbours)
+                {
+                    if(tuple.Item1 != null && tuple.Item1.GetConnector(tuple.Item2) != Connector.None)
+                    {
+                        tuple.Item1.Neighbours.Add(part);
+                        part.Neighbours.Add(tuple.Item1);
+                    }
+                }
             }
             return ret;
         }
@@ -601,40 +610,81 @@ namespace GalaxyTrucker.Model
         {
             Part removedPart = _parts[row, column] ?? throw new InvalidIndexException($"Part at ({row},{column}) is null.");
 
-            ++_penalty;
-            _parts[row, column] = null;
-
             if (removedPart is Cockpit)
             {
+                _parts[row, column] = null;
                 ShipWrecked?.Invoke(this, WreckedSource.CockpitHit);
                 _penalty = Math.Min(_penaltyCap, _parts.Cast<Part>().Where(p => p != null).Count());
                 return;
             }
-            else if (removedPart is IActivatable)
+
+            RemovePart(removedPart);
+
+            CheckForNotConnectedParts();
+            if (HumanCount == 0)
             {
-                _activatableParts.Remove(removedPart);
+                ShipWrecked?.Invoke(this, WreckedSource.OutOfHumans);
             }
-            else if (removedPart is Storage)
-            {
-                _storages.Remove(removedPart as Storage);
-            }
 
-            PartRemoved?.Invoke(this, new PartRemovedEventArgs(removedPart.Row, removedPart.Column));
+        }
 
-            Part[] neighbours = new Part[]
-            {
-                _parts[row - 1, column],
-                _parts[row, column + 1],
-                _parts[row + 1, column],
-                _parts[row, column - 1]
-            };
+        #endregion
 
-            if (removedPart is EngineCabin || removedPart is LaserCabin)
+        #region private methods
+
+        /// <summary>
+        /// Breadth-first search to recognize which parts to remove
+        /// </summary>
+        private void CheckForNotConnectedParts()
+        {
+            List<Part> undiscoveredParts = _parts.Cast<Part>().Where(p => p != null).ToList();
+            Queue<Part> queue = new Queue<Part>();
+
+            Part startingPart = GetCockpit();
+            undiscoveredParts.Remove(startingPart);
+            queue.Enqueue(startingPart);
+            while(queue.Count > 0)
             {
-                Personnel alienType = removedPart is EngineCabin ? Personnel.EngineAlien : Personnel.LaserAlien;
-                foreach (Part p in neighbours)
+                Part item = queue.Dequeue();
+                foreach(Part neighbour in item.Neighbours)
                 {
-                    if(p is Cabin && (p as Cabin).Personnel == alienType)
+                    if (undiscoveredParts.Contains(neighbour))
+                    {
+                        queue.Enqueue(neighbour);
+                        undiscoveredParts.Remove(neighbour);
+                    }
+                }
+            }
+
+            foreach(Part p in undiscoveredParts)
+            {
+                RemovePart(p);
+            }
+
+
+        }
+
+        /// <summary>
+        /// Method to actually remove a part from the ship, while removing other references and influences
+        /// </summary>
+        /// <param name="current"></param>
+        /// <param name="neighbours"></param>
+        private void RemovePart(Part current)
+        {
+            if (current is IActivatable)
+            {
+                _activatableParts.Remove(current);
+            }
+            else if (current is Storage)
+            {
+                _storages.Remove(current as Storage);
+            }
+            if (current is EngineCabin || current is LaserCabin)
+            {
+                Personnel alienType = current is EngineCabin ? Personnel.EngineAlien : Personnel.LaserAlien;
+                foreach (Part p in current.Neighbours)
+                {
+                    if (p is Cabin && (p as Cabin).Personnel == alienType)
                     {
                         (p as Cabin).Personnel = Personnel.None;
                         if (alienType == Personnel.LaserAlien)
@@ -649,95 +699,13 @@ namespace GalaxyTrucker.Model
                 }
             }
 
-            foreach (Part p in neighbours)
+            foreach(Part p in current.Neighbours)
             {
-                if (p != null && p.Path.Contains(removedPart))
-                {
-                    RemovePartsRecursive(p, removedPart);
-                }
+                p.Neighbours.Remove(current);
             }
-            if (HumanCount == 0)
-            {
-                ShipWrecked?.Invoke(this, WreckedSource.OutOfHumans);
-            }
-
-        }
-
-        #endregion
-
-        #region private methods
-
-        /// <summary>
-        /// Function to recursively try to find a new path to the cockpit for the current element, and all parts nearby which have the current element in their path
-        /// </summary>
-        /// <param name="current">The current part being checked whether it's removed</param>
-        /// <returns>A logical value indicating if the current part got removed</returns>
-        private bool RemovePartsRecursive(Part current, Part origin)
-        {
-            (Part,Direction)[] neighbours = new (Part,Direction)[]
-            {
-                (_parts[current.Row - 1, current.Column], Direction.Bottom),
-                (_parts[current.Row, current.Column + 1], Direction.Left),
-                (_parts[current.Row + 1, current.Column], Direction.Top),
-                (_parts[current.Row, current.Column - 1], Direction.Right)
-            };
-
-            //in each direction check if
-            foreach((Part,Direction) neighbour in neighbours)
-            {
-                if(neighbour.Item1 != null && neighbour.Item1 != origin)
-                {
-                    //we find a part which is connected through the current element, then check deeper down the path if there is an alternative
-                    if (neighbour.Item1.Path.Contains(current))
-                    {
-                        if (RemovePartsRecursive(neighbour.Item1, current))
-                        {
-                            current.CreatePath(neighbour.Item1);
-                            return true;
-                        }
-                    }
-                    //we find a part which is not connected through the current element, but has a connection to it, then rebind to that path
-                    else if (1 == ConnectorsMatch(current.GetConnector((Direction)(((int)neighbour.Item2 + 2) % 4)), neighbour.Item1.GetConnector(neighbour.Item2)))
-                    {
-                        current.CreatePath(neighbour.Item1);
-                        return true;
-                    }
-                }
-            }
-
-            //if no alternative path is found, remove the part
-            if (current is IActivatable)
-            {
-                _activatableParts.Remove(current);
-            }
-            else if (current is Storage)
-            {
-                _storages.Remove(current as Storage);
-            }
-            if (current is EngineCabin || current is LaserCabin)
-            {
-                Personnel alienType = current is EngineCabin ? Personnel.EngineAlien : Personnel.LaserAlien;
-                foreach ((Part,Direction) p in neighbours)
-                {
-                    if (p.Item1 is Cabin && (p.Item1 as Cabin).Personnel == alienType)
-                    {
-                        (p.Item1 as Cabin).Personnel = Personnel.None;
-                        if (alienType == Personnel.LaserAlien)
-                        {
-                            _hasLaserAlien = false;
-                        }
-                        else
-                        {
-                            _hasEngineAlien = false;
-                        }
-                    }
-                }
-            }
-
             ++_penalty;
             _parts[current.Row, current.Column] = null;
             PartRemoved?.Invoke(this, new PartRemovedEventArgs(current.Row, current.Column));
-            return false;
         }
 
         /// <summary>
