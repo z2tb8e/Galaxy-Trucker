@@ -36,9 +36,9 @@
             </TextBox.Text>
         </TextBox>
 
-        <Label Grid.Row="1" Grid.Column="1" FontSize="15" Margin="2" Target="{Binding ElementName=remoteIpTextBox}"
-               VerticalAlignment="Center" HorizontalAlignment="Center">Távoli ip cím</Label>
-        <TextBox Style="{StaticResource TextBoxInError}" Grid.Row="2" Grid.Column="1" Name="remoteIpTextBox" Margin="10">
+        <Label Grid.Row="1" Grid.Column="1" FontSize="15" Margin="2" Target="{Binding ElementName=ipTextBox}"
+               VerticalAlignment="Center" HorizontalAlignment="Center">Ip cím</Label>
+        <TextBox Style="{StaticResource TextBoxInError}" Grid.Row="2" Grid.Column="1" Name="ipTextBox" Margin="10">
             <TextBox.Text>
                 <Binding Path="RemoteIp" UpdateSourceTrigger="PropertyChanged">
                     <Binding.ValidationRules>
@@ -48,9 +48,9 @@
             </TextBox.Text>
         </TextBox>
 
-        <Label Grid.Row="1" Grid.Column="2" FontSize="15" Margin="2" Target="{Binding ElementName=remotePortTextBox}"
-               VerticalAlignment="Center" HorizontalAlignment="Center">Távoli port(1024-65535)</Label>
-        <TextBox Style="{StaticResource TextBoxInError}" Grid.Row="2" Grid.Column="2" Name="remotePortTextBox" Margin="10">
+        <Label Grid.Row="1" Grid.Column="2" FontSize="15" Margin="2" Target="{Binding ElementName=portTextBox}"
+               VerticalAlignment="Center" HorizontalAlignment="Center">Port(1024-65535)</Label>
+        <TextBox Style="{StaticResource TextBoxInError}" Grid.Row="2" Grid.Column="2" Name="portTextBox" Margin="10">
             <TextBox.Text>
                 <Binding Path="RemotePort" UpdateSourceTrigger="PropertyChanged">
                     <Binding.ValidationRules>
@@ -116,8 +116,8 @@
                         <MultiDataTrigger>
                             <MultiDataTrigger.Conditions>
                                 <Condition Binding="{Binding Path=(Validation.HasError), ElementName=nameTextBox}" Value="False"/>
-                                <Condition Binding="{Binding Path=(Validation.HasError), ElementName=remoteIpTextBox}" Value="False"/>
-                                <Condition Binding="{Binding Path=(Validation.HasError), ElementName=remotePortTextBox}" Value="False"/>
+                                <Condition Binding="{Binding Path=(Validation.HasError), ElementName=ipTextBox}" Value="False"/>
+                                <Condition Binding="{Binding Path=(Validation.HasError), ElementName=portTextBox}" Value="False"/>
                             </MultiDataTrigger.Conditions>
                             <Setter Property="IsEnabled" Value="True"/>
                         </MultiDataTrigger>

@@ -160,7 +160,7 @@ namespace GalaxyTrucker.Network
                 DisplayName = displayName;
 
                 await _client.ConnectAsync(endPoint.Address, endPoint.Port);
-                
+
                 _stream = _client.GetStream();
 
                 string colorAndGameStageMessage = ReadMessageFromServer();
@@ -216,13 +216,13 @@ namespace GalaxyTrucker.Network
 
         public void StartFlightStage(int firepower, int enginepower, int crewCount, int storageSize, int batteries)
         {
-            if(_serverStage != ServerStage.Build || IsReady)
+            if(_serverStage != ServerStage.PastBuild || IsReady)
             {
                 _pingTimer.Stop();
                 throw new InvalidOperationException();
             }
 
-            ToggleReady(ServerStage.Build);
+            ToggleReady(ServerStage.PastBuild);
             WriteMessageToServer($"StartFlightStage,{firepower},{enginepower},{crewCount},{storageSize},{batteries}");
         }
 
@@ -424,6 +424,7 @@ namespace GalaxyTrucker.Network
                 PlayerOrder.Add(Enum.Parse<PlayerColor>(parts[i]));
             }
             OrderManager = new PlayerOrderManager(PlayerOrder, GameStage);
+            _serverStage = ServerStage.PastBuild;
             BuildingEnded?.Invoke(this, EventArgs.Empty);
         }
 

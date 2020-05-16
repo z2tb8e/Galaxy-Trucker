@@ -210,6 +210,7 @@ namespace GalaxyTrucker.ViewModels
             {
                 Server = new GTTcpListener(RemotePort, SelectedGameStage);
                 Task.Factory.StartNew(() => Server.Start(), TaskCreationOptions.LongRunning);
+                RemoteIp = "127.0.0.1";
                 ConnectCommand.Execute(null);
             });
 
@@ -247,8 +248,10 @@ namespace GalaxyTrucker.ViewModels
                 Error = "";
                 IPEndPoint endpoint = new IPEndPoint(IPAddress.Parse(RemoteIp), RemotePort);
                 ConnectInProgress = true;
+                Error = "Csatlakozás folyamatban...";
                 await _client.Connect(endpoint, PlayerName);
                 ConnectionStatus = $"Csatlakozva, kapott szín: {EnumHelpers.GetDescription(_client.Player)}\nJáték fázis: {EnumHelpers.GetDescription(_client.GameStage)}";
+                Error = "";
                 _playerList.SynchronizeListWithClient();
                 SelectedGameStage = _client.GameStage;
                 if(SelectedGameStage == GameStage.First)

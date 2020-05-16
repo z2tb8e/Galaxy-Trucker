@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GalaxyTrucker.Model;
+using GalaxyTrucker.Model.CardEventTypes;
 using GalaxyTrucker.Properties;
 
 namespace GalaxyTrucker.Network
@@ -48,8 +49,11 @@ namespace GalaxyTrucker.Network
 
         public string DisplayName { get; set; }
 
+        public bool Crashed { get; set; }
+
         public ConnectionInfo(TcpClient client)
         {
+            Crashed = false;
             Client = client;
             Stream = client.GetStream();
             IsReady = false;
@@ -68,6 +72,9 @@ namespace GalaxyTrucker.Network
         private readonly TcpListener _listener;
         private readonly ConcurrentDictionary<PlayerColor, ConnectionInfo> _connections;
 
+        private readonly AutoResetEvent _proceedEvent;
+        private readonly Semaphore _proceedSemaphore;
+
         private readonly string _logPath;
         private readonly Semaphore _logSemaphore;
         private readonly bool _doLogging;
@@ -82,7 +89,9 @@ namespace GalaxyTrucker.Network
         private readonly Semaphore _orderSemaphore;
 
         private readonly PartAvailability[,] _parts;
-        private List<CardEvent> _deck;
+        private Stack<CardEvent> _deck;
+        private CardEvent _currentCard;
+        private PlayerOrderManager _playerOrderManager;
 
         #endregion
 
@@ -95,6 +104,9 @@ namespace GalaxyTrucker.Network
 
         public GTTcpListener(int port, GameStage gameStage, bool doLogging = true)
         {
+            _proceedEvent = new AutoResetEvent(false);
+            _proceedSemaphore = new Semaphore(1, 1);
+
             _gameStage = gameStage;
             Directory.CreateDirectory("logs");
             _logPath = $"logs/log_{DateTime.Now:yyyyMMddHHmmss}.log";
@@ -232,7 +244,7 @@ namespace GalaxyTrucker.Network
 
         private void BuildStage()
         {
-            while (_connections.Values.Where(c => !c.IsReady || c.HasMessage).Any()) ;
+            _proceedEvent.WaitOne();
 
             string playerOrder = string.Join(',', _playerOrder);
             foreach (PlayerColor player in _connections.Keys)
@@ -241,12 +253,15 @@ namespace GalaxyTrucker.Network
                 _connections[player].IsReady = false;
             }
             LogAsync($"Building stage over, player order: ({playerOrder})");
+            _serverStage = ServerStage.PastBuild;
+            _playerOrderManager = new PlayerOrderManager(_playerOrder, _gameStage);
             BeginFlightStage();
         }
 
         private void BeginFlightStage()
         {
-            while (_connections.Values.Where(c => !c.IsReady || !c.ReadyToFly).Any()) ;
+            _proceedEvent.WaitOne();
+            //while (_connections.Values.Where(c => !c.IsReady || !c.ReadyToFly).Any()) ;
             _serverStage = ServerStage.Flight;
 
             StringBuilder playerAttributes = new StringBuilder($"FlightBegun,{_connections.Count}");
@@ -267,6 +282,66 @@ namespace GalaxyTrucker.Network
         private void FlightStage()
         {
             LogAsync("FlightStage started");
+
+            //while there are cards left and there is at least one player who has not crashed yet
+            while(_deck.Count > 0 && _connections.Values.Where(conn => !conn.Crashed).Any())
+            {
+                _currentCard = _deck.Pop();
+                LogAsync($"Server picked card {_currentCard}.");
+                foreach (PlayerColor player in _connections.Keys)
+                {
+                    if (!_connections[player].Crashed)
+                    {
+                        _connections[player].ReadyToFly = false;
+                        _connections[player].IsReady = false;
+                    }
+                    WriteMessageToPlayer(player, $"CardPicked,{_currentCard},{_deck.Count}");
+                }
+
+                switch (_currentCard)
+                {
+                    case Sabotage s:
+                        ResolveSabotage();
+                        break;
+                }
+                //wait until everyone signals that they are ready for the next card
+                _proceedEvent.WaitOne();
+            }
+        }
+
+        private void ResolveSabotage()
+        {
+            List<(int, int)> attempts = new List<(int, int)>
+            {
+                (_random.Next(12), _random.Next(12)),
+                (_random.Next(12), _random.Next(12)),
+                (_random.Next(12), _random.Next(12)),
+            };
+            //Encode the attemptlist as groups of 2 hex numbers
+            string attemptString = string.Join(',', attempts.Select(pair => pair.Item1.ToString("X") + "" + pair.Item2.ToString("X")));
+
+            LogAsync($"Sabotage resolve started with attemtps {attemptString}.");
+
+            //wait until every still playing player sends their attributes
+            while (_connections.Values.Where(conn => !conn.Crashed && !conn.ReadyToFly).Any()) ;
+
+            //The player with the smallest crew is the target, if multiple players have the min value, the one who is ahead in the turn is the target
+            int minCrewValue = _connections.Values.Where(conn => !conn.Crashed).Select(conn => conn.Attributes.CrewCount).Min();
+
+            PlayerColor target = _playerOrderManager.GetCurrentOrder()
+                .Where(player => !_connections[player].Crashed && _connections[player].Attributes.CrewCount == minCrewValue)
+                .First();
+
+
+            LogAsync($"{target} got sabotaged.");
+            WriteMessageToPlayer(target, $"SabotagedTarget,{attemptString}");
+            foreach(PlayerColor key in _connections.Keys)
+            {
+                if(key != target)
+                {
+                    WriteMessageToPlayer(key, $"SabotagedPlayer,{target}");
+                }
+            }
         }
 
         private void PingTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
@@ -319,6 +394,14 @@ namespace GalaxyTrucker.Network
                             case "Ping":
                                 break;
 
+                            case "AttributeUpdate":
+                                StartFlightStageResolve(player, parts);
+                                break;
+
+                            case "PlayerCrash":
+                                PlayerCrashResolve(player);
+                                break;
+
                             default:
                                 LogAsync($"Unhandled client message from {player}: {message}");
                                 break;
@@ -331,12 +414,27 @@ namespace GalaxyTrucker.Network
         }
 
         /// <summary>
-        /// Method called when a client sends a message signaling it's ready to enter Flight stage
+        /// Method called when a client sends a message signaling that they crashed
+        /// </summary>
+        /// <param name="player"></param>
+        private void PlayerCrashResolve(PlayerColor player)
+        {
+            _connections[player].Crashed = true;
+            _playerOrderManager.Properties[player].CanMove = false;
+        }
+
+        /// <summary>
+        /// Method called when a client sends a message signaling it's ready to enter Flight stage,
+        /// or in flight stage, when they are ready to resolve a round requiring attribute checks
         /// </summary>
         /// <param name="player"></param>
         /// <param name="parts"></param>
         private void StartFlightStageResolve(PlayerColor player, string[] parts)
         {
+            if (_connections[player].ReadyToFly)
+            {
+                LogAsync($"{player} tried updating attributes while being readied.");
+            }
             _connections[player].Attributes = new PlayerAttributes
             {
                 Firepower = int.Parse(parts[1]),
@@ -346,7 +444,33 @@ namespace GalaxyTrucker.Network
                 Batteries = int.Parse(parts[5])
             };
             _connections[player].ReadyToFly = true;
-            LogAsync($"{player} added attributes with value ({_connections[player].Attributes}).");
+            LogAsync($"{player} added/updated attributes with value ({_connections[player].Attributes}).");
+        }
+
+        /// <summary>
+        /// Method to check if the proceed event should be signaled
+        /// </summary>
+        private void CheckIfProceed()
+        {
+            if (!_proceedSemaphore.WaitOne(0))
+            {
+                return;
+            }
+            bool proceed = true;
+            foreach(var item in _connections.Values)
+            {
+                proceed &= _serverStage switch
+                {
+                    ServerStage.PastBuild => item.IsReady && item.ReadyToFly,
+                    ServerStage.Flight => item.IsReady || item.Crashed,
+                    _ => item.IsReady
+                };
+            }
+            if (proceed)
+            {
+                _proceedEvent.Set();
+            }
+            _proceedSemaphore.Release();
         }
 
         /// <summary>
@@ -356,6 +480,7 @@ namespace GalaxyTrucker.Network
         private void ToggleReadyResolve(PlayerColor player)
         {
             _connections[player].IsReady = !_connections[player].IsReady;
+
             if (_serverStage == ServerStage.Build)
             {
                 _orderSemaphore.WaitOne();
@@ -379,6 +504,10 @@ namespace GalaxyTrucker.Network
                 {
                     WriteMessageToPlayer(key, announcement);
                 }
+            }
+            if (_connections[player].IsReady && _serverStage != ServerStage.Lobby)
+            {
+                Task.Run(CheckIfProceed);
             }
         }
 
@@ -589,26 +718,25 @@ namespace GalaxyTrucker.Network
                     throw new InvalidEnumArgumentException(nameof(_gameStage), (int)_gameStage, typeof(GameStage));
             }
 
-            _deck = new List<CardEvent>();
+            List<CardEvent> cardList = new List<CardEvent>();
             for (int i = 0; i < 4; ++i)
             {
                 foreach (int stage in deckComposition)
                 {
                     List<CardEvent> stageCards = cardsByStage[stage];
                     int index = _random.Next(stageCards.Count);
-                    _deck.Add(stageCards[index]);
+                    cardList.Add(stageCards[index]);
                 }
             }
 
-            int n = _deck.Count;
-            while (n > 1)
+            _deck = new Stack<CardEvent>();
+            while(cardList.Count > 0)
             {
-                n--;
-                int k = _random.Next(n + 1);
-                CardEvent value = _deck[k];
-                _deck[k] = _deck[n];
-                _deck[n] = value;
+                CardEvent item = cardList[_random.Next(cardList.Count)];
+                _deck.Push(item);
+                cardList.Remove(item);
             }
+
             LogAsync($"Deck assembled, cards:\n {string.Join("\n ", _deck)}");
         }
 

@@ -14,13 +14,17 @@
         /// </summary>
         Build = 1,
         /// <summary>
+        /// Finished building, not yet flight
+        /// </summary>
+        PastBuild = 2,
+        /// <summary>
         /// Past building flight phase, not accepting connections
         /// </summary>
-        Flight = 2,
+        Flight = 3,
         /// <summary>
         /// Server is closing
         /// </summary>
-        Close = 3
+        Close = 4
 
     }
 }

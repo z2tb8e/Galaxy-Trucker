@@ -38,7 +38,7 @@
         </TextBox>
 
         <Label Grid.Row="1" Grid.Column="1" FontSize="15" Margin="2" Target="{Binding ElementName=hostIpTextBox}"
-               VerticalAlignment="Center" HorizontalAlignment="Center">Saját ip cím</Label>
+               VerticalAlignment="Center" HorizontalAlignment="Center">Helyi ip cím</Label>
         <TextBox IsEnabled="False" Grid.Row="2" Text="{Binding HostIp}" Grid.Column="1" Name="hostIpTextBox" Margin="10"/>
 
         <Label Grid.Row="1" Grid.Column="2" FontSize="15" Margin="2" Target="{Binding ElementName=hostPortTextBox}"
