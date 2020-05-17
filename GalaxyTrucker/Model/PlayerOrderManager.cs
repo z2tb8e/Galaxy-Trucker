@@ -13,14 +13,11 @@ namespace GalaxyTrucker.Model
 
         public int LapCount { get; set; }
 
-        public bool CanMove { get; set; }
-
         public PlaceProperty(PlayerColor player, int placeValue)
         {
             Player = player;
             PlaceValue = placeValue;
             LapCount = 0;
-            CanMove = true;
         }
     }
 
@@ -32,7 +29,7 @@ namespace GalaxyTrucker.Model
         private readonly Dictionary<PlayerColor, PlaceProperty> _properties;
         private readonly Semaphore _sem;
 
-        public event EventHandler<PlayerColor> PlayerOutpaced;
+        public event EventHandler<PlayerColor> PlayerCrashed;
 
         public event EventHandler PlacesChanged;
 
@@ -66,12 +63,13 @@ namespace GalaxyTrucker.Model
 
         public void AddDistance(PlayerColor player, int value)
         {
-            if (!_properties[player].CanMove)
-            {
-                throw new InvalidOperationException($"{player} can't move!");
-            }
-
             _sem.WaitOne();
+
+            if (value == 0)
+            {
+                OnPlayerCrashed(player);
+                return;
+            }
 
             bool negative = value < 0;
             _playerPlaces[_properties[player].PlaceValue] = null;
@@ -97,13 +95,11 @@ namespace GalaxyTrucker.Model
 
                     if(occupier.LapCount < _properties[player].LapCount && !negative)
                     {
-                        occupier.CanMove = false;
-                        PlayerOutpaced?.Invoke(this, occupier.Player);
+                        OnPlayerCrashed(occupier.Player);
                     }
-                    else if(occupier.LapCount > _properties[player].LapCount && negative && _properties[player].CanMove)
+                    else if(occupier.LapCount > _properties[player].LapCount && negative)
                     {
-                        _properties[player].CanMove = false;
-                        PlayerOutpaced?.Invoke(this, player);
+                        OnPlayerCrashed(player);
                     }
 
                     nextPlace += negative ? -1 : 1;
@@ -131,7 +127,7 @@ namespace GalaxyTrucker.Model
         /// <returns></returns>
         public List<PlayerColor> GetCurrentOrder()
         {
-            return _properties.Where(pair => pair.Value.CanMove)
+            return _properties
                 .OrderByDescending(pair => pair.Value.LapCount * LapSize + pair.Value.PlaceValue)
                 .Select(pair => pair.Key).ToList();
         }
@@ -149,6 +145,12 @@ namespace GalaxyTrucker.Model
         private bool IsOccupied(int placeValue)
         {
             return _properties.Values.Where(val => val.PlaceValue == placeValue).Any();
+        }
+
+        private void OnPlayerCrashed(PlayerColor player)
+        {
+            Properties.Remove(player);
+            PlayerCrashed?.Invoke(this, player);
         }
     }
 }

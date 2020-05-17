@@ -75,9 +75,9 @@ namespace GalaxyTrucker.Properties {
         ///0a314
         ///0A51232
         ///0A61244
-        ///0b3100010
-        ///0b3100301
-        ///0b400020301
+        ///0m3100010
+        ///0m3100301
+        ///0m400020301
         ///0d4133212
         ///0o
         ///0o
@@ -95,9 +95,9 @@ namespace GalaxyTrucker.Properties {
         ///1a528
         ///1A71243
         ///1A823332
-        ///1b50010011101
-        ///1b50010031303
-        ///1b6000002020301
+        ///1m50010011101
+        ///1m50010031303
+        ///1m6000002020301
         ///1d8134333
         ///1o
         ///1o
@@ -115,9 +115,9 @@ namespace GalaxyTrucker.Properties {
         ///2a72B
         ///2A9244321
         ///2AA243322
-        ///2b51101110002
-        ///2b51303130002
-        ///2b7100202030301 [rest of string was truncated]&quot;;.
+        ///2m51101110002
+        ///2m51303130002
+        ///2m7100202030301 [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string Cards {
             get {

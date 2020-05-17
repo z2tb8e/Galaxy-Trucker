@@ -77,15 +77,15 @@ namespace GalaxyTrucker.Model
                         stationWares
                     );
                     break;
-                case 'b':
-                    //format: 'Stage''b''Projectiles.Count'('Projectile','Direction')+
+                case 'm':
+                    //format: 'Stage''m''Projectiles.Count'('Projectile','Direction')+
                     List<(Projectile, Direction)> projectiles = new List<(Projectile, Direction)>();
                     int projectileCount = int.Parse("" + str[2]);
                     for (int i = 0; i < projectileCount; ++i)
                     {
                         projectiles.Add(((Projectile)(int.Parse("" + str[3 + 2 * i])), (Direction)int.Parse("" + str[4 + 2 * i])));
                     }
-                    ret = new Barrage(stage, projectiles);
+                    ret = new MeteorShower(stage, projectiles);
                     break;
                 case 'y':
                     //format: 'Stage''y''Firepower''DayCost''Reward''Penalty.Projectiles.Count'('Projectile','Direction')+

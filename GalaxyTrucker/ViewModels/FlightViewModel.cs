@@ -84,7 +84,7 @@ namespace GalaxyTrucker.ViewModels
 
             _playerList.LostConnection += PlayerList_LostConnection;
 
-            _client.OrderManager.PlacesChanged += new EventHandler((sender, e) => RefreshTokens());
+            _client.PlacesChanged += new EventHandler((sender, e) => RefreshTokens());
 
             InitializeOrderFields();
         }
@@ -138,7 +138,7 @@ namespace GalaxyTrucker.ViewModels
             {
                 field.Token = null;
             }
-            foreach(var pair in _client.OrderManager.Properties)
+            foreach(var pair in _client.PlaceProperties)
             {
                 Image token = pair.Key switch
                 {

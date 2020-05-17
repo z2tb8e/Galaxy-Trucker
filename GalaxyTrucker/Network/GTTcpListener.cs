@@ -51,6 +51,12 @@ namespace GalaxyTrucker.Network
 
         public bool Crashed { get; set; }
 
+        public AutoResetEvent OptionSent { get; set; }
+
+        public bool IsWaiting { get; set; }
+
+        public int? Cash { get; set; }
+
         public ConnectionInfo(TcpClient client)
         {
             Crashed = false;
@@ -59,7 +65,9 @@ namespace GalaxyTrucker.Network
             IsReady = false;
             ReadyToFly = false;
             HasMessage = false;
+            IsWaiting = false;
             SendSemaphore = new Semaphore(1, 1);
+            Cash = null;
         }
     }
 
@@ -95,6 +103,8 @@ namespace GalaxyTrucker.Network
         private Stack<CardEvent> _deck;
         private CardEvent _currentCard;
         private PlayerOrderManager _playerOrderManager;
+        private volatile int _currentOption;
+        private volatile PlayerColor _currentPlayer;
 
         #endregion
 
@@ -261,13 +271,18 @@ namespace GalaxyTrucker.Network
             LogAsync($"Building stage over, player order: ({playerOrder})");
             _serverStage = ServerStage.PastBuild;
             _playerOrderManager = new PlayerOrderManager(_playerOrder, _gameStage);
+            _playerOrderManager.PlayerCrashed += (sender, e) =>
+            {
+                _connections[e].Crashed = true;
+            };
+
             BeginFlightStage();
         }
 
         private void BeginFlightStage()
         {
             _proceedStageEvent.WaitOne();
-            //while (_connections.Values.Where(c => !c.IsReady || !c.ReadyToFly).Any()) ;
+
             _serverStage = ServerStage.Flight;
 
             StringBuilder playerAttributes = new StringBuilder($"FlightBegun,{_connections.Count}");
@@ -290,7 +305,7 @@ namespace GalaxyTrucker.Network
             LogAsync("FlightStage started");
 
             //while there are cards left and there is at least one player who has not crashed yet
-            while(_deck.Count > 0 && _connections.Values.Where(conn => !conn.Crashed).Any())
+            while (_deck.Count > 0 && _connections.Values.Where(conn => !conn.Crashed).Any())
             {
                 _currentCard = _deck.Pop();
                 LogAsync($"Server picked card {_currentCard}.");
@@ -307,47 +322,291 @@ namespace GalaxyTrucker.Network
                 switch (_currentCard)
                 {
                     case Sabotage _:
-                        ResolveSabotage();
+                        GetTargetPlayer(CardCheckAttribute.CrewCount);
                         break;
+                    case Warzone _:
+                        ResolveWarzone();
+                        break;
+                    case MeteorShower _:
+                        break;
+                    case Pirates _:
+                        ResolveEncounter();
+                        break;
+                    case Smugglers _:
+                        ResolveEncounter();
+                        break;
+                    case Slavers _:
+                        ResolveEncounter();
+                        break;
+                    case OpenSpace _:
+                        ResolveOpenSpace();
+                        break;
+                    case Planets _:
+                        ResolvePlanets();
+                        break;
+                    case AbandonedShip _:
+                        ResolveAbandoned();
+                        break;
+                    case AbandonedStation _:
+                        ResolveAbandoned();
+                        break;
+                    case Pandemic _:
+                        break;
+                    case Stardust _:
+                        break;
+                    default:
+                        throw new ArgumentException($"Unknown card {_currentCard}");
+                }
+
+                LogAsync($"{_currentCard} is over.");
+                foreach (PlayerColor player in _connections.Keys)
+                {
+                    WriteMessageToPlayer(player, "CardOver");
                 }
                 //wait until everyone signals that they are ready for the next card
                 _proceedStageEvent.WaitOne();
             }
-        }
-
-        private void GetTargetPlayer(Func<PlayerColor> condition)
-        {
-            _proceedRoundEvent.WaitOne();
-
-            PlayerColor target = condition();
-
-            LogAsync($"Target for current card resolved to be {target}.");
-
-            WriteMessageToPlayer(target, "TargetedPlayer");
-
+            //Flight stage over
+            LogAsync($"Flight stage over, cards left: {_deck.Count}.");
             foreach(PlayerColor key in _connections.Keys)
             {
-                if (key != target)
+                WriteMessageToPlayer(key, "FlightEnded");
+            }
+            LogAsync("Waiting for cash values.");
+            _serverStage = ServerStage.PastFlight;
+            _proceedStageEvent.WaitOne();
+
+            StringBuilder endResult = new StringBuilder($"EndResult");
+            foreach(PlayerColor player in _connections.Keys.OrderByDescending(key => _connections[key].Cash.Value))
+            {
+                endResult.Append($",{player},{_connections[player].Cash.Value}");
+            }
+            foreach(PlayerColor player in _connections.Keys)
+            {
+                WriteMessageToPlayer(player, endResult.ToString());
+            }
+        }
+
+        private void ResolveAbandoned()
+        {
+            List<PlayerColor> order = _playerOrderManager.GetCurrentOrder();
+            int current = 0;
+            bool taken = false;
+            while (current < order.Count && !taken)
+            {
+                _currentPlayer = order[current];
+                _connections[_currentPlayer].IsWaiting = true;
+                SignalTargetPlayer(order[current]);
+                _connections[_currentPlayer].OptionSent.WaitOne();
+                /*options:
+                 *  0: none
+                 *  1: took the offer
+                 */
+                _connections[_currentPlayer].IsWaiting = false;
+                //if the current player decides to crash their ship
+                if (_connections[_currentPlayer].Crashed)
                 {
-                    WriteMessageToPlayer(key, $"OtherTarget,{target}");
+                    ++current;
+                }
+                else
+                {
+                    int dayCost = _currentCard switch
+                    {
+                        AbandonedShip ship => ship.DayCost,
+                        AbandonedStation station => station.DayCost,
+                        _ => throw new InvalidOperationException()
+                    };
+                    switch (_currentOption)
+                    {
+                        case 0:
+                            break;
+                        case 1:
+                            taken = true;
+                            MovePlayer(_currentPlayer, -1 * dayCost);
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException($"Invalid option number {_currentOption}.");
+                    }
                 }
             }
         }
 
-        private void ResolveSabotage()
+        private void ResolvePlanets()
         {
-            PlayerColor getLowestCrewPlayer()
+            List<PlayerColor> order = _playerOrderManager.GetCurrentOrder();
+            int current = 0;
+            int numberOfOffers = (_currentCard as Planets).Offers.Count;
+            List<int> validOffers = new List<int>();
+            for(int i = 1; i <= numberOfOffers; ++i)
             {
-                int minCrewValue = _connections.Values.Where(conn => !conn.Crashed).Select(conn => conn.Attributes.CrewCount).Min();
+                validOffers.Add(i);
+            }
+            while (current < order.Count && validOffers.Count > 0)
+            {
+                _currentPlayer = order[current];
+                _connections[_currentPlayer].IsWaiting = true;
+                SignalTargetPlayer(order[current]);
+                _connections[_currentPlayer].OptionSent.WaitOne();
+                /*options:
+                 *  0: none
+                 *  [1..numberOfOffers]: the specific offer
+                 */
+                _connections[_currentPlayer].IsWaiting = false;
+                //if the current player decides to crash their ship
+                if (_connections[_currentPlayer].Crashed)
+                {
+                    ++current;
+                }
+                else
+                {
+                    switch (_currentOption)
+                    {
+                        case 0:
+                            break;
+                        case int i when (i > 0 && i <= numberOfOffers):
+                            if (!validOffers.Remove(i))
+                            {
+                                //The offer is already taken
+                                throw new ArgumentException($"Offer {i} was already taken!");
+                            }
+                            RemoveOption(i);
+                            MovePlayer(_currentPlayer, -1 * (_currentCard as Planets).DayCost);
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException($"Invalid option number {_currentOption}.");
+                    }
+                }
+            }
+        }
 
-                PlayerColor target = _playerOrderManager.GetCurrentOrder()
-                .Where(player => !_connections[player].Crashed && _connections[player].Attributes.CrewCount == minCrewValue)
-                .First();
+        private void ResolveOpenSpace()
+        {
+            //wait until the stats get sent
+            _proceedRoundEvent.WaitOne();
+            foreach (PlayerColor player in _playerOrderManager.GetCurrentOrder())
+            {
+                int distance = _connections[player].Attributes.Enginepower;
+                MovePlayer(player, distance);
+            }
+        }
 
-                return target;
+        private void ResolveEncounter()
+        {
+            bool defeated = false;
+            List<PlayerColor> order = _playerOrderManager.GetCurrentOrder();
+            int current = 0;
+            while (!defeated && current < order.Count)
+            {
+                _currentPlayer = order[current];
+                _connections[_currentPlayer].IsWaiting = true;
+                SignalTargetPlayer(order[current]);
+                _connections[_currentPlayer].OptionSent.WaitOne();
+                /*options:
+                 *  0: player got beaten
+                 *  1: encounter got beaten
+                 *  2: player could've beaten encounter, but ignored it
+                 */
+                _connections[_currentPlayer].IsWaiting = false;
+                //if the current player decides to crash their ship 
+                if (_connections[_currentPlayer].Crashed)
+                {
+                    ++current;
+                }
+                else
+                {
+                    int dayCost = _currentCard switch
+                    {
+                        Pirates pirate => pirate.DayCost,
+                        Smugglers smuggler => smuggler.DayCost,
+                        Slavers slaver => slaver.DayCost,
+                        _ => throw new InvalidOperationException()
+                    };
+
+                    switch (_currentOption)
+                    {
+                        case 0:
+                            break;
+                        case 1:
+                            defeated = true;
+                            MovePlayer(_currentPlayer, -1 * dayCost);
+                            break;
+                        case 2:
+                            defeated = true;
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+
+                    ++current;
+                }
+            }
+        }
+
+        private void ResolveWarzone()
+        {
+            Warzone card = _currentCard as Warzone;
+
+            LogAsync("Resolving warzone first event.");
+            PlayerColor target = GetTargetPlayer(card.Event1.Attribute);
+
+            foreach (PlayerColor player in _connections.Keys)
+            {
+                if (!_connections[player].Crashed)
+                {
+                    _connections[player].ReadyToFly = false;
+                }
             }
 
-            GetTargetPlayer(getLowestCrewPlayer);
+            if (card.Event1.PenaltyType == CardEventPenalty.Delay)
+            {
+                MovePlayer(target, -1 * card.Event1.Penalty);
+            }
+
+            LogAsync("Resolving warzone second event.");
+            target = GetTargetPlayer(card.Event2.Attribute);
+
+            foreach (PlayerColor player in _connections.Keys)
+            {
+                if (!_connections[player].Crashed)
+                {
+                    _connections[player].ReadyToFly = false;
+                }
+            }
+
+            if (card.Event2.PenaltyType == CardEventPenalty.Delay)
+            {
+                MovePlayer(target, -1 * card.Event2.Penalty);
+            }
+
+            LogAsync("Resolving warzone third event.");
+            GetTargetPlayer(card.Event3.Attribute);
+        }
+
+        private PlayerColor GetTargetPlayer(CardCheckAttribute checkAttribute)
+        {
+            _proceedRoundEvent.WaitOne();
+
+            int minValue = _connections.Values.Where(conn => !conn.Crashed)
+                .Select(conn => checkAttribute switch {
+                    CardCheckAttribute.CrewCount => conn.Attributes.CrewCount,
+                    CardCheckAttribute.Enginepower => conn.Attributes.Enginepower,
+                    CardCheckAttribute.Firepower => conn.Attributes.Firepower,
+                    _ => throw new InvalidEnumArgumentException()
+                }).Min();
+
+            PlayerColor target = _playerOrderManager.GetCurrentOrder()
+                .Where(player => !_connections[player].Crashed && checkAttribute switch
+                {
+                    CardCheckAttribute.CrewCount => _connections[player].Attributes.CrewCount == minValue,
+                    CardCheckAttribute.Enginepower => _connections[player].Attributes.Enginepower == minValue,
+                    CardCheckAttribute.Firepower => _connections[player].Attributes.Firepower == minValue,
+                    _ => throw new InvalidEnumArgumentException()
+                })
+                .First();
+
+            SignalTargetPlayer(target);
+
+            return target;
         }
 
         private void PingTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
@@ -355,6 +614,38 @@ namespace GalaxyTrucker.Network
             foreach (PlayerColor key in _connections.Keys)
             {
                 WriteMessageToPlayer(key, "Ping");
+            }
+        }
+
+        private void MovePlayer(PlayerColor player, int distance)
+        {
+            _playerOrderManager.AddDistance(player, distance);
+            foreach (PlayerColor key in _connections.Keys)
+            {
+                WriteMessageToPlayer(key, $"PlayerMoved,{player},{distance}");
+            }
+        }
+
+        private void RemoveOption(int option)
+        {
+            foreach(PlayerColor key in _connections.Keys)
+            {
+                WriteMessageToPlayer(key, $"OptionRemoved,{option}");
+            }
+        }
+
+        private void SignalTargetPlayer(PlayerColor target)
+        {
+            LogAsync($"Card {_currentCard} target is {target}.");
+
+            WriteMessageToPlayer(target, "TargetedPlayer");
+
+            foreach (PlayerColor key in _connections.Keys)
+            {
+                if (key != target)
+                {
+                    WriteMessageToPlayer(key, $"OtherTarget,{target}");
+                }
             }
         }
 
@@ -408,6 +699,14 @@ namespace GalaxyTrucker.Network
                                 PlayerCrashResolve(player);
                                 break;
 
+                            case "CardOption":
+                                CardOptionResolve(player, parts);
+                                break;
+
+                            case "CashInfo":
+                                CashInfoResolve(player, parts);
+                                break;
+
                             default:
                                 LogAsync($"Unhandled client message from {player}: {message}");
                                 break;
@@ -419,6 +718,28 @@ namespace GalaxyTrucker.Network
             LogAsync($"Handler thread for client {player} finished.");
         }
 
+        private void CashInfoResolve(PlayerColor player, string[] parts)
+        {
+            int cash = int.Parse(parts[1]);
+            _connections[player].Cash = cash;
+            
+            Task.Run(CheckIfProceedStage);
+        }
+
+        private void CardOptionResolve(PlayerColor player, string[] parts)
+        {
+            int option = int.Parse(parts[1]);
+
+            if(player != _currentPlayer)
+            {
+                LogAsync($"{player} sent their selected option ({option}) while not being on turn.");
+                return;
+            }
+            _currentOption = option;
+            LogAsync($"{player} sent their selected option: {option}.");
+            _connections[player].OptionSent.Set();
+        }
+
         /// <summary>
         /// Method called when a client sends a message signaling that they crashed
         /// </summary>
@@ -426,13 +747,17 @@ namespace GalaxyTrucker.Network
         private void PlayerCrashResolve(PlayerColor player)
         {
             _connections[player].Crashed = true;
-            _playerOrderManager.Properties[player].CanMove = false;
+            _playerOrderManager.Properties.Remove(player);
             foreach(PlayerColor key in _connections.Keys)
             {
                 if (key != player)
                 {
-                    WriteMessageToPlayer(key, $"OtherPlayerCrash,{player}");
+                    WriteMessageToPlayer(key, $"PlayerCrash,{player}");
                 }
+            }
+            if (_connections[player].IsWaiting)
+            {
+                _connections[player].OptionSent.Set();
             }
         }
 
@@ -447,6 +772,7 @@ namespace GalaxyTrucker.Network
             if (_connections[player].ReadyToFly)
             {
                 LogAsync($"{player} tried updating attributes while being readied.");
+                return;
             }
             _connections[player].Attributes = new PlayerAttributes
             {
@@ -501,6 +827,7 @@ namespace GalaxyTrucker.Network
                 {
                     ServerStage.PastBuild => item.IsReady && item.ReadyToFly,
                     ServerStage.Flight => item.IsReady || item.Crashed,
+                    ServerStage.PastFlight => item.Cash != null,
                     _ => item.IsReady
                 };
             }
@@ -643,6 +970,10 @@ namespace GalaxyTrucker.Network
                 {
                     _playerOrder.Remove(player);
                 }
+                if (_playerOrderManager != null)
+                {
+                    _playerOrderManager.Properties.Remove(player);
+                }
                 foreach (PlayerColor otherPlayer in _connections.Keys)
                 {
                     WriteMessageToPlayer(otherPlayer, $"PlayerDisconnect,{player}");
@@ -669,6 +1000,10 @@ namespace GalaxyTrucker.Network
                 if (_playerOrder != null)
                 {
                     _playerOrder.Remove(player);
+                }
+                if (_playerOrderManager != null)
+                {
+                    _playerOrderManager.Properties.Remove(player);
                 }
                 foreach (PlayerColor otherPlayer in _connections.Keys)
                 {

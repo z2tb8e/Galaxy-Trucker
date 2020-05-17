@@ -1,5 +1,6 @@
 ﻿using GalaxyTrucker.Model;
 using System;
+using System.Collections.Generic;
 
 namespace GalaxyTrucker.Network
 {
@@ -75,4 +76,18 @@ namespace GalaxyTrucker.Network
             Color = color;
         }
     }
+
+    /// <summary>
+    /// Event args to carry player - cash value pairs
+    /// </summary>
+    public class EndResultEventArgs : EventArgs
+    {
+        public List<(PlayerColor, int)> Results { get; set; }
+
+        public EndResultEventArgs(List<(PlayerColor, int)> results)
+        {
+            Results = results;
+        }
+    }
+
 }

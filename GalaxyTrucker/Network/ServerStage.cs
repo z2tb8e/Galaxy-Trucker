@@ -22,9 +22,9 @@
         /// </summary>
         Flight = 3,
         /// <summary>
-        /// Server is closing
+        /// Past flight, deducting winner
         /// </summary>
-        Close = 4
+        PastFlight = 4
 
     }
 }

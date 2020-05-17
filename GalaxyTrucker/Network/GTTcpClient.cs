@@ -52,9 +52,11 @@ namespace GalaxyTrucker.Network
 
         private readonly TcpClient _client;
         private readonly Timer _pingTimer;
+        private readonly List<PlayerColor> _playerOrder;
 
         private ServerStage _serverStage;
         private NetworkStream _stream;
+        private PlayerOrderManager _orderManager;
 
         #endregion
 
@@ -68,13 +70,33 @@ namespace GalaxyTrucker.Network
 
         public GameStage GameStage { get; private set; }
 
-        public PlayerOrderManager OrderManager { get; private set; }
-
         public bool IsReady { get; private set; }
 
         public Dictionary<PlayerColor, PlayerInfo> PlayerInfos { get; }
 
-        public List<PlayerColor> PlayerOrder { get; }
+        public List<PlayerColor> CurrentOrder
+        {
+            get
+            {
+                return _orderManager?.GetCurrentOrder();
+            }
+        }
+
+        public List<PlayerColor> FinalOrder
+        {
+            get
+            {
+                return _orderManager?.GetFinalOrder();
+            }
+        }
+
+        public Dictionary<PlayerColor, PlaceProperty> PlaceProperties
+        {
+            get
+            {
+                return _orderManager?.Properties;
+            }
+        }
 
         public bool Crashed { get; private set; }
 
@@ -83,6 +105,8 @@ namespace GalaxyTrucker.Network
         #endregion
 
         #region events
+
+        public event EventHandler PlacesChanged;
 
         /// <summary>
         /// Event raised when the building stage starts
@@ -157,14 +181,34 @@ namespace GalaxyTrucker.Network
         /// <summary>
         /// Event raised when the server sends a message that another player crashed
         /// </summary>
-        public event EventHandler<PlayerColor> OtherPlayerCrashed;
+        public event EventHandler<PlayerColor> PlayerCrashed;
+
+        /// <summary>
+        /// Event raised when the server sends a message that the current card has been played through
+        /// </summary>
+        public event EventHandler CardOver;
+
+        /// <summary>
+        /// Event raised when the server sends a message that an option from the current card is not available anymore
+        /// </summary>
+        public event EventHandler<int> OptionRemoved;
+
+        /// <summary>
+        /// Event raised when the server sends a message that flight stage ended
+        /// </summary>
+        public event EventHandler FlightEnded;
+
+        /// <summary>
+        /// Event raised when the server sends a message about the final rankings based on cash
+        /// </summary>
+        public event EventHandler<EndResultEventArgs> GameEnded;
 
         #endregion
 
         public GTTcpClient()
         {
             PlayerInfos = new Dictionary<PlayerColor, PlayerInfo>();
-            PlayerOrder = new List<PlayerColor>();
+            _playerOrder = new List<PlayerColor>();
             IsReady = false;
             _serverStage = ServerStage.Lobby;
             _client = new TcpClient();
@@ -224,6 +268,16 @@ namespace GalaxyTrucker.Network
             }
         }
 
+        public void SendCashInfo(int cash)
+        {
+            if (_serverStage != ServerStage.PastFlight)
+            {
+                _pingTimer.Stop();
+                throw new InvalidOperationException();
+            }
+            WriteMessageToServer($"CashInfo,{cash}");
+        }
+
         public void ToggleReady(ServerStage currentStage)
         {
             if(_serverStage != currentStage)
@@ -259,6 +313,16 @@ namespace GalaxyTrucker.Network
             WriteMessageToServer("PlayerCrash");
             Crashed = true;
             PlayerInfos[Player].IsFlying = false;
+        }
+
+        public void SendCardOption(int option)
+        {
+            if (_serverStage != ServerStage.Flight || Crashed)
+            {
+                _pingTimer.Stop();
+                throw new InvalidOperationException();
+            }
+            WriteMessageToServer($"CardOption,{option}");
         }
 
         public void StartFlightStage(int firepower, int enginepower, int crewCount, int storageSize, int batteries)
@@ -369,8 +433,8 @@ namespace GalaxyTrucker.Network
                         CardPickedResolve(parts);
                         break;
 
-                    case "OtherPlayerCrash":
-                        OtherPlayerCrashResolve(parts);
+                    case "PlayerCrash":
+                        PlayerCrashResolve(parts);
                         break;
 
                     case "TargetedPlayer":
@@ -381,8 +445,24 @@ namespace GalaxyTrucker.Network
                         OtherTargetResolve(parts);
                         break;
 
-                    case "OtherMoved":
-                        OtherMovedResolve(parts);
+                    case "PlayerMoved":
+                        PlayerMovedResolve(parts);
+                        break;
+
+                    case "CardOver":
+                        CardOverResolve();
+                        break;
+
+                    case "OptionRemoved":
+                        OptionRemovedResolve(parts);
+                        break;
+
+                    case "FlightEnded":
+                        FlightEndedResolve();
+                        break;
+
+                    case "EndResult":
+                        EndResultResolve(parts);
                         break;
 
                     default:
@@ -392,14 +472,81 @@ namespace GalaxyTrucker.Network
         }
 
         /// <summary>
-        /// Method called when the server sends a message that another player moved
+        /// Method called when the server sends a message telling the end result based on the cash amounts
         /// </summary>
         /// <param name="parts"></param>
-        private void OtherMovedResolve(string[] parts)
+        private void EndResultResolve(string[] parts)
+        {
+            if (_serverStage != ServerStage.PastFlight)
+            {
+                _pingTimer.Stop();
+                throw new OutOfSyncException();
+            }
+            int count = PlayerInfos.Count;
+
+            List<(PlayerColor, int)> values = new List<(PlayerColor, int)>();
+
+            for (int i = 0; i < count; ++i)
+            {
+                PlayerColor player = Enum.Parse<PlayerColor>(parts[i * 2 + 1]);
+                int cash = int.Parse(parts[(i + 1) * 2]);
+                values.Add((player, cash));
+            }
+            GameEnded?.Invoke(this, new EndResultEventArgs(values));
+        }
+
+        /// <summary>
+        /// Method called when the server sends a message that flight stage ended, either because there are no more cards left, or all players crashed
+        /// </summary>
+        private void FlightEndedResolve()
+        {
+            if (_serverStage != ServerStage.Flight)
+            {
+                _pingTimer.Stop();
+                throw new OutOfSyncException();
+            }
+            _serverStage = ServerStage.PastFlight;
+            FlightEnded?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Method called when the server sends a message that an option from the current card got removed
+        /// </summary>
+        /// <param name="parts"></param>
+        private void OptionRemovedResolve(string[] parts)
+        {
+            if (_serverStage != ServerStage.Flight)
+            {
+                _pingTimer.Stop();
+                throw new OutOfSyncException();
+            }
+
+            int option = int.Parse(parts[1]);
+            OptionRemoved?.Invoke(this, option);
+        }
+
+        /// <summary>
+        /// Method called when the server sends a message that the current card has been played through
+        /// </summary>
+        private void CardOverResolve()
+        {
+            if (_serverStage != ServerStage.Flight)
+            {
+                _pingTimer.Stop();
+                throw new OutOfSyncException();
+            }
+            CardOver?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Method called when the server sends a message that a player moved
+        /// </summary>
+        /// <param name="parts"></param>
+        private void PlayerMovedResolve(string[] parts)
         {
             PlayerColor player = Enum.Parse<PlayerColor>(parts[1]);
 
-            if (_serverStage != ServerStage.Flight || !OrderManager.Properties[player].CanMove)
+            if (_serverStage != ServerStage.Flight)
             {
                 _pingTimer.Stop();
                 throw new OutOfSyncException();
@@ -407,7 +554,7 @@ namespace GalaxyTrucker.Network
 
             int distance = int.Parse(parts[2]);
 
-            OrderManager.AddDistance(player, distance);
+            _orderManager.AddDistance(player, distance);
         }
 
         /// <summary>
@@ -442,7 +589,7 @@ namespace GalaxyTrucker.Network
         /// Method called when the server sends a message that another player crashed
         /// </summary>
         /// <param name="parts"></param>
-        private void OtherPlayerCrashResolve(string[] parts)
+        private void PlayerCrashResolve(string[] parts)
         {
             if (_serverStage != ServerStage.Flight)
             {
@@ -450,8 +597,15 @@ namespace GalaxyTrucker.Network
                 throw new OutOfSyncException();
             }
             PlayerColor crashedPlayer = Enum.Parse<PlayerColor>(parts[1]);
+
+            if(crashedPlayer == Player)
+            {
+                Crashed = true;
+            }
+
+            _orderManager.Properties.Remove(crashedPlayer);
             PlayerInfos[crashedPlayer].IsFlying = false;
-            OtherPlayerCrashed?.Invoke(this, crashedPlayer);
+            PlayerCrashed?.Invoke(this, crashedPlayer);
         }
 
         /// <summary>
@@ -483,9 +637,14 @@ namespace GalaxyTrucker.Network
         {
             PlayerColor disconnectedPlayer = Enum.Parse<PlayerColor>(parts[1]);
             PlayerInfos.Remove(disconnectedPlayer);
-            if (PlayerOrder != null)
+            if (_playerOrder != null)
             {
-                PlayerOrder.Remove(disconnectedPlayer);
+                _playerOrder.Remove(disconnectedPlayer);
+            }
+            if (_orderManager != null)
+            {
+                _orderManager.Properties.Remove(disconnectedPlayer);
+                PlacesChanged?.Invoke(this, EventArgs.Empty);
             }
             PlayerDisconnected?.Invoke(this, new PlayerEventArgs(disconnectedPlayer));
         }
@@ -579,9 +738,24 @@ namespace GalaxyTrucker.Network
             }
             for (int i = 1; i < parts.Length; ++i)
             {
-                PlayerOrder.Add(Enum.Parse<PlayerColor>(parts[i]));
+                _playerOrder.Add(Enum.Parse<PlayerColor>(parts[i]));
             }
-            OrderManager = new PlayerOrderManager(PlayerOrder, GameStage);
+
+            _orderManager = new PlayerOrderManager(_playerOrder, GameStage);
+            _orderManager.PlayerCrashed += (sender, e) =>
+            {
+                if(e == Player)
+                {
+                    Crashed = true;
+                }
+                PlayerInfos[e].IsFlying = false;
+                PlayerCrashed?.Invoke(this, e);
+            };
+            _orderManager.PlacesChanged += (sender, e) =>
+            {
+                PlacesChanged?.Invoke(this, e);
+            };
+
             _serverStage = ServerStage.PastBuild;
             BuildingEnded?.Invoke(this, EventArgs.Empty);
         }
