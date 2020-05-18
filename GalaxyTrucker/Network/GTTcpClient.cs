@@ -194,12 +194,17 @@ namespace GalaxyTrucker.Network
         public event EventHandler<int> OptionRemoved;
 
         /// <summary>
+        /// Event raised when the server responses to and earlier message from this client attempting to pick an option
+        /// </summary>
+        public event EventHandler<int> OptionPicked;
+
+        /// <summary>
         /// Event raised when the server sends a message that flight stage ended
         /// </summary>
         public event EventHandler FlightEnded;
 
         /// <summary>
-        /// Event raised when the server sends a message about the final rankings based on cash
+        /// Event raised when the server sends a message about the final rankings based on cash, after which the client disconnects
         /// </summary>
         public event EventHandler<EndResultEventArgs> GameEnded;
 
@@ -273,6 +278,7 @@ namespace GalaxyTrucker.Network
             if (_serverStage != ServerStage.PastFlight)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new InvalidOperationException();
             }
             WriteMessageToServer($"CashInfo,{cash}");
@@ -283,6 +289,7 @@ namespace GalaxyTrucker.Network
             if(_serverStage != currentStage)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new InvalidOperationException();
             }
 
@@ -298,6 +305,7 @@ namespace GalaxyTrucker.Network
             if (_serverStage != ServerStage.Flight)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new InvalidOperationException();
             }
             WriteMessageToServer($"AttributesUpdate,{firepower},{enginepower},{crewCount},{storageSize},{batteries}");
@@ -308,6 +316,7 @@ namespace GalaxyTrucker.Network
             if (_serverStage != ServerStage.Flight || Crashed)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new InvalidOperationException();
             }
             WriteMessageToServer("PlayerCrash");
@@ -320,6 +329,7 @@ namespace GalaxyTrucker.Network
             if (_serverStage != ServerStage.Flight || Crashed)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new InvalidOperationException();
             }
             WriteMessageToServer($"CardOption,{option}");
@@ -330,6 +340,7 @@ namespace GalaxyTrucker.Network
             if(_serverStage != ServerStage.PastBuild || IsReady)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new InvalidOperationException();
             }
 
@@ -342,6 +353,7 @@ namespace GalaxyTrucker.Network
             if(_serverStage != ServerStage.Build)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new InvalidOperationException();
             }
 
@@ -353,6 +365,7 @@ namespace GalaxyTrucker.Network
             if (_serverStage != ServerStage.Build)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new InvalidOperationException();
             }
 
@@ -361,7 +374,9 @@ namespace GalaxyTrucker.Network
 
         public void Close()
         {
-            _client.Close();
+            _pingTimer.Stop();
+            _pingTimer.Dispose();
+            _client?.Close();
         }
 
         #endregion
@@ -457,6 +472,10 @@ namespace GalaxyTrucker.Network
                         OptionRemovedResolve(parts);
                         break;
 
+                    case "OptionPicked":
+                        OptionPickedResolve(parts);
+                        break;
+
                     case "FlightEnded":
                         FlightEndedResolve();
                         break;
@@ -480,6 +499,7 @@ namespace GalaxyTrucker.Network
             if (_serverStage != ServerStage.PastFlight)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new OutOfSyncException();
             }
             int count = PlayerInfos.Count;
@@ -493,6 +513,9 @@ namespace GalaxyTrucker.Network
                 values.Add((player, cash));
             }
             GameEnded?.Invoke(this, new EndResultEventArgs(values));
+
+            WriteMessageToServer("EndResultReceived");
+            Close();
         }
 
         /// <summary>
@@ -503,10 +526,28 @@ namespace GalaxyTrucker.Network
             if (_serverStage != ServerStage.Flight)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new OutOfSyncException();
             }
             _serverStage = ServerStage.PastFlight;
             FlightEnded?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Method called when the client sends the response to an earlier message from this client to take an option
+        /// </summary>
+        /// <param name="parts"></param>
+        private void OptionPickedResolve(string[] parts)
+        {
+            if (_serverStage != ServerStage.Flight)
+            {
+                _pingTimer.Stop();
+                _pingTimer.Dispose();
+                throw new OutOfSyncException();
+            }
+
+            int option = int.Parse(parts[1]);
+            OptionPicked?.Invoke(this, option);
         }
 
         /// <summary>
@@ -518,6 +559,7 @@ namespace GalaxyTrucker.Network
             if (_serverStage != ServerStage.Flight)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new OutOfSyncException();
             }
 
@@ -533,6 +575,7 @@ namespace GalaxyTrucker.Network
             if (_serverStage != ServerStage.Flight)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new OutOfSyncException();
             }
             CardOver?.Invoke(this, EventArgs.Empty);
@@ -549,6 +592,7 @@ namespace GalaxyTrucker.Network
             if (_serverStage != ServerStage.Flight)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new OutOfSyncException();
             }
 
@@ -565,6 +609,7 @@ namespace GalaxyTrucker.Network
             if (_serverStage != ServerStage.Flight)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new OutOfSyncException();
             }
             PlayerTargeted?.Invoke(this, EventArgs.Empty);
@@ -579,6 +624,7 @@ namespace GalaxyTrucker.Network
             if(_serverStage != ServerStage.Flight)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new OutOfSyncException();
             }
             PlayerColor target = Enum.Parse<PlayerColor>(parts[1]);
@@ -594,6 +640,7 @@ namespace GalaxyTrucker.Network
             if (_serverStage != ServerStage.Flight)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new OutOfSyncException();
             }
             PlayerColor crashedPlayer = Enum.Parse<PlayerColor>(parts[1]);
@@ -617,6 +664,7 @@ namespace GalaxyTrucker.Network
             if (_serverStage != ServerStage.Flight)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new OutOfSyncException();
             }
             Card = parts[1].ToCardEvent();
@@ -658,6 +706,7 @@ namespace GalaxyTrucker.Network
             if (_serverStage != ServerStage.Lobby)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new OutOfSyncException();
             }
             PlayerColor color = Enum.Parse<PlayerColor>(parts[1]);
@@ -675,6 +724,7 @@ namespace GalaxyTrucker.Network
             if (!IsReady)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new OutOfSyncException();
             }
             IsReady = false;
@@ -709,6 +759,7 @@ namespace GalaxyTrucker.Network
             if (!IsReady)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new OutOfSyncException();
             }
             IsReady = false;
@@ -729,6 +780,7 @@ namespace GalaxyTrucker.Network
             if (!IsReady)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new OutOfSyncException();
             }
             IsReady = false;
@@ -769,6 +821,7 @@ namespace GalaxyTrucker.Network
             if (_serverStage != ServerStage.Build)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new OutOfSyncException();
             }
             Part picked = null;
@@ -787,6 +840,7 @@ namespace GalaxyTrucker.Network
             if (_serverStage != ServerStage.Build)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new OutOfSyncException();
             }
         }
@@ -800,6 +854,7 @@ namespace GalaxyTrucker.Network
             if (_serverStage != ServerStage.Build)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new OutOfSyncException();
             }
             int row = int.Parse(parts[1]);
@@ -817,6 +872,7 @@ namespace GalaxyTrucker.Network
             if (_serverStage != ServerStage.Build)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 throw new OutOfSyncException();
             }
             int row = int.Parse(parts[1]);
@@ -865,12 +921,10 @@ namespace GalaxyTrucker.Network
             catch (IOException)
             {
                 _pingTimer.Stop();
+                _pingTimer.Dispose();
                 ThisPlayerDisconnected?.Invoke(this, EventArgs.Empty);
             }
-            catch (ObjectDisposedException)
-            {
-
-            }
+            catch (ObjectDisposedException) { }
         }
 
         #endregion

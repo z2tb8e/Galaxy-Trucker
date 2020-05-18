@@ -243,6 +243,7 @@ namespace GalaxyTrucker.Network
         public void Close()
         {
             _pingTimer.Stop();
+            _pingTimer.Dispose();
             foreach (ConnectionInfo connection in _connections.Values)
             {
                 if (connection.Client != null)
@@ -366,9 +367,15 @@ namespace GalaxyTrucker.Network
                 //wait until everyone signals that they are ready for the next card
                 _proceedStageEvent.WaitOne();
             }
+
+            PastFlightStage();
             //Flight stage over
+        }
+
+        private void PastFlightStage()
+        {
             LogAsync($"Flight stage over, cards left: {_deck.Count}.");
-            foreach(PlayerColor key in _connections.Keys)
+            foreach (PlayerColor key in _connections.Keys)
             {
                 WriteMessageToPlayer(key, "FlightEnded");
             }
@@ -377,14 +384,17 @@ namespace GalaxyTrucker.Network
             _proceedStageEvent.WaitOne();
 
             StringBuilder endResult = new StringBuilder($"EndResult");
-            foreach(PlayerColor player in _connections.Keys.OrderByDescending(key => _connections[key].Cash.Value))
+            foreach (PlayerColor player in _connections.Keys.OrderByDescending(key => _connections[key].Cash.Value))
             {
                 endResult.Append($",{player},{_connections[player].Cash.Value}");
             }
-            foreach(PlayerColor player in _connections.Keys)
+            foreach (PlayerColor player in _connections.Keys)
             {
                 WriteMessageToPlayer(player, endResult.ToString());
             }
+            //wait until everyone signals that they received the message, after which they disconnect
+            _proceedStageEvent.WaitOne();
+            Close();
         }
 
         private void ResolveAbandoned()
@@ -427,6 +437,8 @@ namespace GalaxyTrucker.Network
                         default:
                             throw new ArgumentOutOfRangeException($"Invalid option number {_currentOption}.");
                     }
+
+                    WriteMessageToPlayer(_currentPlayer, $"OptionPicked,{_currentOption}");
                 }
             }
         }
@@ -475,6 +487,8 @@ namespace GalaxyTrucker.Network
                         default:
                             throw new ArgumentOutOfRangeException($"Invalid option number {_currentOption}.");
                     }
+
+                    WriteMessageToPlayer(_currentPlayer, $"OptionPicked,{_currentOption}");
                 }
             }
         }
@@ -536,6 +550,8 @@ namespace GalaxyTrucker.Network
                         default:
                             throw new ArgumentOutOfRangeException();
                     }
+
+                    WriteMessageToPlayer(_currentPlayer, $"OptionPicked,{_currentOption}");
 
                     ++current;
                 }
@@ -705,6 +721,10 @@ namespace GalaxyTrucker.Network
 
                             case "CashInfo":
                                 CashInfoResolve(player, parts);
+                                break;
+
+                            case "EndResultReceived":
+                                //client disconnects right after sending this, which will be detected by the next attempted ping
                                 break;
 
                             default:
@@ -974,9 +994,12 @@ namespace GalaxyTrucker.Network
                 {
                     _playerOrderManager.Properties.Remove(player);
                 }
-                foreach (PlayerColor otherPlayer in _connections.Keys)
+                if(_serverStage != ServerStage.PastFlight)
                 {
-                    WriteMessageToPlayer(otherPlayer, $"PlayerDisconnect,{player}");
+                    foreach (PlayerColor otherPlayer in _connections.Keys)
+                    {
+                        WriteMessageToPlayer(otherPlayer, $"PlayerDisconnect,{player}");
+                    }
                 }
                 return null;
             }
@@ -1005,9 +1028,20 @@ namespace GalaxyTrucker.Network
                 {
                     _playerOrderManager.Properties.Remove(player);
                 }
-                foreach (PlayerColor otherPlayer in _connections.Keys)
+
+                if (_serverStage != ServerStage.PastFlight)
                 {
-                    WriteMessageToPlayer(otherPlayer, $"PlayerDisconnect,{player}");
+                    foreach (PlayerColor otherPlayer in _connections.Keys)
+                    {
+                        WriteMessageToPlayer(otherPlayer, $"PlayerDisconnect,{player}");
+                    }
+                }
+                else
+                {
+                    if (_connections.IsEmpty)
+                    {
+                        _proceedStageEvent.Set();
+                    }
                 }
             }
         }
