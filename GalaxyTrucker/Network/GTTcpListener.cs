@@ -55,6 +55,8 @@ namespace GalaxyTrucker.Network
 
         public bool IsWaiting { get; set; }
 
+        public int? OpenConnectors { get; set; }
+
         public int? Cash { get; set; }
 
         public ConnectionInfo(TcpClient client)
@@ -68,6 +70,8 @@ namespace GalaxyTrucker.Network
             IsWaiting = false;
             SendSemaphore = new Semaphore(1, 1);
             Cash = null;
+            OpenConnectors = null;
+            OptionSent = new AutoResetEvent(false);
         }
     }
 
@@ -354,6 +358,7 @@ namespace GalaxyTrucker.Network
                     case Pandemic _:
                         break;
                     case Stardust _:
+                        ResolveStardust();
                         break;
                     default:
                         throw new ArgumentException($"Unknown card {_currentCard}");
@@ -395,6 +400,17 @@ namespace GalaxyTrucker.Network
             //wait until everyone signals that they received the message, after which they disconnect
             _proceedStageEvent.WaitOne();
             Close();
+        }
+
+        private void ResolveStardust()
+        {
+            //wait until the open connectors get sent
+            _proceedRoundEvent.WaitOne();
+            foreach (PlayerColor player in _playerOrderManager.GetCurrentOrder())
+            {
+                int distance = -1 * _connections[player].OpenConnectors.Value;
+                MovePlayer(player, distance);
+            }
         }
 
         private void ResolveAbandoned()
@@ -447,7 +463,7 @@ namespace GalaxyTrucker.Network
         {
             List<PlayerColor> order = _playerOrderManager.GetCurrentOrder();
             int current = 0;
-            int numberOfOffers = (_currentCard as Planets).Offers.Count;
+            int numberOfOffers = (_currentCard as Planets).Offers.Count();
             List<int> validOffers = new List<int>();
             for(int i = 1; i <= numberOfOffers; ++i)
             {
@@ -518,7 +534,7 @@ namespace GalaxyTrucker.Network
                 /*options:
                  *  0: player got beaten
                  *  1: encounter got beaten
-                 *  2: player could've beaten encounter, but ignored it
+                 *  2: player could've beaten encounter, but ignored it or draw
                  */
                 _connections[_currentPlayer].IsWaiting = false;
                 //if the current player decides to crash their ship 
@@ -635,6 +651,7 @@ namespace GalaxyTrucker.Network
 
         private void MovePlayer(PlayerColor player, int distance)
         {
+            LogAsync($"{player} moved {distance}.");
             _playerOrderManager.AddDistance(player, distance);
             foreach (PlayerColor key in _connections.Keys)
             {
@@ -707,6 +724,10 @@ namespace GalaxyTrucker.Network
                             case "Ping":
                                 break;
 
+                            case "StardustInfo":
+                                StardustInfoResolve(player, parts);
+                                break;
+
                             case "AttributesUpdate":
                                 StartFlightStageResolve(player, parts);
                                 break;
@@ -738,6 +759,13 @@ namespace GalaxyTrucker.Network
             LogAsync($"Handler thread for client {player} finished.");
         }
 
+        private void StardustInfoResolve(PlayerColor player, string[] parts)
+        {
+            _connections[player].OpenConnectors = int.Parse(parts[1]);
+
+            Task.Run(CheckIfStardustProceed);
+        }
+
         private void CashInfoResolve(PlayerColor player, string[] parts)
         {
             int cash = int.Parse(parts[1]);
@@ -746,6 +774,11 @@ namespace GalaxyTrucker.Network
             Task.Run(CheckIfProceedStage);
         }
 
+        /// <summary>
+        /// Method called when a client sends a message signaling which option they took
+        /// </summary>
+        /// <param name="player"></param>
+        /// <param name="parts"></param>
         private void CardOptionResolve(PlayerColor player, string[] parts)
         {
             int option = int.Parse(parts[1]);
@@ -811,7 +844,31 @@ namespace GalaxyTrucker.Network
         }
 
         /// <summary>
-        /// Method to check if the proceed round event should be signaled
+        /// Method to check if the proceed round event should be signaled,
+        /// letting the stardust card movement be resolved
+        /// after everyone sent their open connectors count
+        /// </summary>
+        private void CheckIfStardustProceed()
+        {
+            if (!_proceedRoundSemaphore.WaitOne(0))
+            {
+                return;
+            }
+            bool proceed = true;
+            foreach (var item in _connections.Values)
+            {
+                proceed &= (item.OpenConnectors == null) || item.Crashed;
+            }
+            if (proceed)
+            {
+                _proceedRoundEvent.Set();
+            }
+            _proceedRoundSemaphore.Release();
+        }
+
+        /// <summary>
+        /// Method to check if the proceed round event should be signaled,
+        /// letting the card be resolved after everyone sent their attributes
         /// </summary>
         private void CheckIfProceedRound()
         {
@@ -832,7 +889,7 @@ namespace GalaxyTrucker.Network
         }
 
         /// <summary>
-        /// Method to check if the proceed stage event should be signaled
+        /// Method to check if the proceed stage event should be signaled, drawing the next card
         /// </summary>
         private void CheckIfProceedStage()
         {

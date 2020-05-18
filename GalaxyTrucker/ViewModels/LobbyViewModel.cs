@@ -209,7 +209,7 @@ namespace GalaxyTrucker.ViewModels
             HostCommand = new DelegateCommand(param => Server == null, param =>
             {
                 Server = new GTTcpListener(RemotePort, SelectedGameStage);
-                Task.Factory.StartNew(() => Server.Start(), TaskCreationOptions.LongRunning);
+                Task.Factory.StartNew(() => Server.Start(), TaskCreationOptions.RunContinuationsAsynchronously | TaskCreationOptions.LongRunning);
                 RemoteIp = "127.0.0.1";
                 ConnectCommand.Execute(null);
             });

@@ -16,11 +16,55 @@ namespace GalaxyTrucker.ViewModels
     {
         private readonly object _shipPartsLock;
         private readonly object _playerOrderLock;
+        private readonly object _optionsLock;
         private readonly GTTcpClient _client;
         private readonly PlayerListViewModel _playerList;
         private readonly Ship _ship;
         private ObservableCollection<FlightPartViewModel> _shipParts;
         private ObservableCollection<OrderFieldViewModel> _playerOrderFields;
+        private string _currentCardDescription;
+        private ObservableCollection<OptionOrSubEventViewModel> _optionsOrSubEvents;
+        private bool _requiresAttributes;
+
+        public bool RequiresAttributes
+        {
+            get
+            {
+                return _requiresAttributes;
+            }
+            set
+            {
+                _requiresAttributes = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public ObservableCollection<OptionOrSubEventViewModel> OptionsOrSubEvents
+        {
+            get
+            {
+                return _optionsOrSubEvents;
+            }
+            set
+            {
+                _optionsOrSubEvents = value;
+                BindingOperations.EnableCollectionSynchronization(_optionsOrSubEvents, _optionsLock);
+                OnPropertyChanged();
+            }
+        }
+
+        public string CurrentCardDescription
+        {
+            get
+            {
+                return _currentCardDescription;
+            }
+            set
+            {
+                _currentCardDescription = value;
+                OnPropertyChanged();
+            }
+        }
 
         public PlayerListViewModel PlayerList
         {
@@ -68,13 +112,25 @@ namespace GalaxyTrucker.ViewModels
             }
         }
 
+        public DelegateCommand SendAttributesCommand { get; set; }
+
         public FlightViewModel(GTTcpClient client, PlayerListViewModel playerList, Ship ship)
         {
             _shipPartsLock = new object();
             _playerOrderLock = new object();
+            _optionsLock = new object();
             _client = client;
             _playerList = playerList;
             _ship = ship;
+
+            OptionsOrSubEvents = new ObservableCollection<OptionOrSubEventViewModel>();
+            _client.CardPicked += Client_CardPicked;
+
+            SendAttributesCommand = new DelegateCommand(param => RequiresAttributes, param =>
+            {
+                RequiresAttributes = false;
+                _client.UpdateAttributes(_ship.Firepower, _ship.Enginepower, _ship.CrewCount, _ship.StorageCount, _ship.Batteries);
+            });
 
             ShipParts = new ObservableCollection<FlightPartViewModel>();
             foreach(Part p in _ship.Parts)
@@ -87,6 +143,26 @@ namespace GalaxyTrucker.ViewModels
             _client.PlacesChanged += new EventHandler((sender, e) => RefreshTokens());
 
             InitializeOrderFields();
+        }
+
+        private void Client_CardPicked(object sender, EventArgs e)
+        {
+            CardEvent card = _client.Card;
+            CurrentCardDescription = card.GetDescription();
+            RequiresAttributes = card.RequiresAttributes;
+            var optionsOrSubEvents = card.GetOptionsOrSubEvents();
+            if(optionsOrSubEvents == null)
+            {
+                return;
+            }
+            foreach(OptionOrSubEvent item in optionsOrSubEvents)
+            {
+                OptionsOrSubEvents.Add(new OptionOrSubEventViewModel
+                {
+                    Description = item.Description,
+                    ClickCommand = new DelegateCommand(param => item.Condition(_ship), param => item.Action(_client, _ship))
+                });
+            }
         }
 
         private void PlayerList_LostConnection(object sender, EventArgs e)

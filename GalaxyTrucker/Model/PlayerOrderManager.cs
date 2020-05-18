@@ -151,6 +151,7 @@ namespace GalaxyTrucker.Model
         {
             Properties.Remove(player);
             PlayerCrashed?.Invoke(this, player);
+            PlacesChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 }

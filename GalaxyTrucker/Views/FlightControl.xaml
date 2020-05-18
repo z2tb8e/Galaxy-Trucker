@@ -10,18 +10,51 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="160"/>
             <RowDefinition Height="1*"/>
-            <RowDefinition Height="160"/>
+            <RowDefinition Height="180"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition/>
             <ColumnDefinition/>
         </Grid.ColumnDefinitions>
 
-        <local:PlayerListControl HorizontalAlignment="Left" DataContext="{Binding PlayerList}" Grid.Row="0" Grid.Column="0"/>
+        <StackPanel Margin="10" VerticalAlignment="Top" HorizontalAlignment="Left" Orientation="Vertical" Grid.Row="1" Grid.Column="0">
+            <Button Height="150" Width="300" Padding="10" Command="{Binding SendAttributesCommand}">
+                <Button.Content>
+                    <TextBlock TextWrapping="Wrap" FontSize="20" FontWeight="Bold" Text="{Binding CurrentCardDescription}"/>
+                </Button.Content>
+                <Button.ToolTip>
+                    <ToolTip ToolTipService.ShowOnDisabled="True" Content="{Binding CurrentCardToolTip}"/>
+                </Button.ToolTip>
+            </Button>
+            <ItemsControl ItemsSource="{Binding OptionsOrSubEvents}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Width="250" Orientation="Vertical"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button Height="60" Content="{Binding Description}" Command="{Binding ClickCommand}"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
 
-        <local:PlayerAttributesControl HorizontalAlignment="Left" Grid.Row="2" Grid.Column="0" DataContext="{Binding PlayerList}"/>
+        <StackPanel  HorizontalAlignment="Right" VerticalAlignment="Top" Grid.Row="2" Grid.Column="0" Margin="10" Orientation="Vertical">
+            <Label Content="Csatlakozott játékosok" Margin="0 0 0 10" Target="{Binding ElementName=playerListControl}"/>
+            <local:PlayerListControl DataContext="{Binding PlayerList}" x:Name="playerListControl"/>
+        </StackPanel>
 
-        <local:PlayerOrderControl HorizontalAlignment="Left" VerticalAlignment="Center" Grid.Row="1" Grid.Column="0" Margin="10"/>
+        <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Grid.Row="2" Grid.Column="0" Margin="10" Orientation="Vertical">
+            <Label Content="Kezdeti attribútumok" Margin="0 0 0 10" Target="{Binding ElementName=attributesControl}"/>
+            <local:PlayerAttributesControl x:Name="attributesControl" DataContext="{Binding PlayerList}"/>
+        </StackPanel>
+
+        <StackPanel HorizontalAlignment="Left" VerticalAlignment="Bottom" Grid.Row="1" Grid.Column="0" Margin="10" Orientation="Vertical">
+            <Label Content="Körsorrend" Target="{Binding ElementName=playerOrderControl}" Margin="0 0 0 10"/>
+            <local:PlayerOrderControl x:Name="playerOrderControl"/>
+        </StackPanel>
+        
 
         <Grid Grid.Row="1" Grid.Column="1" Grid.RowSpan="2">
             <Grid.RowDefinitions>

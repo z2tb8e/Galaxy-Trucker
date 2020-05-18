@@ -300,6 +300,17 @@ namespace GalaxyTrucker.Network
             ThisPlayerReadied?.Invoke(this, EventArgs.Empty);
         }
 
+        public void SendStardustInfo(int openConnectors)
+        {
+            if (_serverStage != ServerStage.Flight)
+            {
+                _pingTimer.Stop();
+                _pingTimer.Dispose();
+                throw new InvalidOperationException();
+            }
+            WriteMessageToServer($"StardustInfo,{openConnectors}");
+        }
+
         public void UpdateAttributes(int firepower, int enginepower, int crewCount, int storageSize, int batteries)
         {
             if (_serverStage != ServerStage.Flight)
@@ -344,8 +355,8 @@ namespace GalaxyTrucker.Network
                 throw new InvalidOperationException();
             }
 
-            ToggleReady(ServerStage.PastBuild);
             WriteMessageToServer($"StartFlightStage,{firepower},{enginepower},{crewCount},{storageSize},{batteries}");
+            ToggleReady(ServerStage.PastBuild);
         }
 
         public void PutBackPart(int row, int column)

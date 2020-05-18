@@ -5,9 +5,13 @@ namespace GalaxyTrucker.Model
 {
     public enum Direction
     {
+        [Description("Felülről")]
         Top = 0,
+        [Description("Jobbról")]
         Right = 1,
+        [Description("Alulról")]
         Bottom = 2,
+        [Description("Balról")]
         Left = 3,
     };
 

@@ -259,7 +259,11 @@ namespace GalaxyTrucker.ViewModels
                 }
             });
 
-            AddAlienCommand = new DelegateCommand(param => BuildingEnded && !_client.IsReady, param => AddAlien(param as string));
+            AddAlienCommand = new DelegateCommand(param =>
+            {
+                return BuildingEnded && !_client.IsReady;
+            },
+            param => AddAlien(param as string));
         }
 
         #region private methods

@@ -2,10 +2,9 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:GalaxyTrucker.Views"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d" 
-             d:DesignHeight="200" d:DesignWidth="510">
+             d:DesignHeight="200" d:DesignWidth="440">
     <ListView Grid.Column="1" Margin="10" Name="connectedPlayers" ItemsSource="{Binding ConnectedPlayers}">
         <ListView.View>
             <GridView AllowsColumnReorder="False">
@@ -54,13 +53,6 @@
                     <GridViewColumn.CellTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Attributes.Batteries}" IsEnabled="False"/>
-                        </DataTemplate>
-                    </GridViewColumn.CellTemplate>
-                </GridViewColumn>
-                <GridViewColumn Header="Repül még" Width="70">
-                    <GridViewColumn.CellTemplate>
-                        <DataTemplate>
-                            <CheckBox IsChecked="{Binding IsFlying}" IsEnabled="False"/>
                         </DataTemplate>
                     </GridViewColumn.CellTemplate>
                 </GridViewColumn>

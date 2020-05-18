@@ -2,8 +2,6 @@
 using GalaxyTrucker.Model.PartTypes;
 using System;
 using System.Collections.Generic;
-using System.Drawing.Text;
-using System.IO;
 using System.Linq;
 
 namespace GalaxyTrucker.Model
@@ -20,10 +18,26 @@ namespace GalaxyTrucker.Model
         private readonly List<Storage> _storages;
         private bool _hasEngineAlien;
         private bool _hasLaserAlien;
+        private int _cash;
+
+        private readonly bool[] _shieldedDirections;
 
         #endregion
 
         #region properties
+
+        public int Cash
+        {
+            get
+            {
+                return _cash;
+            }
+            set
+            {
+                _cash = value;
+                CashChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
 
         public IReadOnlyCollection<Part> Parts
         {
@@ -90,6 +104,8 @@ namespace GalaxyTrucker.Model
 
         public event EventHandler<PartRemovedEventArgs> PartRemoved;
 
+        public event EventHandler CashChanged;
+
         #endregion
 
         /// <summary>
@@ -99,6 +115,8 @@ namespace GalaxyTrucker.Model
         /// <param name="color">The color indicating the owner of the ship</param>
         public Ship(ShipLayout layout, PlayerColor color)
         {
+            _shieldedDirections = Enumerable.Repeat(false, 4).ToArray();
+            Cash = 0;
             _hasEngineAlien = false;
             _hasLaserAlien = false;
             (int, int) cockpit;
@@ -127,6 +145,11 @@ namespace GalaxyTrucker.Model
             if(alien != Personnel.EngineAlien && alien != Personnel.LaserAlien)
             {
                 throw new ArgumentException("The Personnel argument is not an alien!");
+            }
+
+            if ((_hasEngineAlien && alien == Personnel.EngineAlien) || (_hasLaserAlien && alien == Personnel.LaserAlien))
+            {
+                return false;
             }
 
             bool ret = false;
@@ -162,7 +185,7 @@ namespace GalaxyTrucker.Model
 
         public Part GetCockpit()
         {
-            return _parts.Cast<Part>().Where(p => p is Cockpit).FirstOrDefault();
+            return _parts.Cast<Part>().First(p => p is Cockpit);
         }
 
         public bool IsValidField(int row, int column)
@@ -229,7 +252,7 @@ namespace GalaxyTrucker.Model
                 Part cabin;
                 try
                 {
-                    cabin = neighbours.Cast<Part>().Where(x => x is EngineCabin).First();
+                    cabin = neighbours.Cast<Part>().First(x => x is EngineCabin);
                     _hasEngineAlien = true;
                     (_parts[row, column] as Cabin).Personnel = Personnel.EngineAlien;
                 }
@@ -243,7 +266,7 @@ namespace GalaxyTrucker.Model
                 Part cabin;
                 try
                 {
-                    cabin = neighbours.Cast<Part>().Where(x => x is LaserCabin).First();
+                    cabin = neighbours.Cast<Part>().First(x => x is LaserCabin);
                     _hasLaserAlien = true;
                     (_parts[row, column] as Cabin).Personnel = Personnel.LaserAlien;
                 }
@@ -288,6 +311,10 @@ namespace GalaxyTrucker.Model
                             e.Deactivate();
                         break;
                 }
+            }
+            for (int i = 0; i < 4; ++i)
+            {
+                _shieldedDirections[i] = false;
             }
         }
 
@@ -334,7 +361,7 @@ namespace GalaxyTrucker.Model
         /// </summary>
         /// <param name="projectile">The type of projectile the ship is getting hit by</param>
         /// <param name="dir">The direction the projectile is coming from</param>
-        /// <param name="line">The line (vertical or horizontal) in which the projectile is approaching</param>
+        /// <param name="line">The line (vertical or horizontal) in which the projectile is approaching, ranging from 0 to 10</param>
         public void ApplyProjectile(Projectile projectile, Direction dir, int line)
         {
             //determine the part about to be hit
@@ -372,19 +399,6 @@ namespace GalaxyTrucker.Model
             if (target == null)
                 return;
 
-            //determine which directions the ship is shielded from
-            bool[] isShielded = new bool[]
-            {
-                _parts.Cast<Part>().Where(x => x is Shield && (x as Shield).Activated &&
-                    (x as Shield).Directions.Item1 == Direction.Top || (x as Shield).Directions.Item2 == Direction.Top).Any(),
-                _parts.Cast<Part>().Where(x => x is Shield && (x as Shield).Activated &&
-                    (x as Shield).Directions.Item1 == Direction.Right || (x as Shield).Directions.Item2 == Direction.Right).Any(),
-                _parts.Cast<Part>().Where(x => x is Shield && (x as Shield).Activated &&
-                    (x as Shield).Directions.Item1 == Direction.Bottom || (x as Shield).Directions.Item2 == Direction.Bottom).Any(),
-                _parts.Cast<Part>().Where(x => x is Shield && (x as Shield).Activated &&
-                    (x as Shield).Directions.Item1 == Direction.Left || (x as Shield).Directions.Item2 == Direction.Left).Any(),
-            };
-
             //check if the part gets removed based on the type of projectile it got hit by
             //small asteroids remove the part only if it has an open connection towards it and the direction isn't shielded
             //large asteroids remove the part unless there is a laser in that line facing it
@@ -393,7 +407,7 @@ namespace GalaxyTrucker.Model
             switch (projectile)
             {
                 case Projectile.MeteorSmall:
-                    if(target.GetConnector(dir) != Connector.None && !isShielded[(int)dir])
+                    if(target.GetConnector(dir) != Connector.None && !_shieldedDirections[(int)dir])
                         RemovePartAtIndex(row, column);
                     break;
                 case Projectile.MeteorLarge:
@@ -401,7 +415,7 @@ namespace GalaxyTrucker.Model
                         RemovePartAtIndex(row, column);
                     break;
                 case Projectile.ShotSmall:
-                    if (!isShielded[(int)dir])
+                    if (!_shieldedDirections[(int)dir])
                         RemovePartAtIndex(row, column);
                     break;
                 default:
@@ -414,15 +428,15 @@ namespace GalaxyTrucker.Model
         /// Method to add a list of wares to the ship's storages while maximizing the value of the stored wares.
         /// </summary>
         /// <param name="wares">The list of wares to add</param>
-        public void AddWares(List<Ware> wares)
+        public void AddWares(IEnumerable<Ware> wares)
         {
             foreach(Ware w in wares)
             {
                 Ware min = _storages.Min(x => x.Min);
                 if(w > min)
                 {
-                    Storage target = _storages.Find(x => x.Min == min && (w != Ware.Red || (w == Ware.Red && x is SpecialStorage)));
-                    target.AddWare(w);
+                    Storage target = _storages.FirstOrDefault(x => x.Min == min && (w != Ware.Red || (w == Ware.Red && x is SpecialStorage)));
+                    target?.AddWare(w);
                 }
             }
         }
@@ -459,6 +473,50 @@ namespace GalaxyTrucker.Model
         }
 
         /// <summary>
+        /// Method to try to remove personnel ship until there is none left or the supplied amount was removed
+        /// </summary>
+        /// <param name="number">The number of personnel to remove</param>
+        /// <returns>The number of personnel actually removed</returns>
+        public int RemovePersonnel(int number)
+        {
+            int removeLeft = number;
+            while(CrewCount > 0 || removeLeft > 0)
+            {
+                //Non-cockpit cabins with human personnel are prioritized
+                IEnumerable<Cabin> cabinsWithHumans = _parts.Cast<Part>()
+                    .Where(p => (p is Cabin) && !(p is Cockpit)
+                    && ((p as Cabin).Personnel == Personnel.HumanSingle) || ((p as Cabin).Personnel == Personnel.HumanDouble))
+                    .Select(p => p as Cabin);
+                if (cabinsWithHumans.Any())
+                {
+                    cabinsWithHumans.First().RemoveSinglePersonnel();
+                    --removeLeft;
+                }
+                else
+                {
+                    //If there is none of those, aliens are secondary
+                    IEnumerable<Cabin> cabinsWithAliens = _parts.Cast<Part>()
+                    .Where(p => (p is Cabin) && !(p is Cockpit)
+                    && ((p as Cabin).Personnel == Personnel.LaserAlien) || ((p as Cabin).Personnel == Personnel.EngineAlien))
+                    .Select(p => p as Cabin);
+                    if (cabinsWithAliens.Any())
+                    {
+                        cabinsWithAliens.First().RemoveSinglePersonnel();
+                        --removeLeft;
+                    }
+                    else
+                    {
+                        //last, cockpit personnel is removed
+                        //since CrewCount > 0, the cockpit must have personnel
+                        (GetCockpit() as Cockpit).RemoveSinglePersonnel();
+                        --removeLeft;
+                    }
+                }
+            }
+            return number - removeLeft;
+        }
+
+        /// <summary>
         /// Method to activate the part at the given indices, given it is an activatable part and it's currently inactive.
         /// </summary>
         /// <param name="row"></param>
@@ -486,7 +544,11 @@ namespace GalaxyTrucker.Model
                     if (s.Activated)
                         return;
                     if (SpendEnergy())
+                    {
                         s.Activate();
+                        _shieldedDirections[(int)s.Directions.Item1] = true;
+                        _shieldedDirections[(int)s.Directions.Item2] = true;
+                    }
                     break;
             }
         }
@@ -781,7 +843,7 @@ namespace GalaxyTrucker.Model
             Part p;
             try
             {
-                p = _parts.Cast<Part>().Where(x => x is Battery && (x as Battery).Charges > 0).First();
+                p = _parts.Cast<Part>().First(x => x is Battery && (x as Battery).Charges > 0);
             }
             catch (Exception)
             {
