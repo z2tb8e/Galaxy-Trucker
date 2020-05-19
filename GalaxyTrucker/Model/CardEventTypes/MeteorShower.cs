@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace GalaxyTrucker.Model.CardEventTypes
 {
@@ -59,14 +60,14 @@ namespace GalaxyTrucker.Model.CardEventTypes
             return waves;
         }
 
-        public override void ApplyOption(Ship ship, int option)
+        public async override void ApplyOption(Ship ship, int option)
         {
             int actualOption = -1 * option;
-            if(actualOption < 1 || actualOption > Projectiles.Count())
+            if (actualOption < 1 || actualOption > Projectiles.Count())
             {
                 throw new ArgumentOutOfRangeException();
             }
-            if(option != LastResolved)
+            if (option != LastResolved)
             {
                 throw new InvalidOperationException();
             }
@@ -76,7 +77,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
             int roll2 = random.Next(6);
 
             //OnDiceRolled sets the thread waiting
-            OnDiceRolled(roll1, roll2);
+            await Task.Run(() => OnDiceRolled(roll1, roll2));
 
             ship.ApplyProjectile(projectile.Item1, projectile.Item2, roll1 + roll2);
             ++LastResolved;

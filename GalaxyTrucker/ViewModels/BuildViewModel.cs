@@ -238,6 +238,10 @@ namespace GalaxyTrucker.ViewModels
             {
                 try
                 {
+                    if(SelectedPart != null)
+                    {
+                        PutBackSelected();
+                    }
                     if (!_client.IsReady && _buildingEnded)
                     {
                         _ship.FillCabins();

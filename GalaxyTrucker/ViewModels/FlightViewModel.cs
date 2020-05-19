@@ -4,8 +4,6 @@ using GalaxyTrucker.Model.PartTypes;
 using GalaxyTrucker.Network;
 using GalaxyTrucker.Properties;
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Linq;
@@ -34,6 +32,8 @@ namespace GalaxyTrucker.ViewModels
         private volatile bool _roundResolved;
         private string _statusMessage;
         private volatile bool _isWaiting;
+
+        public PlayerAttributes CurrentAttributes { get; set; }
 
         public string StatusMessage
         {
@@ -168,8 +168,30 @@ namespace GalaxyTrucker.ViewModels
             _playerList = playerList;
             _ship = ship;
             _isWaiting = false;
-
+            CurrentAttributes = new PlayerAttributes();
             OptionsOrSubEvents = new ObservableCollection<OptionOrSubEventViewModel>();
+            ShipParts = new ObservableCollection<FlightPartViewModel>();
+            foreach (Part p in _ship.Parts)
+            {
+                ShipParts.Add(new FlightPartViewModel(p));
+            }
+            foreach (FlightPartViewModel part in ShipParts)
+            {
+                part.PartClickCommand = new DelegateCommand(param =>
+                {
+                    if (!_client.Crashed && part.Highlighted)
+                    {
+                        _ship.ActivatePart(part.Row, part.Column);
+                        foreach(FlightPartViewModel item in ShipParts)
+                        {
+                            if (item.Highlighted)
+                            {
+                                item.Part.Highlight();
+                            }
+                        }
+                    }
+                });
+            }
 
             _client.CardPicked += Client_CardPicked;
             _client.PlayerCrashed += Client_PlayerCrashed;
@@ -183,13 +205,11 @@ namespace GalaxyTrucker.ViewModels
             _playerList.LostConnection += PlayerList_LostConnection;
             _ship.PartRemoved += Ship_PartRemoved;
             _ship.Wrecked += Ship_Wrecked;
+            _ship.FlightAttributesChanged += Ship_FlightAttributesChanged;
+            _client.PlacesChanged += (sender, e) => RefreshTokens();
 
-            SendAttributesCommand = new DelegateCommand(param => !_client.Crashed, param =>
+            SendAttributesCommand = new DelegateCommand(param => !_client.Crashed && RequiresAttributes, param =>
             {
-                if (!RequiresAttributes)
-                {
-                    return;
-                }
                 RequiresAttributes = false;
                 _client.UpdateAttributes(_ship.Firepower, _ship.Enginepower, _ship.CrewCount, _ship.StorageCount, _ship.Batteries);
             });
@@ -234,31 +254,24 @@ namespace GalaxyTrucker.ViewModels
                 _client.Card.ProceedCurrent();
             });
 
-            ShipParts = new ObservableCollection<FlightPartViewModel>();
-            foreach(Part p in _ship.Parts)
-            {
-                ShipParts.Add(new FlightPartViewModel(p));
-            }
-            foreach(FlightPartViewModel part in ShipParts)
-            {
-                part.PartClickCommand = new DelegateCommand(param =>
-                {
-                    if (!_client.Crashed && part.Highlighted)
-                    {
-                        _ship.ActivatePart(part.Row, part.Column);
-                    }
-                });
-            }
-
-            _client.PlacesChanged += new EventHandler((sender, e) => RefreshTokens());
-
+            Ship_FlightAttributesChanged(null, null);
             InitializeOrderFields();
+        }
+
+        private void Ship_FlightAttributesChanged(object sender, EventArgs e)
+        {
+            CurrentAttributes.Firepower = _ship.Firepower;
+            CurrentAttributes.Enginepower = _ship.Enginepower;
+            CurrentAttributes.CrewCount = _ship.CrewCount;
+            CurrentAttributes.StorageSize = _ship.StorageCount;
+            CurrentAttributes.Batteries = _ship.Batteries;
+            OnPropertyChanged(nameof(CurrentAttributes));
         }
 
         private void Ship_Wrecked(object sender, WreckedSource e)
         {
             _client.CrashPlayer();
-            MessageBox.Show($"A hajó nem tud tovább menni: {e.GetDescription()}");
+            StatusMessage = $"A hajó nem tud tovább menni: {e.GetDescription()}";
         }
 
         private void Ship_PartRemoved(object sender, PartRemovedEventArgs e)
@@ -325,7 +338,14 @@ namespace GalaxyTrucker.ViewModels
                 StatusMessage = "Más elhasználta a kártyát mielőtt sorra kerültél volna.";
                 _client.Card.ApplyOption(_ship, -1);
             }
-            StatusMessage = "A kártya lejátszva, várakozás a kör végére.";
+            else if(!_client.Card.IsResolved())
+            {
+                StatusMessage = "Az aktuális kártyát még nem játszottad le.";
+            }
+            else
+            {
+                StatusMessage = "Az aktuális kártya végig lett játszva, várakozás a kör végére.";
+            }
             _roundResolved = true;
         }
 
@@ -353,12 +373,14 @@ namespace GalaxyTrucker.ViewModels
             else
             {
                 StatusMessage = "Te vagy az aktuális effekt célpontja!";
-                Task.Run(() => _client.Card.ApplyOption(_ship, 0));
+                //task
+                _client.Card.ApplyOption(_ship, 0);
             }
         }
 
         private void Client_PlayerCrashed(object sender, PlayerColor e)
         {
+            RefreshTokens();
             MessageBox.Show($"{e.GetDescription()} játékos kiszállt a versenyből!");
         }
 
@@ -386,8 +408,8 @@ namespace GalaxyTrucker.ViewModels
                     {
                         return item.Condition(_ship) && !_client.Crashed &&
                         (!card.RequiresOrder || (card.RequiresOrder && _isPlayersTurn));
-                    }
-                    , param => Task.Run(() => item.Action(_client, _ship))),
+                    }//task
+                    , param => item.Action(_client, _ship))
                 });
             }
         }
@@ -418,6 +440,7 @@ namespace GalaxyTrucker.ViewModels
             _playerList.LostConnection -= PlayerList_LostConnection;
             _ship.PartRemoved -= Ship_PartRemoved;
             _ship.Wrecked -= Ship_Wrecked;
+            _ship.FlightAttributesChanged -= Ship_FlightAttributesChanged;
         }
 
         /// <summary>

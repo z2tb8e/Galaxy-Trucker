@@ -12,6 +12,14 @@ namespace GalaxyTrucker.ViewModels
         private bool _highlighted;
         private string _partContentsDescription;
 
+        public Part Part
+        {
+            get
+            {
+                return _part;
+            }
+        }
+
         public Image PartImage
         {
             get
@@ -91,7 +99,7 @@ namespace GalaxyTrucker.ViewModels
 
         private void Part_HighlightToggled(object sender, EventArgs e)
         {
-            Highlighted = true;
+            Highlighted = !Highlighted;
         }
     }
 }

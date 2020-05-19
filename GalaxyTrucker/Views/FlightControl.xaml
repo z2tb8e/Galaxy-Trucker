@@ -17,23 +17,21 @@
             <ColumnDefinition/>
         </Grid.ColumnDefinitions>
 
-        <TextBlock Text="{Binding StatusMessage}" Margin="10" Grid.Row="0" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-        
-        <StackPanel HorizontalAlignment="Stretch" VerticalAlignment="Center" Orientation="Horizontal" Margin="10" Grid.Row="0" Grid.Column="1">
+        <TextBlock Text="{Binding StatusMessage}" Margin="10" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+
+        <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal" Margin="10" Grid.Row="0" Grid.Column="1">
             <Button Content="Kiszállás a versenyből" Command="{Binding CrashCommand}" Margin="10" Width="150" Height="70"/>
             <Button Content="Elem aktiválása" Command="{Binding ActivatePartCommand}" Margin="10" Width="150" Height="70"/>
             <Button Content="Folytatás" Command="{Binding ContinueCommand}" Margin="10" Width="150" Height="70"/>
             <Button Content="Kör vége" Command="{Binding ReadyCommand}" Margin="10" Width="150" Height="70"/>
         </StackPanel>
 
+        <Button VerticalAlignment="Bottom" Width="20" Height="20" Content="?" ToolTip="{Binding CurrentCardToolTip}" Grid.Row="0" Grid.Column="0" Margin="310,0,630,0"/>
         <StackPanel Margin="10" VerticalAlignment="Top" HorizontalAlignment="Left" Orientation="Vertical" Grid.Row="0" Grid.RowSpan="2" Grid.Column="0">
             <Button Height="150" Width="300" Padding="10" Command="{Binding SendAttributesCommand}">
                 <Button.Content>
                     <TextBlock TextWrapping="Wrap" FontSize="20" FontWeight="Bold" Text="{Binding CurrentCardDescription}"/>
                 </Button.Content>
-                <Button.ToolTip>
-                    <ToolTip ToolTipService.ShowOnDisabled="True" Content="{Binding CurrentCardToolTip}"/>
-                </Button.ToolTip>
             </Button>
             <ItemsControl ItemsSource="{Binding OptionsOrSubEvents}">
                 <ItemsControl.ItemsPanel>
@@ -43,10 +41,37 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Button Height="60" Content="{Binding Description}" Command="{Binding ClickCommand}"/>
+                        <Button Height="60" Command="{Binding ClickCommand}">
+                            <Button.Content>
+                                <TextBlock Text="{Binding Description}" TextWrapping="WrapWithOverflow"/>
+                            </Button.Content>
+                        </Button>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" Margin="10" Grid.Row="0" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <StackPanel Margin="10" Orientation="Vertical" VerticalAlignment="Center">
+                <Label Content="Aktuális tűzerő" Target="{Binding ElementName=firepowerBlock}"/>
+                <TextBlock Text="{Binding CurrentAttributes.Firepower}" x:Name="firepowerBlock"/>
+            </StackPanel>
+            <StackPanel Margin="10" Orientation="Vertical" VerticalAlignment="Center">
+                <Label Content="Aktuális motorerő" Target="{Binding ElementName=enginepowerBlock}"/>
+                <TextBlock Text="{Binding CurrentAttributes.Enginepower}" x:Name="enginepowerBlock"/>
+            </StackPanel>
+            <StackPanel Margin="10" Orientation="Vertical" VerticalAlignment="Center">
+                <Label Content="Aktuális legénység" Target="{Binding ElementName=crewCountBlock}"/>
+                <TextBlock Text="{Binding CurrentAttributes.CrewCount}" x:Name="crewCountBlock"/>
+            </StackPanel>
+            <StackPanel Margin="10" Orientation="Vertical" VerticalAlignment="Center">
+                <Label Content="Raktárak száma" Target="{Binding ElementName=storageSizeBlock}"/>
+                <TextBlock Text="{Binding CurrentAttributes.StorageSize}" x:Name="storageSizeBlock"/>
+            </StackPanel>
+            <StackPanel Margin="10" Orientation="Vertical" VerticalAlignment="Center">
+                <Label Content="Energia" Target="{Binding ElementName=batteriesBlock}"/>
+                <TextBlock Text="{Binding CurrentAttributes.Batteries}" x:Name="batteriesBlock"/>
+            </StackPanel>
         </StackPanel>
 
         <StackPanel  HorizontalAlignment="Right" VerticalAlignment="Top" Grid.Row="2" Grid.Column="0" Margin="10" Orientation="Vertical">
@@ -63,9 +88,9 @@
             <Label Content="Körsorrend" Target="{Binding ElementName=playerOrderControl}" Margin="0 0 0 10"/>
             <local:PlayerOrderControl x:Name="playerOrderControl"/>
         </StackPanel>
-        
 
-        <Grid Grid.Row="1" Grid.Column="1" Grid.RowSpan="2">
+
+        <Grid HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="30" Grid.Row="1" Grid.Column="1" Grid.RowSpan="2">
             <Grid.RowDefinitions>
                 <RowDefinition Height="auto"/>
                 <RowDefinition Height="auto"/>
@@ -78,7 +103,7 @@
             <ItemsControl VerticalAlignment="Center" HorizontalAlignment="Center" Grid.Column="1" Grid.Row="0"  Name="ShipGridColumnHeaders">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"/>
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>

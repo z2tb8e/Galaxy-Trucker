@@ -322,9 +322,8 @@ namespace GalaxyTrucker.Network
                 _pingTimer.Dispose();
                 throw new InvalidOperationException();
             }
-            WriteMessageToServer("PlayerCrash");
             Crashed = true;
-            PlayerInfos[Player].IsFlying = false;
+            WriteMessageToServer("PlayerCrash");
         }
 
         public void SendCardOption(int option)
@@ -648,11 +647,6 @@ namespace GalaxyTrucker.Network
             }
             PlayerColor crashedPlayer = Enum.Parse<PlayerColor>(parts[1]);
 
-            if(crashedPlayer == Player)
-            {
-                Crashed = true;
-            }
-
             _orderManager.Properties.Remove(crashedPlayer);
             PlayerInfos[crashedPlayer].IsFlying = false;
             PlayerCrashed?.Invoke(this, crashedPlayer);
@@ -801,6 +795,16 @@ namespace GalaxyTrucker.Network
             _orderManager.PlacesChanged += (sender, e) =>
             {
                 PlacesChanged?.Invoke(this, e);
+            };
+
+            _orderManager.PlayerCrashed += (sender, e) =>
+            {
+                if(e == Player)
+                {
+                    Crashed = true;
+                }
+                PlayerInfos[e].IsFlying = false;
+                PlayerCrashed?.Invoke(this, e);
             };
 
             _serverStage = ServerStage.PastBuild;

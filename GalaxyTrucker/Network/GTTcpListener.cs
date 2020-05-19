@@ -278,7 +278,8 @@ namespace GalaxyTrucker.Network
             _playerOrderManager = new PlayerOrderManager(_playerOrder, _gameStage);
             _playerOrderManager.PlayerCrashed += (sender, e) =>
             {
-                PlayerCrashResolve(e);
+                _connections[e].Crashed = true;
+                LogAsync($"{e} crashed from movement.");
             };
 
             BeginFlightStage();

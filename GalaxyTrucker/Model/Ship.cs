@@ -97,6 +97,8 @@ namespace GalaxyTrucker.Model
 
         public event EventHandler CashChanged;
 
+        public event EventHandler FlightAttributesChanged;
+
         #endregion
 
         /// <summary>
@@ -307,6 +309,7 @@ namespace GalaxyTrucker.Model
             {
                 _shieldedDirections[i] = false;
             }
+            FlightAttributesChanged?.Invoke(this, EventArgs.Empty);
         }
 
         public bool HighlightActivatables()
@@ -376,6 +379,7 @@ namespace GalaxyTrucker.Model
             {
                 Wrecked?.Invoke(this, WreckedSource.OutOfHumans);
             }
+            FlightAttributesChanged?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
@@ -538,6 +542,7 @@ namespace GalaxyTrucker.Model
             {
                 Wrecked?.Invoke(this, WreckedSource.OutOfHumans);
             }
+            FlightAttributesChanged?.Invoke(this, EventArgs.Empty);
             return number - removeLeft;
         }
 
@@ -576,6 +581,7 @@ namespace GalaxyTrucker.Model
                     }
                     break;
             }
+            FlightAttributesChanged?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
@@ -751,6 +757,7 @@ namespace GalaxyTrucker.Model
             {
                 Wrecked?.Invoke(this, WreckedSource.OutOfHumans);
             }
+            FlightAttributesChanged?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>

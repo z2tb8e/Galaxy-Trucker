@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace GalaxyTrucker.Model.CardEventTypes
 {
@@ -62,7 +63,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
 
         public override string GetDescription()
         {
-            return $"Kalózok | {Firepower} tűzerő";
+            return $"Kalózok | {Firepower * 2} tűzerő";
         }
 
         public override IEnumerable<OptionOrSubEvent> GetOptionsOrSubEvents()
@@ -77,7 +78,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                         LastResolved = 1;
                         client.SendCardOption(0);
                     },
-                    Condition = ship => ship.Firepower < Firepower && LastResolved == 0,
+                    Condition = ship => ship.Firepower < (Firepower * 2) && LastResolved == 0,
                 },
                 new OptionOrSubEvent
                 {
@@ -87,7 +88,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                         LastResolved = 1;
                         client.SendCardOption(1);
                     },
-                    Condition = ship => ship.Firepower > Firepower && LastResolved == 0,
+                    Condition = ship => ship.Firepower > (Firepower * 2) && LastResolved == 0,
                 },
                 new OptionOrSubEvent
                 {
@@ -97,7 +98,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                         LastResolved = 1;
                         client.SendCardOption(2);
                     },
-                    Condition = ship => ship.Firepower >= Firepower && LastResolved == 0,
+                    Condition = ship => ship.Firepower >= (Firepower * 2) && LastResolved == 0,
                 }
             };
         }
@@ -108,7 +109,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
          * 1: pirate beaten
          * 2: ignored by player
          */
-        public override void ApplyOption(Ship ship, int option)
+        public async override void ApplyOption(Ship ship, int option)
         {
             if(LastResolved != 1)
             {
@@ -127,7 +128,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                     int roll1 = random.Next(6);
                     int roll2 = random.Next(6);
                     //OnDiceRolled sets the thread waiting
-                    OnDiceRolled(roll1, roll2);
+                    await Task.Run(() => OnDiceRolled(roll1, roll2));
                     
                     ship.ApplyProjectile(pair.Item2, pair.Item1, roll1 + roll2);
                 }
@@ -159,7 +160,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
 
         public override string GetDescription()
         {
-            return $"Csempészek | {Firepower} tűzerő";
+            return $"Csempészek | {Firepower * 2} tűzerő";
         }
 
         public override IEnumerable<OptionOrSubEvent> GetOptionsOrSubEvents()
@@ -174,7 +175,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                         LastResolved = 1;
                         client.SendCardOption(0);
                     },
-                    Condition = ship => ship.Firepower < Firepower && LastResolved == 0,
+                    Condition = ship => ship.Firepower < (Firepower * 2) && LastResolved == 0,
                 },
                 new OptionOrSubEvent
                 {
@@ -184,7 +185,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                         LastResolved = 1;
                         client.SendCardOption(1);
                     },
-                    Condition = ship => ship.Firepower > Firepower && LastResolved == 0,
+                    Condition = ship => ship.Firepower > (Firepower * 2) && LastResolved == 0,
                 },
                 new OptionOrSubEvent
                 {
@@ -194,7 +195,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                         LastResolved = 1;
                         client.SendCardOption(2);
                     },
-                    Condition = ship => ship.Firepower >= Firepower && LastResolved == 0,
+                    Condition = ship => ship.Firepower >= (Firepower * 2) && LastResolved == 0,
                 }
             };
         }
@@ -239,7 +240,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
         }
         public override string GetDescription()
         {
-            return $"Rabszolgakereskedők | {Firepower} tűzerő";
+            return $"Rabszolgakereskedők | {Firepower * 2} tűzerő";
         }
 
         public override IEnumerable<OptionOrSubEvent> GetOptionsOrSubEvents()
@@ -254,7 +255,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                         LastResolved = 1;
                         client.SendCardOption(0);
                     },
-                    Condition = ship => ship.Firepower < Firepower && LastResolved == 0,
+                    Condition = ship => ship.Firepower < (Firepower * 2) && LastResolved == 0,
                 },
                 new OptionOrSubEvent
                 {
@@ -264,7 +265,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                         LastResolved = 1;
                         client.SendCardOption(1);
                     },
-                    Condition = ship => ship.Firepower > Firepower && LastResolved == 0,
+                    Condition = ship => ship.Firepower > (Firepower * 2) && LastResolved == 0,
                 },
                 new OptionOrSubEvent
                 {
@@ -274,7 +275,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                         LastResolved = 1;
                         client.SendCardOption(2);
                     },
-                    Condition = ship => ship.Firepower >= Firepower && LastResolved == 0,
+                    Condition = ship => ship.Firepower >= (Firepower * 2) && LastResolved == 0,
                 }
             };
         }
