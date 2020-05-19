@@ -165,7 +165,7 @@ namespace GalaxyTrucker.Network
                     {
                         TcpClient client = _listener.AcceptTcpClient();
                         PlayerColor assignedColor = Enum.GetValues(typeof(PlayerColor)).Cast<PlayerColor>()
-                            .Where(color => !_connections.ContainsKey(color)).First();
+                            .First(color => !_connections.ContainsKey(color));
 
                         ConnectionInfo newConnection = new ConnectionInfo(client);
 
@@ -278,7 +278,7 @@ namespace GalaxyTrucker.Network
             _playerOrderManager = new PlayerOrderManager(_playerOrder, _gameStage);
             _playerOrderManager.PlayerCrashed += (sender, e) =>
             {
-                _connections[e].Crashed = true;
+                PlayerCrashResolve(e);
             };
 
             BeginFlightStage();
@@ -406,7 +406,7 @@ namespace GalaxyTrucker.Network
         {
             //wait until the open connectors get sent
             _proceedRoundEvent.WaitOne();
-            foreach (PlayerColor player in _playerOrderManager.GetCurrentOrder())
+            foreach (PlayerColor player in _playerOrderManager.GetOrder())
             {
                 int distance = -1 * _connections[player].OpenConnectors.Value;
                 MovePlayer(player, distance);
@@ -415,7 +415,7 @@ namespace GalaxyTrucker.Network
 
         private void ResolveAbandoned()
         {
-            List<PlayerColor> order = _playerOrderManager.GetCurrentOrder();
+            List<PlayerColor> order = _playerOrderManager.GetOrder();
             int current = 0;
             bool taken = false;
             while (current < order.Count && !taken)
@@ -429,12 +429,8 @@ namespace GalaxyTrucker.Network
                  *  1: took the offer
                  */
                 _connections[_currentPlayer].IsWaiting = false;
-                //if the current player decides to crash their ship
-                if (_connections[_currentPlayer].Crashed)
-                {
-                    ++current;
-                }
-                else
+                //if the current player didn't crash their ship
+                if (!_connections[_currentPlayer].Crashed)
                 {
                     int dayCost = _currentCard switch
                     {
@@ -454,14 +450,16 @@ namespace GalaxyTrucker.Network
                             throw new ArgumentOutOfRangeException($"Invalid option number {_currentOption}.");
                     }
 
+                    LogAsync($"{_currentPlayer} selected option {_currentOption}.");
                     WriteMessageToPlayer(_currentPlayer, $"OptionPicked,{_currentOption}");
                 }
+                ++current;
             }
         }
 
         private void ResolvePlanets()
         {
-            List<PlayerColor> order = _playerOrderManager.GetCurrentOrder();
+            List<PlayerColor> order = _playerOrderManager.GetOrder();
             int current = 0;
             int numberOfOffers = (_currentCard as Planets).Offers.Count();
             List<int> validOffers = new List<int>();
@@ -480,12 +478,8 @@ namespace GalaxyTrucker.Network
                  *  [1..numberOfOffers]: the specific offer
                  */
                 _connections[_currentPlayer].IsWaiting = false;
-                //if the current player decides to crash their ship
-                if (_connections[_currentPlayer].Crashed)
-                {
-                    ++current;
-                }
-                else
+                //if the current player didn't their ship
+                if(!_connections[_currentPlayer].Crashed)
                 {
                     switch (_currentOption)
                     {
@@ -504,8 +498,10 @@ namespace GalaxyTrucker.Network
                             throw new ArgumentOutOfRangeException($"Invalid option number {_currentOption}.");
                     }
 
+                    LogAsync($"{_currentPlayer} selected option {_currentOption}.");
                     WriteMessageToPlayer(_currentPlayer, $"OptionPicked,{_currentOption}");
                 }
+                ++current;
             }
         }
 
@@ -513,7 +509,7 @@ namespace GalaxyTrucker.Network
         {
             //wait until the stats get sent
             _proceedRoundEvent.WaitOne();
-            foreach (PlayerColor player in _playerOrderManager.GetCurrentOrder())
+            foreach (PlayerColor player in _playerOrderManager.GetOrder())
             {
                 int distance = _connections[player].Attributes.Enginepower;
                 MovePlayer(player, distance);
@@ -523,7 +519,7 @@ namespace GalaxyTrucker.Network
         private void ResolveEncounter()
         {
             bool defeated = false;
-            List<PlayerColor> order = _playerOrderManager.GetCurrentOrder();
+            List<PlayerColor> order = _playerOrderManager.GetOrder();
             int current = 0;
             while (!defeated && current < order.Count)
             {
@@ -567,6 +563,7 @@ namespace GalaxyTrucker.Network
                             throw new ArgumentOutOfRangeException();
                     }
 
+                    LogAsync($"{_currentPlayer} selected option {_currentOption}.");
                     WriteMessageToPlayer(_currentPlayer, $"OptionPicked,{_currentOption}");
 
                     ++current;
@@ -626,15 +623,14 @@ namespace GalaxyTrucker.Network
                     _ => throw new InvalidEnumArgumentException()
                 }).Min();
 
-            PlayerColor target = _playerOrderManager.GetCurrentOrder()
-                .Where(player => !_connections[player].Crashed && checkAttribute switch
+            PlayerColor target = _playerOrderManager.GetOrder()
+                .First(player => !_connections[player].Crashed && checkAttribute switch
                 {
                     CardCheckAttribute.CrewCount => _connections[player].Attributes.CrewCount == minValue,
                     CardCheckAttribute.Enginepower => _connections[player].Attributes.Enginepower == minValue,
                     CardCheckAttribute.Firepower => _connections[player].Attributes.Firepower == minValue,
                     _ => throw new InvalidEnumArgumentException()
-                })
-                .First();
+                });
 
             SignalTargetPlayer(target);
 
@@ -799,6 +795,7 @@ namespace GalaxyTrucker.Network
         /// <param name="player"></param>
         private void PlayerCrashResolve(PlayerColor player)
         {
+            LogAsync($"{player} crashed their ship.");
             _connections[player].Crashed = true;
             _playerOrderManager.Properties.Remove(player);
             foreach(PlayerColor key in _connections.Keys)

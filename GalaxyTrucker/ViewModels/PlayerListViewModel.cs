@@ -56,7 +56,7 @@ namespace GalaxyTrucker.ViewModels
 
         private void Client_ThisPlayerReadied(object sender, EventArgs e)
         {
-            ConnectedPlayers.Where(info => info.Color == _client.Player).First().IsReady = _client.IsReady;
+            ConnectedPlayers.First(info => info.Color == _client.Player).IsReady = _client.IsReady;
         }
 
         private void Client_ThisPlayerDisconnected(object sender, EventArgs e)
@@ -67,13 +67,13 @@ namespace GalaxyTrucker.ViewModels
 
         private void Client_PlayerDisconnected(object sender, PlayerEventArgs e)
         {
-            PlayerInfoViewModel playerToRemove = ConnectedPlayers.Where(item => item.Color == e.Player).First();
+            PlayerInfoViewModel playerToRemove = ConnectedPlayers.First(item => item.Color == e.Player);
             ConnectedPlayers.Remove(playerToRemove);
         }
 
         private void Client_PlayerReadied(object sender, PlayerEventArgs e)
         {
-            ConnectedPlayers.Where(info => info.Color == e.Player).First().IsReady = _client.PlayerInfos[e.Player].IsReady;
+            ConnectedPlayers.First(info => info.Color == e.Player).IsReady = _client.PlayerInfos[e.Player].IsReady;
         }
 
         private void Client_PlayerConnected(object sender, PlayerConnectedEventArgs e)

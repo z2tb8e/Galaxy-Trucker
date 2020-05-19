@@ -89,7 +89,7 @@ namespace GalaxyTrucker.Model
                     --_properties[player].LapCount;
                 }
 
-                while (IsOccupied(nextPlace))
+                while (_playerPlaces[nextPlace] != null)
                 {
                     PlaceProperty occupier = _playerPlaces[nextPlace];
 
@@ -125,26 +125,11 @@ namespace GalaxyTrucker.Model
         /// Method to get the turn order for the round, which excludes already immobilised players
         /// </summary>
         /// <returns></returns>
-        public List<PlayerColor> GetCurrentOrder()
+        public List<PlayerColor> GetOrder()
         {
             return _properties
                 .OrderByDescending(pair => pair.Value.LapCount * LapSize + pair.Value.PlaceValue)
                 .Select(pair => pair.Key).ToList();
-        }
-
-        /// <summary>
-        /// Method to get the final order of the ships, which includes immobilised players
-        /// </summary>
-        /// <returns></returns>
-        public List<PlayerColor> GetFinalOrder()
-        {
-            return _properties.OrderByDescending(pair => pair.Value.LapCount * LapSize + pair.Value.PlaceValue)
-                .Select(pair => pair.Key).ToList();
-        }
-
-        private bool IsOccupied(int placeValue)
-        {
-            return _properties.Values.Where(val => val.PlaceValue == placeValue).Any();
         }
 
         private void OnPlayerCrashed(PlayerColor player)

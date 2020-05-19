@@ -7,6 +7,8 @@ namespace GalaxyTrucker.Model.CardEventTypes
 {
     public class Planets : CardEvent
     {
+        private readonly bool[] _offersAvailable;
+
         public int DayCost { get; }
 
         public IEnumerable<IEnumerable<Ware>> Offers { get; }
@@ -14,9 +16,14 @@ namespace GalaxyTrucker.Model.CardEventTypes
         public Planets(GameStage stage, int dayCost, IEnumerable<IEnumerable<Ware>> offers) : base(stage)
         {
             LastResolved = 0;
-            RequiresAttributes = false;
+            RequiresOrder = true;
             DayCost = dayCost;
             Offers = offers;
+            _offersAvailable = new bool[Offers.Count()];
+            for(int i = 0; i < Offers.Count(); ++i)
+            {
+                _offersAvailable[i] = true;
+            }
         }
 
         public override bool IsResolved()
@@ -66,28 +73,39 @@ namespace GalaxyTrucker.Model.CardEventTypes
 
             for(int i = 0; i < Offers.Count(); ++i)
             {
-                IEnumerable<Ware> offer = Offers.ElementAt(i);
+                int index = i;
+                IEnumerable<Ware> offer = Offers.ElementAt(index);
                 ret.Add(new OptionOrSubEvent
                 {
                     Description = $"Áruk: {string.Join(", ", offer.Select(ware => ware.GetDescription()))}",
                     Action = (client, ship) =>
                     {
-                        client.SendCardOption(i);
+                        client.SendCardOption(index);
                         LastResolved = 1;
                     },
-                    Condition = ship => LastResolved == 0
+                    Condition = ship => LastResolved == 0 && _offersAvailable.ElementAt(index)
                 });
             }
             return ret;
         }
 
+        /*option
+         * 0: ignored
+         * [1..Offers.Count()] = i, the (i-1)th offer
+         * -i, the (i-1)th offer got taken by someone else
+         */
         public override void ApplyOption(Ship ship, int option)
         {
-            if (option < 0 || option > Offers.Count())
+            if (option < (-1 * Offers.Count()) || option > Offers.Count())
             {
                 throw new ArgumentOutOfRangeException();
             }
-            if (option != 0)
+            if(option < 0)
+            {
+                _offersAvailable[(-1 * option) - 1] = false;
+                return;
+            }
+            if (option > 0)
             {
                 ship.AddWares(Offers.ElementAt(option - 1));
             }

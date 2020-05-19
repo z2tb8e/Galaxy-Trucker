@@ -192,7 +192,7 @@ namespace GalaxyTrucker.ViewModels
             }
 
             Part cockpit = _ship.GetCockpit();
-            BuildPartViewModel cockpitViewModel = ShipParts.Where(p => p.ShipRow == cockpit.Row && p.ShipColumn == cockpit.Column).First();
+            BuildPartViewModel cockpitViewModel = ShipParts.First(p => p.ShipRow == cockpit.Row && p.ShipColumn == cockpit.Column);
             cockpitViewModel.Part = cockpit;
             cockpitViewModel.PartImage = PartBuilder.GetPartImage(cockpit);
             cockpitViewModel.PartClickCommand = new DelegateCommand(param => false, param => { });
@@ -358,10 +358,10 @@ namespace GalaxyTrucker.ViewModels
         /// <param name="e"></param>
         private void Ship_PartRemoved(object sender, PartRemovedEventArgs e)
         {
-            BuildPartViewModel removedPart = ShipParts.Where(p => p.ShipRow == e.Row && p.ShipColumn == e.Column).First();
+            BuildPartViewModel removedPart = ShipParts.First(p => p.ShipRow == e.Row && p.ShipColumn == e.Column);
             removedPart.Part = null;
             _client.PutBackPart(removedPart.BuildRow, removedPart.BuildColumn);
-            BuildPartViewModel origin = PickableParts.Where(p => p.BuildRow == removedPart.BuildRow && p.BuildColumn == removedPart.BuildColumn).First();
+            BuildPartViewModel origin = PickableParts.First(p => p.BuildRow == removedPart.BuildRow && p.BuildColumn == removedPart.BuildColumn);
             origin.IsValidField = true;
         }
 

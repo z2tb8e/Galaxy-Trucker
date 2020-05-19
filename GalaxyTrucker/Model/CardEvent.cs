@@ -25,10 +25,14 @@ namespace GalaxyTrucker.Model
 
         public bool RequiresAttributes { get; protected set; }
 
+        public bool RequiresOrder { get; protected set; }
+
         public event EventHandler<(int, int)> DiceRolled;
 
         public CardEvent(GameStage stage)
         {
+            RequiresOrder = false;
+            RequiresAttributes = false;
             _proceedEvent = new AutoResetEvent(false);
             Stage = stage;
         }

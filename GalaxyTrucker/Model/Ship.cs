@@ -85,22 +85,13 @@ namespace GalaxyTrucker.Model
 
         public int StorageCount => _parts.Cast<Part>().Where(x => x is Storage).Sum(x => (x as Storage).Capacity);
 
-        public int Batteries => _parts.Cast<Part>().Where(x => x is Battery).Sum(x => (x as Battery).Capacity);
-
-        public List<(int, int)> InactiveShields => _activatableParts.Cast<Part>()
-            .Where(x => x is Shield && !(x as Shield).Activated).Select(x => (x.Row, x.Column)).ToList();
-
-        public List<(int, int)> InactiveLasers => _activatableParts.Cast<Part>()
-            .Where(x => x is LaserDouble && !(x as LaserDouble).Activated).Select(x => (x.Row, x.Column)).ToList();
-
-        public List<(int, int)> InactiveEngines => _activatableParts.Cast<Part>()
-            .Where(x => x is EngineDouble && !(x as EngineDouble).Activated).Select(x => (x.Row, x.Column)).ToList();
+        public int Batteries => _parts.Cast<Part>().Where(x => x is Battery).Sum(x => (x as Battery).Charges);
 
         #endregion
 
         #region events
 
-        public event EventHandler<WreckedSource> ShipWrecked;
+        public event EventHandler<WreckedSource> Wrecked;
 
         public event EventHandler<PartRemovedEventArgs> PartRemoved;
 
@@ -200,7 +191,7 @@ namespace GalaxyTrucker.Model
         public int GetOpenConnectorCount()
         {
             int sum = 0;
-            foreach(Part p in _parts)
+            foreach (Part p in _parts.Cast<Part>().Where(p => p != null))
             {
                 (Part, Direction)[] neighbours = new (Part, Direction)[]
                 {
@@ -318,6 +309,33 @@ namespace GalaxyTrucker.Model
             }
         }
 
+        public bool HighlightActivatables()
+        {
+            bool ret = false;
+            foreach (Part p in _activatableParts)
+            {
+                switch (p)
+                {
+                    case Shield s:
+                        if (!s.Activated)
+                            s.Highlight();
+                        ret = true;
+                        break;
+                    case LaserDouble l:
+                        if (!l.Activated)
+                            l.Highlight();
+                        ret = true;
+                        break;
+                    case EngineDouble e:
+                        if (!e.Activated)
+                            e.Highlight();
+                        ret = true;
+                        break;
+                }
+            }
+            return ret;
+        }
+
         /// <summary>
         /// Method to apply the effects of a pandemic event.
         /// In case of a pandemic all cabins which are directly connected and have at least a single crew member, lose one member of personnel each.
@@ -353,6 +371,10 @@ namespace GalaxyTrucker.Model
                         }
                     }
                 }
+            }
+            if(HumanCount == 0)
+            {
+                Wrecked?.Invoke(this, WreckedSource.OutOfHumans);
             }
         }
 
@@ -425,11 +447,24 @@ namespace GalaxyTrucker.Model
         }
 
         /// <summary>
+        /// Method to get the base worth of the stored wares
+        /// </summary>
+        /// <returns></returns>
+        public int GetWaresValue()
+        {
+            return _storages.Sum(s => s.Value);
+        }
+
+        /// <summary>
         /// Method to add a list of wares to the ship's storages while maximizing the value of the stored wares.
         /// </summary>
         /// <param name="wares">The list of wares to add</param>
         public void AddWares(IEnumerable<Ware> wares)
         {
+            if (_storages.Count == 0)
+            {
+                return;
+            }
             foreach(Ware w in wares)
             {
                 Ware min = _storages.Min(x => x.Min);
@@ -447,6 +482,10 @@ namespace GalaxyTrucker.Model
         /// <param name="count">The number of wares to remove</param>
         public void RemoveWares(int count)
         {
+            if(_storages.Count == 0)
+            {
+                return;
+            }
             int amountLeft = count;
             Ware max;
             while (amountLeft > 0 && (max = _storages.Max(x => x.Max)) != Ware.Empty)
@@ -456,20 +495,6 @@ namespace GalaxyTrucker.Model
                     _storages[i].RemoveMax();
                 ++i;
             }
-        }
-
-        /// <summary>
-        /// Method to remove a single personnel from cabin at the supplied indices.
-        /// </summary>
-        /// <param name="row"></param>
-        /// <param name="column"></param>
-        /// <returns>True, if the part was a cabin, and a crew member could be removed, false otherwise</returns>
-        public bool RemoveSinglePersonnel(int row, int column)
-        {
-            Part selected = _parts[row, column];
-            if (selected is Cabin)
-                return (selected as Cabin).RemoveSinglePersonnel();
-            return false;
         }
 
         /// <summary>
@@ -483,10 +508,9 @@ namespace GalaxyTrucker.Model
             while(CrewCount > 0 || removeLeft > 0)
             {
                 //Non-cockpit cabins with human personnel are prioritized
-                IEnumerable<Cabin> cabinsWithHumans = _parts.Cast<Part>()
-                    .Where(p => (p is Cabin) && !(p is Cockpit)
-                    && ((p as Cabin).Personnel == Personnel.HumanSingle) || ((p as Cabin).Personnel == Personnel.HumanDouble))
-                    .Select(p => p as Cabin);
+                IEnumerable<Cabin> cabins = _parts.Cast<Part>().Where(p => p is Cabin).Select(p => p as Cabin);
+                IEnumerable<Cabin> cabinsWithHumans = cabins.Where(c => !(c is Cockpit) && (c.Personnel == Personnel.HumanSingle || c.Personnel == Personnel.HumanDouble));
+
                 if (cabinsWithHumans.Any())
                 {
                     cabinsWithHumans.First().RemoveSinglePersonnel();
@@ -494,11 +518,8 @@ namespace GalaxyTrucker.Model
                 }
                 else
                 {
-                    //If there is none of those, aliens are secondary
-                    IEnumerable<Cabin> cabinsWithAliens = _parts.Cast<Part>()
-                    .Where(p => (p is Cabin) && !(p is Cockpit)
-                    && ((p as Cabin).Personnel == Personnel.LaserAlien) || ((p as Cabin).Personnel == Personnel.EngineAlien))
-                    .Select(p => p as Cabin);
+                    //If there is none of those, aliens are secondary(those can't be in the cockpit so no filtering for that)
+                    IEnumerable<Cabin> cabinsWithAliens = cabins.Where(c => c.Personnel == Personnel.EngineAlien || c.Personnel == Personnel.LaserAlien);
                     if (cabinsWithAliens.Any())
                     {
                         cabinsWithAliens.First().RemoveSinglePersonnel();
@@ -512,6 +533,10 @@ namespace GalaxyTrucker.Model
                         --removeLeft;
                     }
                 }
+            }
+            if(HumanCount == 0)
+            {
+                Wrecked?.Invoke(this, WreckedSource.OutOfHumans);
             }
             return number - removeLeft;
         }
@@ -675,7 +700,7 @@ namespace GalaxyTrucker.Model
             if (removedPart is Cockpit)
             {
                 _parts[row, column] = null;
-                ShipWrecked?.Invoke(this, WreckedSource.CockpitHit);
+                Wrecked?.Invoke(this, WreckedSource.CockpitHit);
                 _penalty = Math.Min(_penaltyCap, _parts.Cast<Part>().Where(p => p != null).Count());
                 return;
             }
@@ -685,7 +710,7 @@ namespace GalaxyTrucker.Model
             CheckForNotConnectedParts();
             if (HumanCount == 0)
             {
-                ShipWrecked?.Invoke(this, WreckedSource.OutOfHumans);
+                Wrecked?.Invoke(this, WreckedSource.OutOfHumans);
             }
 
         }
@@ -722,8 +747,10 @@ namespace GalaxyTrucker.Model
             {
                 RemovePart(p);
             }
-
-
+            if (HumanCount == 0)
+            {
+                Wrecked?.Invoke(this, WreckedSource.OutOfHumans);
+            }
         }
 
         /// <summary>

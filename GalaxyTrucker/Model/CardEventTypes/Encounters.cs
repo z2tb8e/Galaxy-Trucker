@@ -17,7 +17,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
 
         public Encounter(GameStage stage, int firepower, int dayCost, PenaltyT penalty, RewardT reward) : base(stage)
         {
-            RequiresAttributes = false;
+            RequiresOrder = true;
             LastResolved = 0;
             Firepower = firepower;
             DayCost = dayCost;
@@ -102,17 +102,22 @@ namespace GalaxyTrucker.Model.CardEventTypes
             };
         }
 
+        /*options
+         * -1: other player took it
+         * 0: player beaten
+         * 1: pirate beaten
+         * 2: ignored by player
+         */
         public override void ApplyOption(Ship ship, int option)
         {
             if(LastResolved != 1)
             {
                 throw new InvalidOperationException();
             }
-            if (option < 0 || option > 2)
+            if (option < -1 || option > 2)
             {
                 throw new ArgumentOutOfRangeException();
             }
-            //player beaten
 
             if (option == 0)
             {
@@ -127,7 +132,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                     ship.ApplyProjectile(pair.Item2, pair.Item1, roll1 + roll2);
                 }
             }
-            //pirate beaten
+
             //the days get applied through a server message, not here
             else if(option == 1)
             {
@@ -193,22 +198,28 @@ namespace GalaxyTrucker.Model.CardEventTypes
                 }
             };
         }
+
+        /*options
+         * -1: other player took it
+         * 0: player beaten
+         * 1: smuggler beaten
+         * 2: ignored by player
+         */
         public override void ApplyOption(Ship ship, int option)
         {
             if (LastResolved != 1)
             {
                 throw new InvalidOperationException();
             }
-            if (option < 0 || option > 2)
+            if (option < -1 || option > 2)
             {
                 throw new ArgumentOutOfRangeException();
             }
-            //player beaten
+
             if (option == 0)
             {
                 ship.RemoveWares(Penalty);
             }
-            //smuggler beaten
             //the days get applied through a server message, not here
             else if (option == 1)
             {
@@ -267,22 +278,29 @@ namespace GalaxyTrucker.Model.CardEventTypes
                 }
             };
         }
+
+        /*options
+         * -1: other player took it
+         * 0: player beaten
+         * 1: slaver beaten
+         * 2: ignored by player
+         */
         public override void ApplyOption(Ship ship, int option)
         {
             if (LastResolved != 1)
             {
                 throw new InvalidOperationException();
             }
-            if (option < 0 || option > 2)
+            if (option < -1 || option > 2)
             {
                 throw new ArgumentOutOfRangeException();
             }
-            //player beaten
+            
             if (option == 0)
             {
                 ship.RemovePersonnel(Penalty);
             }
-            //slaver beaten
+
             //the days get applied through a server message, not here
             else if (option == 1)
             {

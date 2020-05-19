@@ -37,7 +37,6 @@ namespace GalaxyTrucker
             MenuControl menuControl = new MenuControl();
             menuControl.ConnectClick += Menu_JoinGame;
             menuControl.HostClick += Menu_HostGame;
-            menuControl.RulesClick += Menu_Rules;
             _mainWindow.Content = menuControl;
             _mainWindow.Show();
         }
@@ -73,14 +72,6 @@ namespace GalaxyTrucker
                 DataContext = _lobbyViewModel
             };
             _mainWindow.Content = connectControl;
-        }
-
-        private void Menu_Rules(object sender, EventArgs e)
-        {
-            RulesControl rulesControl = new RulesControl();
-            rulesControl.BackToMenu += Rules_BackToMenu;
-            _mainWindow.Content = rulesControl;
-
         }
 
         #endregion
@@ -137,12 +128,19 @@ namespace GalaxyTrucker
             Dispatcher.Invoke(() =>
             {
                 _flightViewModel = new FlightViewModel(_client, _playerListViewModel, _buildViewModel.Ship);
+                _flightViewModel.GameEnded += FlightViewModel_GameEnded;
                 FlightControl flightControl = new FlightControl
                 {
                     DataContext = _flightViewModel
                 };
                 _mainWindow.Content = flightControl;
             });
+        }
+
+        private void FlightViewModel_GameEnded(object sender, EventArgs e)
+        {
+            MessageBox.Show("Játék vége, visszatérés a menübe...");
+            Menu();
         }
     }
 }

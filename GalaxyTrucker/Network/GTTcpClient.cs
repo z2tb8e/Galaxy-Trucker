@@ -74,19 +74,11 @@ namespace GalaxyTrucker.Network
 
         public Dictionary<PlayerColor, PlayerInfo> PlayerInfos { get; }
 
-        public List<PlayerColor> CurrentOrder
+        public List<PlayerColor> PlayerOrder
         {
             get
             {
-                return _orderManager?.GetCurrentOrder();
-            }
-        }
-
-        public List<PlayerColor> FinalOrder
-        {
-            get
-            {
-                return _orderManager?.GetFinalOrder();
+                return _orderManager?.GetOrder();
             }
         }
 
@@ -262,7 +254,7 @@ namespace GalaxyTrucker.Network
                     PlayerInfos[index] = new PlayerInfo(index, parts[2 + i * 3], bool.Parse(parts[3 + i * 3]));
                 }
 
-                _ = Task.Factory.StartNew(() => HandleServerMessages(), TaskCreationOptions.LongRunning);
+                _ = Task.Factory.StartNew(() => HandleServerMessages(), TaskCreationOptions.LongRunning | TaskCreationOptions.RunContinuationsAsynchronously);
                 _pingTimer.Elapsed += PingTimer_Elapsed;
                 _pingTimer.Start();
 
@@ -643,7 +635,7 @@ namespace GalaxyTrucker.Network
         }
 
         /// <summary>
-        /// Method called when the server sends a message that another player crashed
+        /// Method called when the server sends a message that a player crashed
         /// </summary>
         /// <param name="parts"></param>
         private void PlayerCrashResolve(string[] parts)
@@ -805,15 +797,7 @@ namespace GalaxyTrucker.Network
             }
 
             _orderManager = new PlayerOrderManager(_playerOrder, GameStage);
-            _orderManager.PlayerCrashed += (sender, e) =>
-            {
-                if(e == Player)
-                {
-                    Crashed = true;
-                }
-                PlayerInfos[e].IsFlying = false;
-                PlayerCrashed?.Invoke(this, e);
-            };
+            
             _orderManager.PlacesChanged += (sender, e) =>
             {
                 PlacesChanged?.Invoke(this, e);

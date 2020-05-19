@@ -40,7 +40,8 @@ namespace GalaxyTrucker.Model.CardEventTypes
             List<OptionOrSubEvent> waves = new List<OptionOrSubEvent>();
             for(int i = 0; i < Projectiles.Count(); ++i)
             {
-                (Projectile, Direction) projectile = Projectiles.ElementAt(i);
+                int index = i;
+                (Projectile, Direction) projectile = Projectiles.ElementAt(index);
                 waves.Add(new OptionOrSubEvent
                 {
                     Description = $"{projectile.Item1.GetDescription()}, {projectile.Item2.GetDescription()}",
@@ -51,7 +52,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                         ApplyOption(ship, LastResolved);
                         LastResolved = (-1 * LastResolved) + 1;
                     },
-                    Condition = ship => LastResolved == (i + 1)
+                    Condition = ship => LastResolved == (index + 1)
                 });
             }
 

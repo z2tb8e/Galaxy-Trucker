@@ -13,7 +13,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
 
         public AbandonedShip(GameStage stage, int crewCost, int dayCost, int reward) : base(stage)
         {
-            RequiresAttributes = false;
+            RequiresOrder = true;
             LastResolved = 0;
             CrewCost = crewCost;
             DayCost = dayCost;
@@ -62,13 +62,18 @@ namespace GalaxyTrucker.Model.CardEventTypes
             };
         }
 
+        /*options
+         * -1: other player took it
+         * 0: ignored
+         * 1: accepted
+         */
         public override void ApplyOption(Ship ship, int option)
         {
             if(LastResolved != 1)
             {
                 throw new InvalidOperationException();
             }
-            if(option < 0 || option > 1)
+            if(option < -1 || option > 1)
             {
                 throw new ArgumentOutOfRangeException();
             }

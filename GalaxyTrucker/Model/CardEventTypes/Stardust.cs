@@ -6,7 +6,6 @@ namespace GalaxyTrucker.Model.CardEventTypes
     {
         public Stardust(GameStage stage) : base(stage)
         {
-            RequiresAttributes = false;
             LastResolved = 0;
         }
 

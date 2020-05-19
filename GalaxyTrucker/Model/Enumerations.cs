@@ -89,7 +89,9 @@ namespace GalaxyTrucker.Model
 
     public enum WreckedSource
     {
+        [Description("eltalálták a pilótafülkét")]
         CockpitHit,
+        [Description("elfogyott az emberi legénység")]
         OutOfHumans
     }
 

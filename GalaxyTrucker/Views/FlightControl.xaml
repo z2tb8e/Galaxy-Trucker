@@ -17,7 +17,16 @@
             <ColumnDefinition/>
         </Grid.ColumnDefinitions>
 
-        <StackPanel Margin="10" VerticalAlignment="Top" HorizontalAlignment="Left" Orientation="Vertical" Grid.Row="1" Grid.Column="0">
+        <TextBlock Text="{Binding StatusMessage}" Margin="10" Grid.Row="0" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+        
+        <StackPanel HorizontalAlignment="Stretch" VerticalAlignment="Center" Orientation="Horizontal" Margin="10" Grid.Row="0" Grid.Column="1">
+            <Button Content="Kiszállás a versenyből" Command="{Binding CrashCommand}" Margin="10" Width="150" Height="70"/>
+            <Button Content="Elem aktiválása" Command="{Binding ActivatePartCommand}" Margin="10" Width="150" Height="70"/>
+            <Button Content="Folytatás" Command="{Binding ContinueCommand}" Margin="10" Width="150" Height="70"/>
+            <Button Content="Kör vége" Command="{Binding ReadyCommand}" Margin="10" Width="150" Height="70"/>
+        </StackPanel>
+
+        <StackPanel Margin="10" VerticalAlignment="Top" HorizontalAlignment="Left" Orientation="Vertical" Grid.Row="0" Grid.RowSpan="2" Grid.Column="0">
             <Button Height="150" Width="300" Padding="10" Command="{Binding SendAttributesCommand}">
                 <Button.Content>
                     <TextBlock TextWrapping="Wrap" FontSize="20" FontWeight="Bold" Text="{Binding CurrentCardDescription}"/>

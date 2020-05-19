@@ -36,7 +36,6 @@ namespace GalaxyTrucker.Model.CardEventTypes
 
         public Warzone(GameStage stage, WarzoneEvent<int> event1, WarzoneEvent<int> event2, WarzoneEvent<List<(Projectile, Direction)>> event3) : base(stage)
         {
-            RequiresAttributes = false;
             LastResolved = 0;
             Event1 = event1;
             Event2 = event2;

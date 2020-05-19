@@ -15,7 +15,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
 
         public AbandonedStation(GameStage stage, int minimumCrew, int dayCost, IEnumerable<Ware> wares) : base(stage)
         {
-            RequiresAttributes = false;
+            RequiresOrder = true;
             LastResolved = 0;
             MinimumCrew = minimumCrew;
             DayCost = dayCost;
@@ -69,13 +69,18 @@ namespace GalaxyTrucker.Model.CardEventTypes
             };
         }
 
+        /*options
+         * -1: other player took it
+         * 0: ignored
+         * 1: accepted
+         */
         public override void ApplyOption(Ship ship, int option)
         {
             if(LastResolved != 1)
             {
                 throw new InvalidOperationException();
             }
-            if (option < 0 || option > 1)
+            if (option < -1 || option > 1)
             {
                 throw new ArgumentOutOfRangeException();
             }
