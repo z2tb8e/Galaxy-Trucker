@@ -48,7 +48,7 @@
                     <DataTemplate>
                         <Button Height="60" Command="{Binding ClickCommand}">
                             <Button.Content>
-                                <TextBlock Text="{Binding Description}" TextWrapping="WrapWithOverflow"/>
+                                <local:TextBlockWithImagesControl DataContext="{Binding Description}"/>
                             </Button.Content>
                         </Button>
                     </DataTemplate>

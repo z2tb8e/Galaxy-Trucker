@@ -51,7 +51,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
             foreach(OptionOrSubEvent item in waves)
             {
                 (Projectile, Direction) projectile = Projectiles.ElementAt(item.Value);
-                item.Description = $"{projectile.Item1.GetDescription()}, {projectile.Item2.GetDescription()}";
+                item.Description = $"{projectile.Item1} {projectile.Item2}";
                 item.Action = new Action<GTTcpClient, Ship>((client, ship) =>
                 {
                     //set the wavenumber to negative, so that the command can't be activated again before the option is resolved

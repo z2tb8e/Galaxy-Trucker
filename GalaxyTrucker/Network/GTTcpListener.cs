@@ -83,6 +83,7 @@ namespace GalaxyTrucker.Network
 
         private readonly TcpListener _listener;
         private readonly ConcurrentDictionary<PlayerColor, ConnectionInfo> _connections;
+        private readonly CancellationTokenSource _ctr;
 
         private readonly AutoResetEvent _proceedStageEvent;
         private readonly Semaphore _proceedStageSemaphore;
@@ -118,6 +119,8 @@ namespace GalaxyTrucker.Network
 
         public GTTcpListener(int port, GameStage gameStage, bool doLogging = true)
         {
+            _ctr = new CancellationTokenSource();
+
             _proceedStageEvent = new AutoResetEvent(false);
             _proceedStageSemaphore = new Semaphore(1, 1);
 
@@ -194,7 +197,7 @@ namespace GalaxyTrucker.Network
                         LogAsync($"{assignedColor} player with name \"{name}\" connected.");
                     }
                 }
-                Task.Factory.StartNew(() => RefuseFurtherConnections(), TaskCreationOptions.LongRunning);
+                Task.Factory.StartNew(() => RefuseFurtherConnections(_ctr.Token), TaskCreationOptions.LongRunning);
                 shuffle.Wait();
                 makeDeck.Wait();
             }
@@ -240,8 +243,11 @@ namespace GalaxyTrucker.Network
 
         public void Close()
         {
+            _ctr.Cancel();
+            Thread.Sleep(500);
             _pingTimer.Stop();
             _pingTimer.Dispose();
+            _ctr.Dispose();
             foreach (ConnectionInfo connection in _connections.Values)
             {
                 if (connection.Client != null)
@@ -1060,26 +1066,22 @@ namespace GalaxyTrucker.Network
             }
         }
 
-        private void RefuseFurtherConnections()
+        private void RefuseFurtherConnections(CancellationToken token)
         {
             while (true)
             {
-                try
+                if (token.IsCancellationRequested)
                 {
-                    if (_listener.Pending())
-                    {
-                        TcpClient client = _listener.AcceptTcpClient();
-                        NetworkStream stream = client.GetStream();
-                        byte[] message = Encoding.ASCII.GetBytes("Connection refused#");
-                        stream.Write(message, 0, message.Length);
-                        LogAsync($"Connection refused from {client.Client.RemoteEndPoint}");
-                        client.Close();
-                    }
+                    break;
                 }
-                //server closed
-                catch (ObjectDisposedException)
+                if (_listener.Pending())
                 {
-                    return;
+                    TcpClient client = _listener.AcceptTcpClient();
+                    NetworkStream stream = client.GetStream();
+                    byte[] message = Encoding.ASCII.GetBytes("Connection refused#");
+                    stream.Write(message, 0, message.Length);
+                    LogAsync($"Connection refused from {client.Client.RemoteEndPoint}");
+                    client.Close();
                 }
             }
         }

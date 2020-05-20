@@ -158,6 +158,66 @@ namespace GalaxyTrucker.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap direction_bottom {
+            get {
+                object obj = ResourceManager.GetObject("direction_bottom", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap direction_left {
+            get {
+                object obj = ResourceManager.GetObject("direction_left", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap direction_right {
+            get {
+                object obj = ResourceManager.GetObject("direction_right", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap direction_top {
+            get {
+                object obj = ResourceManager.GetObject("direction_top", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap meteor_large {
+            get {
+                object obj = ResourceManager.GetObject("meteor_large", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap meteor_small {
+            get {
+                object obj = ResourceManager.GetObject("meteor_small", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap part_battery2 {
             get {
                 object obj = ResourceManager.GetObject("part_battery2", resourceCulture);
@@ -448,6 +508,26 @@ namespace GalaxyTrucker.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap shot_large {
+            get {
+                object obj = ResourceManager.GetObject("shot_large", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap shot_small {
+            get {
+                object obj = ResourceManager.GetObject("shot_small", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap token_blue {
             get {
                 object obj = ResourceManager.GetObject("token_blue", resourceCulture);
@@ -481,6 +561,46 @@ namespace GalaxyTrucker.Properties {
         internal static System.Drawing.Bitmap token_yellow {
             get {
                 object obj = ResourceManager.GetObject("token_yellow", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap ware_blue {
+            get {
+                object obj = ResourceManager.GetObject("ware_blue", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap ware_green {
+            get {
+                object obj = ResourceManager.GetObject("ware_green", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap ware_red {
+            get {
+                object obj = ResourceManager.GetObject("ware_red", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap ware_yellow {
+            get {
+                object obj = ResourceManager.GetObject("ware_yellow", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

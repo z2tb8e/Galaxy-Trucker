@@ -97,7 +97,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                 new OptionOrSubEvent
                 {
                     Description = $"{Event3.Attribute.GetDescription()}, {Event3.PenaltyType.GetDescription()}," +
-                    $"\nzárótűz: {string.Join(", ", Event3.Penalty.Select(pair => $"({pair.Item1.GetDescription()}, {pair.Item2.GetDescription()})"))}",
+                    $"\n {string.Join(" \n ", Event3.Penalty.Select(pair => $"{pair.Item1.GetDescription()} {pair.Item2.GetDescription()}"))}",
                     Action = (client, ship) =>
                     {
                         client.UpdateAttributes(ship.Firepower, ship.Enginepower, ship.CrewCount, ship.StorageCount, ship.Batteries);

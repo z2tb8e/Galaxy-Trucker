@@ -133,6 +133,24 @@
   <data name="connector_universal" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\PartBuilder\connector_universal.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="direction_bottom" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Enums\direction_bottom.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="direction_left" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Enums\direction_left.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="direction_right" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Enums\direction_right.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="direction_top" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Enums\direction_top.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="meteor_large" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Enums\meteor_large.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="meteor_small" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Enums\meteor_small.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="Parts" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Parts.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;windows-1250</value>
   </data>
@@ -199,6 +217,12 @@
   <data name="ShipLayouts" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\ShipLayouts.json;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
+  <data name="shot_large" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Enums\shot_large.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="shot_small" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Enums\shot_small.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="token_blue" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\token_blue.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -210,5 +234,17 @@
   </data>
   <data name="token_yellow" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\token_yellow.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="ware_blue" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Enums\ware_blue.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="ware_green" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Enums\ware_green.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="ware_red" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Enums\ware_red.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="ware_yellow" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Enums\ware_yellow.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
 </root>

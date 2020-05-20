@@ -85,7 +85,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                 if(item.Action == null)
                 {
                     IEnumerable<Ware> offer = Offers.ElementAt(item.Value);
-                    item.Description = $"Áruk: {string.Join(", ", offer.Select(ware => ware.GetDescription()))}";
+                    item.Description = $"{string.Join(" ", offer)}";
                     item.Action = new Action<GTTcpClient, Ship>((client, ship) =>
                     {
                         client.SendCardOption(item.Value + 1);

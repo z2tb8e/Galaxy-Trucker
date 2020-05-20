@@ -72,7 +72,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
             {
                 new OptionOrSubEvent
                 {
-                    Description = $"Veszítés, elszenvedett zárótűz: {string.Join(" ,", Penalty.Select(pair => $"({pair.Item1.GetDescription()},{pair.Item2.GetDescription()})"))}",
+                    Description = $"{string.Join("\n", Penalty.Select(pair => $"{pair.Item1} {pair.Item2}"))}",
                     Action = (client, ship) =>
                     {
                         LastResolved = 1;
@@ -82,7 +82,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                 },
                 new OptionOrSubEvent
                 {
-                    Description = $"Legyőzés, +{Reward} pénz, de -{DayCost} nap",
+                    Description = $"+{Reward} pénz, de -{DayCost} nap",
                     Action = (client, ship) =>
                     {
                         LastResolved = 1;
@@ -165,7 +165,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
             {
                 new OptionOrSubEvent
                 {
-                    Description = $"Veszítés, elvett áruk száma: {Penalty}",
+                    Description = $"Elvett áruk száma: {Penalty}",
                     Action = (client, ship) =>
                     {
                         LastResolved = 1;
@@ -175,7 +175,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                 },
                 new OptionOrSubEvent
                 {
-                    Description = $"Legyőzés, +{string.Join(", ", Reward.Select(w => w.GetDescription()))} áruk, de -{DayCost} nap",
+                    Description = $"+ {string.Join(" ", Reward)} -{DayCost} nap",
                     Action = (client, ship) =>
                     {
                         LastResolved = 1;
@@ -241,7 +241,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
             {
                 new OptionOrSubEvent
                 {
-                    Description = $"Veszítés, elvett legénység száma: {Penalty}",
+                    Description = $"Elvett legénység száma: {Penalty}",
                     Action = (client, ship) =>
                     {
                         LastResolved = 1;
@@ -251,7 +251,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                 },
                 new OptionOrSubEvent
                 {
-                    Description = $"Legyőzés, +{Reward} pénz, de -{DayCost} nap",
+                    Description = $"+{Reward} pénz, de -{DayCost} nap",
                     Action = (client, ship) =>
                     {
                         LastResolved = 1;

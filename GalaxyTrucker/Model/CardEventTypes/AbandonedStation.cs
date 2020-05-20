@@ -58,7 +58,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                 },
                 new OptionOrSubEvent
                 {
-                    Description = $"Elfogadás, +{string.Join(" ,", Wares.Select(w => w.GetDescription()))} áruk, de -{DayCost} nap",
+                    Description = $"{string.Join(" ", Wares)} -{DayCost} nap",
                     Action = (client, ship) =>
                     {
                         LastResolved = 1;
