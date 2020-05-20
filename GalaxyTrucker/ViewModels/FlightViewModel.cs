@@ -232,7 +232,7 @@ namespace GalaxyTrucker.ViewModels
                 bool any = _ship.HighlightActivatables();
                 if (!any)
                 {
-                    StatusMessage = "Nincs aktiválható elem!\n Elfogyott az energia, vagy minden aktiválható elem már aktív.";
+                    StatusMessage = "Nincs aktiválható elem!";
                 }
             });
 
@@ -254,6 +254,7 @@ namespace GalaxyTrucker.ViewModels
             {
                 _isWaiting = false;
                 _client.Card.ProceedCurrent();
+                StatusMessage = "";
             });
 
             Ship_FlightAttributesChanged(null, null);

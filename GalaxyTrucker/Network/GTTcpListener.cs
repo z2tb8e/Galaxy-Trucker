@@ -413,11 +413,18 @@ namespace GalaxyTrucker.Network
 
             foreach (PlayerColor player in _playerOrderManager.GetOrder())
             {
-                int distance = -1 * _connections[player].OpenConnectors.Value;
-                //the manager would signal that the player crashed from not moving
-                if(distance != 0)
+                try
                 {
-                    MovePlayer(player, distance);
+                    int distance = -1 * _connections[player].OpenConnectors.Value;
+                    //the manager would signal that the player crashed from not moving
+                    if (distance != 0)
+                    {
+                        MovePlayer(player, distance);
+                    }
+                }
+                catch (KeyNotFoundException)
+                {
+                    LogAsync("Stardust move message skipped to player disconnecting.");
                 }
             }
         }
@@ -429,40 +436,48 @@ namespace GalaxyTrucker.Network
             bool taken = false;
             while (current < order.Count && !taken)
             {
-                _currentPlayer = order[current];
-                _connections[_currentPlayer].IsWaiting = true;
-                SignalTargetPlayer(order[current]);
-                _connections[_currentPlayer].OptionSent.WaitOne();
-                /*options:
-                 *  0: none
-                 *  1: took the offer
-                 */
-                _connections[_currentPlayer].IsWaiting = false;
-                //if the current player didn't crash their ship
-                if (!_connections[_currentPlayer].Crashed)
+                try
                 {
-                    int dayCost = _currentCard switch
+                    _currentPlayer = order[current];
+                    _connections[_currentPlayer].IsWaiting = true;
+                    SignalTargetPlayer(order[current]);
+                    _connections[_currentPlayer].OptionSent.WaitOne();
+                    /*options:
+                     *  0: none
+                     *  1: took the offer
+                     */
+                    _connections[_currentPlayer].IsWaiting = false;
+                    //if the current player didn't crash their ship
+                    if (!_connections[_currentPlayer].Crashed)
                     {
-                        AbandonedShip ship => ship.DayCost,
-                        AbandonedStation station => station.DayCost,
-                        _ => throw new InvalidOperationException()
-                    };
-                    switch (_currentOption)
-                    {
-                        case 0:
-                            break;
-                        case 1:
-                            taken = true;
-                            MovePlayer(_currentPlayer, -1 * dayCost);
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException($"Invalid option number {_currentOption}.");
-                    }
+                        int dayCost = _currentCard switch
+                        {
+                            AbandonedShip ship => ship.DayCost,
+                            AbandonedStation station => station.DayCost,
+                            _ => throw new InvalidOperationException()
+                        };
+                        switch (_currentOption)
+                        {
+                            case 0:
+                                break;
+                            case 1:
+                                taken = true;
+                                MovePlayer(_currentPlayer, -1 * dayCost);
+                                break;
+                            default:
+                                throw new ArgumentOutOfRangeException($"Invalid option number {_currentOption}.");
+                        }
 
-                    LogAsync($"{_currentPlayer} selected option {_currentOption}.");
-                    WriteMessageToPlayer(_currentPlayer, $"OptionPicked,{_currentOption}");
+                        LogAsync($"{_currentPlayer} selected option {_currentOption}.");
+                        WriteMessageToPlayer(_currentPlayer, $"OptionPicked,{_currentOption}");
+                    }
+                    ++current;
                 }
-                ++current;
+                catch (KeyNotFoundException)
+                {
+                    LogAsync("Abandoned ship/station turn abruptly ended due to target player disconnecting.");
+                    ++current;
+                }
             }
         }
 
@@ -478,39 +493,47 @@ namespace GalaxyTrucker.Network
             }
             while (current < order.Count && validOffers.Count > 0)
             {
-                _currentPlayer = order[current];
-                _connections[_currentPlayer].IsWaiting = true;
-                SignalTargetPlayer(order[current]);
-                _connections[_currentPlayer].OptionSent.WaitOne();
-                /*options:
-                 *  0: none
-                 *  [1..numberOfOffers]: the specific offer
-                 */
-                _connections[_currentPlayer].IsWaiting = false;
-                //if the current player didn't their ship
-                if(!_connections[_currentPlayer].Crashed)
+                try
                 {
-                    switch (_currentOption)
+                    _currentPlayer = order[current];
+                    _connections[_currentPlayer].IsWaiting = true;
+                    SignalTargetPlayer(order[current]);
+                    _connections[_currentPlayer].OptionSent.WaitOne();
+                    /*options:
+                     *  0: none
+                     *  [1..numberOfOffers]: the specific offer
+                     */
+                    _connections[_currentPlayer].IsWaiting = false;
+                    //if the current player didn't their ship
+                    if (!_connections[_currentPlayer].Crashed)
                     {
-                        case 0:
-                            break;
-                        case int i when (i > 0 && i <= numberOfOffers):
-                            if (!validOffers.Remove(i))
-                            {
-                                //The offer is already taken
-                                throw new ArgumentException($"Offer {i} was already taken!");
-                            }
-                            RemoveOption(i);
-                            MovePlayer(_currentPlayer, -1 * (_currentCard as Planets).DayCost);
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException($"Invalid option number {_currentOption}.");
-                    }
+                        switch (_currentOption)
+                        {
+                            case 0:
+                                break;
+                            case int i when (i > 0 && i <= numberOfOffers):
+                                if (!validOffers.Remove(i))
+                                {
+                                    //The offer is already taken
+                                    throw new ArgumentException($"Offer {i} was already taken!");
+                                }
+                                RemoveOption(i);
+                                MovePlayer(_currentPlayer, -1 * (_currentCard as Planets).DayCost);
+                                break;
+                            default:
+                                throw new ArgumentOutOfRangeException($"Invalid option number {_currentOption}.");
+                        }
 
-                    LogAsync($"{_currentPlayer} selected option {_currentOption}.");
-                    WriteMessageToPlayer(_currentPlayer, $"OptionPicked,{_currentOption}");
+                        LogAsync($"{_currentPlayer} selected option {_currentOption}.");
+                        WriteMessageToPlayer(_currentPlayer, $"OptionPicked,{_currentOption}");
+                    }
+                    ++current;
                 }
-                ++current;
+                catch (KeyNotFoundException)
+                {
+                    LogAsync("Planets turn abruptly ended due to the target player disconnecting.");
+                    ++current;
+                }
             }
         }
 
@@ -521,8 +544,16 @@ namespace GalaxyTrucker.Network
 
             foreach (PlayerColor player in _playerOrderManager.GetOrder())
             {
-                int distance = _connections[player].Attributes.Enginepower;
-                MovePlayer(player, distance);
+                try
+                {
+                    int distance = _connections[player].Attributes.Enginepower;
+                    MovePlayer(player, distance);
+                }
+                //player disconnected
+                catch (KeyNotFoundException)
+                {
+                    LogAsync("OpenSpace move message skipped due to player disconnecting.");
+                }
             }
         }
 
@@ -533,49 +564,58 @@ namespace GalaxyTrucker.Network
             int current = 0;
             while (!defeated && current < order.Count)
             {
-                _currentPlayer = order[current];
-                _connections[_currentPlayer].IsWaiting = true;
-                SignalTargetPlayer(order[current]);
-                _connections[_currentPlayer].OptionSent.WaitOne();
-                /*options:
-                 *  0: player got beaten
-                 *  1: encounter got beaten
-                 *  2: player could've beaten encounter, but ignored it or draw
-                 */
-                _connections[_currentPlayer].IsWaiting = false;
-                //if the current player decides to crash their ship 
-                if (_connections[_currentPlayer].Crashed)
+                try
                 {
-                    ++current;
-                }
-                else
-                {
-                    int dayCost = _currentCard switch
+                    _currentPlayer = order[current];
+                    _connections[_currentPlayer].IsWaiting = true;
+                    SignalTargetPlayer(order[current]);
+                    _connections[_currentPlayer].OptionSent.WaitOne();
+                    /*options:
+                     *  0: player got beaten
+                     *  1: encounter got beaten
+                     *  2: player could've beaten encounter, but ignored it or draw
+                     */
+                    _connections[_currentPlayer].IsWaiting = false;
+                    //if the current player decides to crash their ship 
+                    if (_connections[_currentPlayer].Crashed)
                     {
-                        Pirates pirate => pirate.DayCost,
-                        Smugglers smuggler => smuggler.DayCost,
-                        Slavers slaver => slaver.DayCost,
-                        _ => throw new InvalidOperationException()
-                    };
-
-                    switch (_currentOption)
-                    {
-                        case 0:
-                            break;
-                        case 1:
-                            defeated = true;
-                            MovePlayer(_currentPlayer, -1 * dayCost);
-                            break;
-                        case 2:
-                            defeated = true;
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException();
+                        ++current;
                     }
+                    else
+                    {
+                        int dayCost = _currentCard switch
+                        {
+                            Pirates pirate => pirate.DayCost,
+                            Smugglers smuggler => smuggler.DayCost,
+                            Slavers slaver => slaver.DayCost,
+                            _ => throw new InvalidOperationException()
+                        };
 
-                    LogAsync($"{_currentPlayer} selected option {_currentOption}.");
-                    WriteMessageToPlayer(_currentPlayer, $"OptionPicked,{_currentOption}");
+                        switch (_currentOption)
+                        {
+                            case 0:
+                                break;
+                            case 1:
+                                defeated = true;
+                                MovePlayer(_currentPlayer, -1 * dayCost);
+                                break;
+                            case 2:
+                                defeated = true;
+                                break;
+                            default:
+                                throw new ArgumentOutOfRangeException();
+                        }
 
+                        LogAsync($"{_currentPlayer} selected option {_currentOption}.");
+                        WriteMessageToPlayer(_currentPlayer, $"OptionPicked,{_currentOption}");
+
+                        ++current;
+                    }
+                }
+                //the current player got disconnected
+                catch (KeyNotFoundException)
+                {
+                    LogAsync("Encounter turn abruptly ended due to the target player disconnecting.");
                     ++current;
                 }
             }
@@ -583,50 +623,57 @@ namespace GalaxyTrucker.Network
 
         private void ResolveWarzone()
         {
-            Warzone card = _currentCard as Warzone;
-
-            LogAsync("Resolving warzone first event.");
-            PlayerColor? target = GetTargetPlayer(card.Event1.Attribute);
-            if(target == null)
+            try
             {
-                return;
-            }
+                Warzone card = _currentCard as Warzone;
 
-            foreach (PlayerColor player in _connections.Keys)
-            {
-                if (!_connections[player].Crashed)
+                LogAsync("Resolving warzone first event.");
+                PlayerColor? target = GetTargetPlayer(card.Event1.Attribute);
+                if (target == null)
                 {
-                    _connections[player].ReadyToFly = false;
+                    return;
                 }
-            }
 
-            if (card.Event1.PenaltyType == CardEventPenalty.Delay)
-            {
-                MovePlayer(target.Value, -1 * card.Event1.Penalty);
-            }
-
-            LogAsync("Resolving warzone second event.");
-            target = GetTargetPlayer(card.Event2.Attribute);
-            if (target == null)
-            {
-                return;
-            }
-
-            foreach (PlayerColor player in _connections.Keys)
-            {
-                if (!_connections[player].Crashed)
+                foreach (PlayerColor player in _connections.Keys)
                 {
-                    _connections[player].ReadyToFly = false;
+                    if (!_connections[player].Crashed)
+                    {
+                        _connections[player].ReadyToFly = false;
+                    }
                 }
-            }
 
-            if (card.Event2.PenaltyType == CardEventPenalty.Delay)
+                if (card.Event1.PenaltyType == CardEventPenalty.Delay)
+                {
+                    MovePlayer(target.Value, -1 * card.Event1.Penalty);
+                }
+
+                LogAsync("Resolving warzone second event.");
+                target = GetTargetPlayer(card.Event2.Attribute);
+                if (target == null)
+                {
+                    return;
+                }
+
+                foreach (PlayerColor player in _connections.Keys)
+                {
+                    if (!_connections[player].Crashed)
+                    {
+                        _connections[player].ReadyToFly = false;
+                    }
+                }
+
+                if (card.Event2.PenaltyType == CardEventPenalty.Delay)
+                {
+                    MovePlayer(target.Value, -1 * card.Event2.Penalty);
+                }
+
+                LogAsync("Resolving warzone third event.");
+                GetTargetPlayer(card.Event3.Attribute);
+            }
+            catch (KeyNotFoundException)
             {
-                MovePlayer(target.Value, -1 * card.Event2.Penalty);
+                LogAsync("Warzone abruptly ended due to a disconnect.");
             }
-
-            LogAsync("Resolving warzone third event.");
-            GetTargetPlayer(card.Event3.Attribute);
         }
 
         private PlayerColor? GetTargetPlayer(CardCheckAttribute checkAttribute)
@@ -1004,6 +1051,10 @@ namespace GalaxyTrucker.Network
             //Connection closed
             catch (IOException)
             {
+                if (_connections[player].IsWaiting)
+                {
+                    _connections[player].OptionSent.Set();
+                }
                 _connections.Remove(player, out _);
                 LogAsync($"{player} player disconnected.");
                 if (_playerOrder != null)
@@ -1038,6 +1089,10 @@ namespace GalaxyTrucker.Network
             //Connection closed
             catch (IOException)
             {
+                if (_connections[player].IsWaiting)
+                {
+                    _connections[player].OptionSent.Set();
+                }
                 _connections.Remove(player, out _);
                 LogAsync($"{player} player disconnected.");
                 if (_playerOrder != null)
@@ -1101,11 +1156,11 @@ namespace GalaxyTrucker.Network
                 parts[n] = value;
             }
 
-            for (int i = 0; i < 14; ++i)
+            for (int i = 0; i < 10; ++i)
             {
-                for (int j = 0; j < 10; ++j)
+                for (int j = 0; j < 14; ++j)
                 {
-                    _parts[j, i] = new PartAvailability(parts[i * 10 + j]);
+                    _parts[i, j] = new PartAvailability(parts[j * 10 + i]);
                 }
             }
         }

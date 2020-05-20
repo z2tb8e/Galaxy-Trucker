@@ -4,7 +4,10 @@ namespace GalaxyTrucker.Model.CardEventTypes
 {
     public class Pandemic : CardEvent
     {
-        public Pandemic(GameStage stage) : base(stage) {}
+        public Pandemic(GameStage stage) : base(stage)
+        {
+            LastResolved = 0;
+        }
 
         public override bool IsResolved()
         {
@@ -34,7 +37,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                         ship.ApplyPandemic();
                         LastResolved = 2;
                     },
-                    Condition = ship => LastResolved == 2
+                    Condition = ship => LastResolved == 0
                 }
             };
         }

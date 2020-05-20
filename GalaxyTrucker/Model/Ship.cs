@@ -195,7 +195,7 @@ namespace GalaxyTrucker.Model
         {
             return _parts.Cast<Part>()
                 .Where(p => p != null)
-                .Sum(p => p.Neighbours.Count - p.Connectors.Where(conn => conn != Connector.None).Count());
+                .Sum(p => p.Connectors.Where(conn => conn != Connector.None).Count() - p.Neighbours.Count);
         }
 
         /// <summary>
@@ -261,6 +261,7 @@ namespace GalaxyTrucker.Model
         /// </summary>
         public void FillCabins()
         {
+            _penalty = 0;
             foreach(Cabin c in _parts.Cast<Part>().Where(x => x is Cabin && (x as Cabin).Personnel == Personnel.None))
             {
                 c.Personnel = Personnel.HumanDouble;
@@ -330,37 +331,16 @@ namespace GalaxyTrucker.Model
         /// </summary>
         public void ApplyPandemic()
         {
-            List<Part> alreadyApplied = new List<Part>();
-            for (int i = 0; i < _parts.GetLength(1); ++i)
+            IEnumerable<Cabin> cabins = _parts.Cast<Part>().Where(p => p is Cabin).Select(p => p as Cabin);
+            foreach(Cabin item in cabins)
             {
-                for (int j = 0; j < _parts.GetLength(2); ++j)
+                if (item.Personnel != Personnel.None &&
+                    item.Neighbours.Any(p => p is Cabin && (p as Cabin).Personnel != Personnel.None))
                 {
-                    Part top = _parts[i - 1, j];
-                    Part right = _parts[i, j + 1];
-                    Part bottom = _parts[i + 1, j];
-                    Part left = _parts[i, j - 1];
-                    Part current = _parts[i, j];
-
-                    if (current is Cabin && (current as Cabin).Personnel != Personnel.None && !alreadyApplied.Contains(current))
-                    {
-                        bool getsInfected =
-                            (top is Cabin && alreadyApplied.Contains(top)
-                                    && 1 == ConnectorsMatch(current.GetConnector(Direction.Top), top.GetConnector(Direction.Bottom)))
-                            || (right is Cabin && (right as Cabin).Personnel != Personnel.None
-                                    && 1 == ConnectorsMatch(current.GetConnector(Direction.Right), right.GetConnector(Direction.Left)))
-                            || (bottom is Cabin && (bottom as Cabin).Personnel != Personnel.None
-                                    && 1 == ConnectorsMatch(current.GetConnector(Direction.Bottom), bottom.GetConnector(Direction.Top)))
-                            || (left is Cabin && alreadyApplied.Contains(left)
-                                    && 1 == ConnectorsMatch(current.GetConnector(Direction.Left), left.GetConnector(Direction.Right)));
-                        if (getsInfected)
-                        {
-                            alreadyApplied.Add(current);
-                            (current as Cabin).RemoveSinglePersonnel();
-                        }
-                    }
+                    item.RemoveSinglePersonnel();
                 }
             }
-            if(HumanCount == 0)
+            if (HumanCount == 0)
             {
                 Wrecked?.Invoke(this, WreckedSource.OutOfHumans);
             }
