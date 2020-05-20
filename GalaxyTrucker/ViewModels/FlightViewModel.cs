@@ -1,6 +1,4 @@
 ﻿using GalaxyTrucker.Model;
-using GalaxyTrucker.Model.CardEventTypes;
-using GalaxyTrucker.Model.PartTypes;
 using GalaxyTrucker.Network;
 using GalaxyTrucker.Properties;
 using System;
@@ -8,7 +6,6 @@ using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
 
@@ -32,6 +29,8 @@ namespace GalaxyTrucker.ViewModels
         private volatile bool _roundResolved;
         private string _statusMessage;
         private volatile bool _isWaiting;
+
+        public int ShipCash { get; set; }
 
         public PlayerAttributes CurrentAttributes { get; set; }
 
@@ -161,6 +160,7 @@ namespace GalaxyTrucker.ViewModels
 
         public FlightViewModel(GTTcpClient client, PlayerListViewModel playerList, Ship ship)
         {
+            ShipCash = 0;
             _shipPartsLock = new object();
             _playerOrderLock = new object();
             _optionsLock = new object();
@@ -206,6 +206,7 @@ namespace GalaxyTrucker.ViewModels
             _ship.PartRemoved += Ship_PartRemoved;
             _ship.Wrecked += Ship_Wrecked;
             _ship.FlightAttributesChanged += Ship_FlightAttributesChanged;
+            _ship.CashChanged += Ship_CashChanged;
             _client.PlacesChanged += (sender, e) => RefreshTokens();
 
             SendAttributesCommand = new DelegateCommand(param => !_client.Crashed && RequiresAttributes, param =>
@@ -251,11 +252,18 @@ namespace GalaxyTrucker.ViewModels
 
             ContinueCommand = new DelegateCommand(param => !_client.Crashed && _isWaiting, param =>
             {
+                _isWaiting = false;
                 _client.Card.ProceedCurrent();
             });
 
             Ship_FlightAttributesChanged(null, null);
             InitializeOrderFields();
+        }
+
+        private void Ship_CashChanged(object sender, EventArgs e)
+        {
+            ShipCash = _ship.Cash;
+            OnPropertyChanged(nameof(ShipCash));
         }
 
         private void Ship_FlightAttributesChanged(object sender, EventArgs e)
@@ -277,7 +285,7 @@ namespace GalaxyTrucker.ViewModels
         private void Ship_PartRemoved(object sender, PartRemovedEventArgs e)
         {
             FlightPartViewModel removedPart = ShipParts.First(p => p.Row == e.Row && p.Column == p.Column);
-            ShipParts.Remove(removedPart);
+            removedPart.Remove();
         }
 
         private void Client_GameEnded(object sender, EndResultEventArgs e)
@@ -285,7 +293,7 @@ namespace GalaxyTrucker.ViewModels
             StringBuilder resultMessage = new StringBuilder();
             for(int i = 0; i < e.Results.Count; ++i)
             {
-                resultMessage.Append($"{i + 1}. helyezés: {e.Results[i].Item1.GetDescription()}, {e.Results[i].Item2} pénzzel.");
+                resultMessage.AppendLine($"{i + 1}. helyezés: {e.Results[i].Item1.GetDescription()}, {e.Results[i].Item2} pénzzel.");
             }
             MessageBox.Show(resultMessage.ToString());
             GameEnded?.Invoke(this, EventArgs.Empty);

@@ -26,6 +26,11 @@
             <Button Content="Kör vége" Command="{Binding ReadyCommand}" Margin="10" Width="150" Height="70"/>
         </StackPanel>
 
+        <StackPanel Orientation="Vertical" Grid.Row="1" Grid.Column="0" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="10">
+            <Label Content="Eddigi pénz" Target="{Binding ElementName=shipCashTextBlock}"/>
+            <TextBlock Text="{Binding ShipCash}" x:Name="shipCashTextBlock"/>
+        </StackPanel>
+        
         <Button VerticalAlignment="Bottom" Width="20" Height="20" Content="?" ToolTip="{Binding CurrentCardToolTip}" Grid.Row="0" Grid.Column="0" Margin="310,0,630,0"/>
         <StackPanel Margin="10" VerticalAlignment="Top" HorizontalAlignment="Left" Orientation="Vertical" Grid.Row="0" Grid.RowSpan="2" Grid.Column="0">
             <Button Height="150" Width="300" Padding="10" Command="{Binding SendAttributesCommand}">

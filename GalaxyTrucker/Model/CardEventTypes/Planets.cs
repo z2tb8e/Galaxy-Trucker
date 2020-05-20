@@ -1,4 +1,5 @@
-﻿using System;
+﻿using GalaxyTrucker.Network;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -61,6 +62,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
             {
                 new OptionOrSubEvent
                 {
+                    Value = 0,
                     Description = "Semmi",
                     Action = (client, ship) =>
                     {
@@ -73,18 +75,24 @@ namespace GalaxyTrucker.Model.CardEventTypes
 
             for(int i = 0; i < Offers.Count(); ++i)
             {
-                int index = i;
-                IEnumerable<Ware> offer = Offers.ElementAt(index);
                 ret.Add(new OptionOrSubEvent
                 {
-                    Description = $"Áruk: {string.Join(", ", offer.Select(ware => ware.GetDescription()))}",
-                    Action = (client, ship) =>
-                    {
-                        client.SendCardOption(index);
-                        LastResolved = 1;
-                    },
-                    Condition = ship => LastResolved == 0 && _offersAvailable.ElementAt(index)
+                    Value = i
                 });
+            }
+            foreach(OptionOrSubEvent item in ret)
+            {
+                if(item.Action == null)
+                {
+                    IEnumerable<Ware> offer = Offers.ElementAt(item.Value);
+                    item.Description = $"Áruk: {string.Join(", ", offer.Select(ware => ware.GetDescription()))}";
+                    item.Action = new Action<GTTcpClient, Ship>((client, ship) =>
+                    {
+                        client.SendCardOption(item.Value + 1);
+                        LastResolved = 1;
+                    });
+                    item.Condition = new Func<Ship, bool>(ship => LastResolved == 0 && _offersAvailable[item.Value]);
+                }
             }
             return ret;
         }

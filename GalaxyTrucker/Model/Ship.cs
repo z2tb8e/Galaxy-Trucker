@@ -2,6 +2,7 @@
 using GalaxyTrucker.Model.PartTypes;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 
 namespace GalaxyTrucker.Model
@@ -192,25 +193,9 @@ namespace GalaxyTrucker.Model
         /// <returns>The number of these open connectors</returns>
         public int GetOpenConnectorCount()
         {
-            int sum = 0;
-            foreach (Part p in _parts.Cast<Part>().Where(p => p != null))
-            {
-                (Part, Direction)[] neighbours = new (Part, Direction)[]
-                {
-                    (_parts[p.Row - 1, p.Column], Direction.Top),
-                    (_parts[p.Row, p.Column + 1], Direction.Right),
-                    (_parts[p.Row + 1, p.Column], Direction.Bottom),
-                    (_parts[p.Row, p.Column - 1], Direction.Left)
-                };
-                foreach((Part, Direction) pair in neighbours)
-                {
-                    if(pair.Item1 == null && p.Connectors[(int)pair.Item2] != Connector.None)
-                    {
-                        ++sum;
-                    }
-                }
-            }
-            return sum;
+            return _parts.Cast<Part>()
+                .Where(p => p != null)
+                .Sum(p => p.Neighbours.Count - p.Connectors.Where(conn => conn != Connector.None).Count());
         }
 
         /// <summary>
@@ -391,61 +376,47 @@ namespace GalaxyTrucker.Model
         public void ApplyProjectile(Projectile projectile, Direction dir, int line)
         {
             //determine the part about to be hit
-            //if the projectile comes from the left or from the top, we check starting from the index 0, else from the maximum index
-            int row = dir switch
+
+            IEnumerable<Part> partsInLine = dir switch
             {
-                Direction.Top => 0,
-                Direction.Bottom => _parts.GetLength(0),
-                _ => line
+                Direction.Top => _parts.Cast<Part>().Where(p => p != null).Where(p => p.Column == line),
+                Direction.Right => _parts.Cast<Part>().Where(p => p != null).Where(p => p.Row == line).Reverse(),
+                Direction.Bottom => _parts.Cast<Part>().Where(p => p != null).Where(p => p.Column == line).Reverse(),
+                Direction.Left => _parts.Cast<Part>().Where(p => p != null).Where(p => p.Row == line),
+                _ => throw new InvalidEnumArgumentException()
             };
-            int column = dir switch
+
+            //no element is in the line
+            if (!partsInLine.Any())
             {
-                Direction.Left => 0,
-                Direction.Right => _parts.GetLength(1),
-                _ => line
-            };
-            bool endOfLine = false;
-            Part target = null;
-            while (!endOfLine && target == null)
-            {
-                target = _parts[row, column];
-                if(target != null)
-                {
-                    endOfLine = dir switch
-                    {
-                        Direction.Top => ++row < _parts.GetLength(0),
-                        Direction.Right => --column >= 0,
-                        Direction.Bottom => --row >= 0,
-                        _ => ++column < _parts.GetLength(1)
-                    };
-                }
+                return;
             }
 
-            //if no part was in the way no further action is required
-            if (target == null)
-                return;
+            int targetRow = partsInLine.First().Row;
+            int targetColumn = partsInLine.First().Column;
 
-            //check if the part gets removed based on the type of projectile it got hit by
-            //small asteroids remove the part only if it has an open connection towards it and the direction isn't shielded
-            //large asteroids remove the part unless there is a laser in that line facing it
-            //small shots remove the part unless the direction is shielded
-            //large shots always remove the part
             switch (projectile)
             {
                 case Projectile.MeteorSmall:
-                    if(target.GetConnector(dir) != Connector.None && !_shieldedDirections[(int)dir])
-                        RemovePartAtIndex(row, column);
+                    if(partsInLine.First().GetConnector(dir) != Connector.None && !_shieldedDirections[(int)dir])
+                    {
+                        RemovePartAtIndex(targetRow, targetColumn);
+                    }
                     break;
                 case Projectile.MeteorLarge:
-                    if (IsLaserInLine(line, dir))
-                        RemovePartAtIndex(row, column);
+                    if (!partsInLine.Any(p => p is Laser && p.Rotation == dir && (p as Laser).Firepower > 0))
+                    {
+                        RemovePartAtIndex(targetRow, targetColumn);
+                    }
                     break;
                 case Projectile.ShotSmall:
                     if (!_shieldedDirections[(int)dir])
-                        RemovePartAtIndex(row, column);
+                    {
+                        RemovePartAtIndex(targetRow, targetColumn);
+                    }
                     break;
-                default:
-                    RemovePartAtIndex(row, column);
+                case Projectile.ShotLarge:
+                    RemovePartAtIndex(targetRow, targetColumn);
                     break;
             }
         }
@@ -509,7 +480,7 @@ namespace GalaxyTrucker.Model
         public int RemovePersonnel(int number)
         {
             int removeLeft = number;
-            while(CrewCount > 0 || removeLeft > 0)
+            while(CrewCount > 0 && removeLeft > 0)
             {
                 //Non-cockpit cabins with human personnel are prioritized
                 IEnumerable<Cabin> cabins = _parts.Cast<Part>().Where(p => p is Cabin).Select(p => p as Cabin);
@@ -802,53 +773,6 @@ namespace GalaxyTrucker.Model
             ++_penalty;
             _parts[current.Row, current.Column] = null;
             PartRemoved?.Invoke(this, new PartRemovedEventArgs(current.Row, current.Column));
-        }
-
-        /// <summary>
-        /// Function to check if there is an active laser facing the given direction in the given line
-        /// </summary>
-        /// <param name="line">The line in which the laser should be</param>
-        /// <param name="dir">The direction the laser should be facing</param>
-        /// <returns>A logical value indicating if the laser exists</returns>
-        private bool IsLaserInLine(int line, Direction dir)
-        {
-            Part current;
-            switch (dir)
-            {
-                case Direction.Top:
-                    for (int i = 0; i < _parts.GetLength(0); ++i)
-                    {
-                        current = _parts[i, line];
-                        if (current is Laser && current.Rotation == dir && (current as Laser).Firepower > 0)
-                            return true;
-                    }
-                    break;
-                case Direction.Right:
-                    for (int j = _parts.GetLength(1) - 1; j >= 0; --j)
-                    {
-                        current = _parts[line, j];
-                        if (current is Laser && current.Rotation == dir && (current as Laser).Firepower > 0)
-                            return true;
-                    }
-                    break;
-                case Direction.Bottom:
-                    for (int i = _parts.GetLength(0) - 1; i >= 0; --i)
-                    {
-                        current = _parts[i, line];
-                        if (current is Laser && current.Rotation == dir && (current as Laser).Firepower > 0)
-                            return true;
-                    }
-                    break;
-                default:
-                    for (int j = 0; j < _parts.GetLength(1); ++j)
-                    {
-                        current = _parts[line, j];
-                        if (current is Laser && current.Rotation == dir && (current as Laser).Firepower > 0)
-                            return true;
-                    }
-                    break;
-            }
-            return false;
         }
 
         /// <summary>

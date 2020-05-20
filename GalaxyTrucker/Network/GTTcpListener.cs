@@ -87,9 +87,6 @@ namespace GalaxyTrucker.Network
         private readonly AutoResetEvent _proceedStageEvent;
         private readonly Semaphore _proceedStageSemaphore;
 
-        private readonly AutoResetEvent _proceedRoundEvent;
-        private readonly Semaphore _proceedRoundSemaphore;
-
         private readonly string _logPath;
         private readonly Semaphore _logSemaphore;
         private readonly bool _doLogging;
@@ -123,9 +120,6 @@ namespace GalaxyTrucker.Network
         {
             _proceedStageEvent = new AutoResetEvent(false);
             _proceedStageSemaphore = new Semaphore(1, 1);
-
-            _proceedRoundEvent = new AutoResetEvent(false);
-            _proceedRoundSemaphore = new Semaphore(1, 1);
 
             _gameStage = gameStage;
             Directory.CreateDirectory("logs");
@@ -265,7 +259,8 @@ namespace GalaxyTrucker.Network
 
         private void BuildStage()
         {
-            _proceedStageEvent.WaitOne();
+            while (!_connections.All(conn => conn.Value.IsReady && !conn.Value.HasMessage)) ;
+            //_proceedStageEvent.WaitOne();
 
             string playerOrder = string.Join(',', _playerOrder);
             foreach (PlayerColor player in _connections.Keys)
@@ -287,7 +282,8 @@ namespace GalaxyTrucker.Network
 
         private void BeginFlightStage()
         {
-            _proceedStageEvent.WaitOne();
+            while (!_connections.All(conn => conn.Value.IsReady && !conn.Value.HasMessage && conn.Value.ReadyToFly)) ;
+           // _proceedStageEvent.WaitOne();
 
             _serverStage = ServerStage.Flight;
 
@@ -371,7 +367,7 @@ namespace GalaxyTrucker.Network
                     WriteMessageToPlayer(player, "CardOver");
                 }
                 //wait until everyone signals that they are ready for the next card
-                _proceedStageEvent.WaitOne();
+                while (!_connections.All(conn => conn.Value.IsReady || conn.Value.Crashed)) ;
             }
 
             PastFlightStage();
@@ -387,7 +383,7 @@ namespace GalaxyTrucker.Network
             }
             LogAsync("Waiting for cash values.");
             _serverStage = ServerStage.PastFlight;
-            _proceedStageEvent.WaitOne();
+            while (!_connections.All(conn => conn.Value.Cash.HasValue));
 
             StringBuilder endResult = new StringBuilder($"EndResult");
             foreach (PlayerColor player in _connections.Keys.OrderByDescending(key => _connections[key].Cash.Value))
@@ -399,18 +395,24 @@ namespace GalaxyTrucker.Network
                 WriteMessageToPlayer(player, endResult.ToString());
             }
             //wait until everyone signals that they received the message, after which they disconnect
-            _proceedStageEvent.WaitOne();
+            while (_connections.Count > 0) ;
             Close();
         }
 
         private void ResolveStardust()
         {
             //wait until the open connectors get sent
-            _proceedRoundEvent.WaitOne();
+
+            while (!_connections.All(conn => conn.Value.Crashed || conn.Value.OpenConnectors.HasValue)) ;
+
             foreach (PlayerColor player in _playerOrderManager.GetOrder())
             {
                 int distance = -1 * _connections[player].OpenConnectors.Value;
-                MovePlayer(player, distance);
+                //the manager would signal that the player crashed from not moving
+                if(distance != 0)
+                {
+                    MovePlayer(player, distance);
+                }
             }
         }
 
@@ -509,7 +511,8 @@ namespace GalaxyTrucker.Network
         private void ResolveOpenSpace()
         {
             //wait until the stats get sent
-            _proceedRoundEvent.WaitOne();
+            while (!_connections.All(conn => conn.Value.ReadyToFly || conn.Value.Crashed)) ;
+
             foreach (PlayerColor player in _playerOrderManager.GetOrder())
             {
                 int distance = _connections[player].Attributes.Enginepower;
@@ -577,7 +580,11 @@ namespace GalaxyTrucker.Network
             Warzone card = _currentCard as Warzone;
 
             LogAsync("Resolving warzone first event.");
-            PlayerColor target = GetTargetPlayer(card.Event1.Attribute);
+            PlayerColor? target = GetTargetPlayer(card.Event1.Attribute);
+            if(target == null)
+            {
+                return;
+            }
 
             foreach (PlayerColor player in _connections.Keys)
             {
@@ -589,11 +596,15 @@ namespace GalaxyTrucker.Network
 
             if (card.Event1.PenaltyType == CardEventPenalty.Delay)
             {
-                MovePlayer(target, -1 * card.Event1.Penalty);
+                MovePlayer(target.Value, -1 * card.Event1.Penalty);
             }
 
             LogAsync("Resolving warzone second event.");
             target = GetTargetPlayer(card.Event2.Attribute);
+            if (target == null)
+            {
+                return;
+            }
 
             foreach (PlayerColor player in _connections.Keys)
             {
@@ -605,16 +616,20 @@ namespace GalaxyTrucker.Network
 
             if (card.Event2.PenaltyType == CardEventPenalty.Delay)
             {
-                MovePlayer(target, -1 * card.Event2.Penalty);
+                MovePlayer(target.Value, -1 * card.Event2.Penalty);
             }
 
             LogAsync("Resolving warzone third event.");
             GetTargetPlayer(card.Event3.Attribute);
         }
 
-        private PlayerColor GetTargetPlayer(CardCheckAttribute checkAttribute)
+        private PlayerColor? GetTargetPlayer(CardCheckAttribute checkAttribute)
         {
-            _proceedRoundEvent.WaitOne();
+            while (!_connections.All(conn => conn.Value.ReadyToFly || conn.Value.Crashed)) ;
+            if(_connections.All(conn => conn.Value.Crashed))
+            {
+                return null;
+            }
 
             int minValue = _connections.Values.Where(conn => !conn.Crashed)
                 .Select(conn => checkAttribute switch {
@@ -759,16 +774,12 @@ namespace GalaxyTrucker.Network
         private void StardustInfoResolve(PlayerColor player, string[] parts)
         {
             _connections[player].OpenConnectors = int.Parse(parts[1]);
-
-            Task.Run(CheckIfStardustProceed);
         }
 
         private void CashInfoResolve(PlayerColor player, string[] parts)
         {
             int cash = int.Parse(parts[1]);
             _connections[player].Cash = cash;
-            
-            Task.Run(CheckIfProceedStage);
         }
 
         /// <summary>
@@ -801,10 +812,7 @@ namespace GalaxyTrucker.Network
             _playerOrderManager.Properties.Remove(player);
             foreach(PlayerColor key in _connections.Keys)
             {
-                if (key != player)
-                {
-                    WriteMessageToPlayer(key, $"PlayerCrash,{player}");
-                }
+                WriteMessageToPlayer(key, $"PlayerCrash,{player}");
             }
             if (_connections[player].IsWaiting)
             {
@@ -834,56 +842,7 @@ namespace GalaxyTrucker.Network
                 Batteries = int.Parse(parts[5])
             };
             _connections[player].ReadyToFly = true;
-            if(_serverStage == ServerStage.Flight)
-            {
-                Task.Run(CheckIfProceedRound);
-            }
             LogAsync($"{player} added/updated attributes with value ({_connections[player].Attributes}).");
-        }
-
-        /// <summary>
-        /// Method to check if the proceed round event should be signaled,
-        /// letting the stardust card movement be resolved
-        /// after everyone sent their open connectors count
-        /// </summary>
-        private void CheckIfStardustProceed()
-        {
-            if (!_proceedRoundSemaphore.WaitOne(0))
-            {
-                return;
-            }
-            bool proceed = true;
-            foreach (var item in _connections.Values)
-            {
-                proceed &= (item.OpenConnectors == null) || item.Crashed;
-            }
-            if (proceed)
-            {
-                _proceedRoundEvent.Set();
-            }
-            _proceedRoundSemaphore.Release();
-        }
-
-        /// <summary>
-        /// Method to check if the proceed round event should be signaled,
-        /// letting the card be resolved after everyone sent their attributes
-        /// </summary>
-        private void CheckIfProceedRound()
-        {
-            if (!_proceedRoundSemaphore.WaitOne(0))
-            {
-                return;
-            }
-            bool proceed = true;
-            foreach (var item in _connections.Values)
-            {
-                proceed &= item.ReadyToFly || item.Crashed;
-            }
-            if (proceed)
-            {
-                _proceedRoundEvent.Set();
-            }
-            _proceedRoundSemaphore.Release();
         }
 
         /// <summary>
@@ -1105,14 +1064,22 @@ namespace GalaxyTrucker.Network
         {
             while (true)
             {
-                if (_listener.Pending())
+                try
                 {
-                    TcpClient client = _listener.AcceptTcpClient();
-                    NetworkStream stream = client.GetStream();
-                    byte[] message = Encoding.ASCII.GetBytes("Connection refused#");
-                    stream.Write(message, 0, message.Length);
-                    LogAsync($"Connection refused from {client.Client.RemoteEndPoint}");
-                    client.Close();
+                    if (_listener.Pending())
+                    {
+                        TcpClient client = _listener.AcceptTcpClient();
+                        NetworkStream stream = client.GetStream();
+                        byte[] message = Encoding.ASCII.GetBytes("Connection refused#");
+                        stream.Write(message, 0, message.Length);
+                        LogAsync($"Connection refused from {client.Client.RemoteEndPoint}");
+                        client.Close();
+                    }
+                }
+                //server closed
+                catch (ObjectDisposedException)
+                {
+                    return;
                 }
             }
         }
@@ -1132,11 +1099,11 @@ namespace GalaxyTrucker.Network
                 parts[n] = value;
             }
 
-            for (int i = 0; i < 10; ++i)
+            for (int i = 0; i < 14; ++i)
             {
-                for (int j = 0; j < 14; ++j)
+                for (int j = 0; j < 10; ++j)
                 {
-                    _parts[i, j] = new PartAvailability(parts[i * 10 + j]);
+                    _parts[j, i] = new PartAvailability(parts[i * 10 + j]);
                 }
             }
         }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using GalaxyTrucker.Network;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -41,20 +42,23 @@ namespace GalaxyTrucker.Model.CardEventTypes
             List<OptionOrSubEvent> waves = new List<OptionOrSubEvent>();
             for(int i = 0; i < Projectiles.Count(); ++i)
             {
-                int index = i;
-                (Projectile, Direction) projectile = Projectiles.ElementAt(index);
+                
                 waves.Add(new OptionOrSubEvent
                 {
-                    Description = $"{projectile.Item1.GetDescription()}, {projectile.Item2.GetDescription()}",
-                    Action = (client, ship) =>
-                    {
-                        //set the wavenumber to negative, so that the command can't be activated again before the option is resolved
-                        LastResolved = -1 * LastResolved;
-                        ApplyOption(ship, LastResolved);
-                        LastResolved = (-1 * LastResolved) + 1;
-                    },
-                    Condition = ship => LastResolved == (index + 1)
+                    Value = i,
                 });
+            }
+            foreach(OptionOrSubEvent item in waves)
+            {
+                (Projectile, Direction) projectile = Projectiles.ElementAt(item.Value);
+                item.Description = $"{projectile.Item1.GetDescription()}, {projectile.Item2.GetDescription()}";
+                item.Action = new Action<GTTcpClient, Ship>((client, ship) =>
+                {
+                    //set the wavenumber to negative, so that the command can't be activated again before the option is resolved
+                    LastResolved = -1 * LastResolved;
+                    ApplyOption(ship, LastResolved);
+                });
+                item.Condition = new Func<Ship, bool>(ship => LastResolved == (item.Value + 1));
             }
 
             return waves;
@@ -80,7 +84,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
             await Task.Run(() => OnDiceRolled(roll1, roll2));
 
             ship.ApplyProjectile(projectile.Item1, projectile.Item2, roll1 + roll2);
-            ++LastResolved;
+            LastResolved = (-1 * LastResolved) + 1;
         }
 
         public override string ToolTip()

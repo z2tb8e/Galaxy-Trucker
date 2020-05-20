@@ -74,7 +74,7 @@ namespace GalaxyTrucker.Model
             bool negative = value < 0;
             _playerPlaces[_properties[player].PlaceValue] = null;
 
-            int nextPlace = _properties[player].PlaceValue + (negative ? -1 : 1);
+            int nextPlace = _properties[player].PlaceValue;
             for(int i = 0; i < Math.Abs(value); ++i)
             {
                 nextPlace += negative ? -1 : 1;
@@ -137,6 +137,7 @@ namespace GalaxyTrucker.Model
             Properties.Remove(player);
             PlayerCrashed?.Invoke(this, player);
             PlacesChanged?.Invoke(this, EventArgs.Empty);
+            _sem.Release();
         }
     }
 }

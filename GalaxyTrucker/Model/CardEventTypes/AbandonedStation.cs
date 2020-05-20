@@ -76,10 +76,6 @@ namespace GalaxyTrucker.Model.CardEventTypes
          */
         public override void ApplyOption(Ship ship, int option)
         {
-            if(LastResolved != 1)
-            {
-                throw new InvalidOperationException();
-            }
             if (option < -1 || option > 1)
             {
                 throw new ArgumentOutOfRangeException();

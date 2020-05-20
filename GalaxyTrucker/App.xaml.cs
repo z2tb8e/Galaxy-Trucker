@@ -140,7 +140,7 @@ namespace GalaxyTrucker
         private void FlightViewModel_GameEnded(object sender, EventArgs e)
         {
             MessageBox.Show("Játék vége, visszatérés a menübe...");
-            Menu();
+            Dispatcher.Invoke(Menu);
         }
     }
 }

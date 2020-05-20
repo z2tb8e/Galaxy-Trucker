@@ -5,6 +5,8 @@ namespace GalaxyTrucker.Model
 {
     public class OptionOrSubEvent
     {
+        public int Value { get; set; }
+
         public string Description { get; set; }
 
         public Func<Ship, bool> Condition { get; set; }
