@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Windows;
 using System.Windows.Data;
+using System.Windows.Threading;
 
 namespace GalaxyTrucker.ViewModels
 {
@@ -309,7 +310,7 @@ namespace GalaxyTrucker.ViewModels
             //deduction for losed parts
             int fromPenalty = -1 * _ship.Penalty;
             //if the ship didn't lose any parts and it has zero open connections, it gets a bonus based on the gamestage
-            int fromBonus = _ship.Penalty == 0 && _ship.GetOpenConnectorCount() != 0 ? 0 : ((int)_client.GameStage + 1) * 2;
+            int fromBonus = (_ship.Penalty == 0 && _ship.GetOpenConnectorCount() == 0) ? ((int)_client.GameStage + 1) * 2 : 0;
 
             //-1 if not in list AKA when the player crashed
             int placement = _client.PlayerOrder.FindIndex(item => item == _client.Player);
@@ -362,12 +363,12 @@ namespace GalaxyTrucker.ViewModels
         {
             if (_client.Card.RequiresOrder)
             {
-                StatusMessage = $"{e.GetDescription()} a soron következő játékos!";
+                //StatusMessage = $"{e.GetDescription()} a soron következő játékos!";
                 _isPlayersTurn = false;
             }
             else
             {
-                StatusMessage = $"{e.GetDescription()} az aktuális effekt célpontja!";
+                //StatusMessage = $"{e.GetDescription()} az aktuális effekt célpontja!";
                 _client.Card.ApplyOption(_ship, 1);
             }
         }
@@ -376,13 +377,13 @@ namespace GalaxyTrucker.ViewModels
         {
             if (_client.Card.RequiresOrder)
             {
-                StatusMessage = "Te vagy a soron következő játékos!";
+                //StatusMessage = "Te vagy a soron következő játékos!";
                 _isPlayersTurn = true;
             }
             else
             {
-                StatusMessage = "Te vagy az aktuális effekt célpontja!";
-                //task
+                //StatusMessage = "Te vagy az aktuális effekt célpontja!";
+
                 _client.Card.ApplyOption(_ship, 0);
             }
         }
@@ -417,15 +418,15 @@ namespace GalaxyTrucker.ViewModels
                     {
                         return item.Condition(_ship) && !_client.Crashed &&
                         (!card.RequiresOrder || (card.RequiresOrder && _isPlayersTurn));
-                    }//task
+                    }
                     , param => item.Action(_client, _ship))
                 });
             }
         }
 
-        private void Card_DiceRolled(object sender, (int, int) e)
+        private void Card_DiceRolled(object sender, DiceRolledEventArgs e)
         {
-            StatusMessage = $"Az aktuális eseményhez a dobások eredményei {e.Item1 + 1}, {e.Item2 + 1}";
+            StatusMessage = $"Aktuális veszély: {e.Direction.GetDescription()} {e.Projectile.GetDescription()} a {e.Number + 2} vonalon.";
             _isWaiting = true;
         }
 

@@ -658,7 +658,7 @@ namespace GalaxyTrucker.Model
             {
                 _parts[row, column] = null;
                 Wrecked?.Invoke(this, WreckedSource.CockpitHit);
-                _penalty = Math.Min(_penaltyCap, _parts.Cast<Part>().Where(p => p != null).Count());
+                ++_penalty;
                 return;
             }
 

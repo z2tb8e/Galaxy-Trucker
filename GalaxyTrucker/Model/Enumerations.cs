@@ -39,39 +39,39 @@ namespace GalaxyTrucker.Model
 
     public enum Personnel
     {
-        [Description("Üres")]
+        [Description("üres")]
         None = 0,
         [Description("1 ember")]
         HumanSingle = 1,
         [Description("2 ember")]
         HumanDouble = 2,
-        [Description("Lila űrlény")]
+        [Description("lila űrlény")]
         LaserAlien = 3,
-        [Description("Barna űrlény")]
+        [Description("barna űrlény")]
         EngineAlien = 4
     };
 
     public enum ShipLayout
     {
-        [Description("Kicsi")]
+        [Description("kicsi")]
         Small,
-        [Description("Közepes")]
+        [Description("közepes")]
         Medium,
-        [Description("Széles")]
+        [Description("széles")]
         BigWide,
-        [Description("Hosszú")]
+        [Description("hosszú")]
         BigLong
     };
 
     public enum Projectile
     {
-        [Description("Kis meteor")]
+        [Description("kis meteor")]
         MeteorSmall = 0,
-        [Description("Nagy meteor")]
+        [Description("nagy meteor")]
         MeteorLarge = 1,
-        [Description("Kis lövés")]
+        [Description("kis lövés")]
         ShotSmall = 2,
-        [Description("Nagy lövés")]
+        [Description("nagy lövés")]
         ShotLarge = 3
     };
 
@@ -97,32 +97,32 @@ namespace GalaxyTrucker.Model
 
     public enum CardCheckAttribute
     {
-        [Description("Tűzerő")]
+        [Description("tűzerő")]
         Firepower = 0,
-        [Description("Motorerő")]
+        [Description("motorerő")]
         Enginepower = 1,
-        [Description("Legénységszám")]
+        [Description("legénységszám")]
         CrewCount = 2
     }
     public enum CardEventPenalty
     {
-        [Description("Késés")]
+        [Description("késés")]
         Delay = 0,
-        [Description("Legénység")]
+        [Description("legénység")]
         Crew = 1,
-        [Description("Áruk")]
+        [Description("áru")]
         Wares = 2,
-        [Description("Lövések")]
+        [Description("zárótűz")]
         Barrage = 3
     }
 
     public enum GameStage
     {
-        [Description("Első")]
+        [Description("első")]
         First = 0,
-        [Description("Második")]
+        [Description("második")]
         Second = 1,
-        [Description("Harmadik")]
+        [Description("harmadik")]
         Third = 2
     }
 

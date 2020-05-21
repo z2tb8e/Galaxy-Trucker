@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace GalaxyTrucker.Model.CardEventTypes
 {
@@ -76,7 +77,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
             {
                 new OptionOrSubEvent
                 {
-                    Description = $"{Event1.Attribute.GetDescription()}, {Event1.PenaltyType.GetDescription()}, {Event1.Penalty}",
+                    Description = $"Legkisebb {Event1.Attribute.GetDescription()}, -{Event1.Penalty} {Event1.PenaltyType.GetDescription()}",
                     Action = (client, ship) =>
                     {
                         client.UpdateAttributes(ship.Firepower, ship.Enginepower, ship.CrewCount, ship.StorageCount, ship.Batteries);
@@ -86,7 +87,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                 },
                 new OptionOrSubEvent
                 {
-                    Description = $"{Event2.Attribute.GetDescription()}, {Event2.PenaltyType.GetDescription()}, {Event2.Penalty}",
+                    Description = $"Legkisebb {Event2.Attribute.GetDescription()}, -{Event2.Penalty} {Event2.PenaltyType.GetDescription()}",
                     Action = (client, ship) =>
                     {
                         client.UpdateAttributes(ship.Firepower, ship.Enginepower, ship.CrewCount, ship.StorageCount, ship.Batteries);
@@ -96,8 +97,8 @@ namespace GalaxyTrucker.Model.CardEventTypes
                 },
                 new OptionOrSubEvent
                 {
-                    Description = $"{Event3.Attribute.GetDescription()}, {Event3.PenaltyType.GetDescription()}," +
-                    $"\n {string.Join(" \n ", Event3.Penalty.Select(pair => $"{pair.Item1.GetDescription()} {pair.Item2.GetDescription()}"))}",
+                    Description = $"Legkisebb {Event3.Attribute.GetDescription()}, {Event3.PenaltyType.GetDescription()}:" +
+                    $"\n {string.Join(" \n ", Event3.Penalty.Select(pair => $"{pair.Item1} {pair.Item2}"))}",
                     Action = (client, ship) =>
                     {
                         client.UpdateAttributes(ship.Firepower, ship.Enginepower, ship.CrewCount, ship.StorageCount, ship.Batteries);
@@ -112,7 +113,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
          * 0: this player is the target
          * 1: other player is the target
          */
-        public override void ApplyOption(Ship ship, int option)
+        public async override void ApplyOption(Ship ship, int option)
         {
             if(option < 0 || option > 1)
             {
@@ -157,7 +158,8 @@ namespace GalaxyTrucker.Model.CardEventTypes
                         int roll2 = random.Next(6);
 
                         //OnDiceRolled sets the thread waiting
-                        OnDiceRolled(roll1, roll2);
+                        await Task.Run(() => OnDiceRolled(projectile.Item1, projectile.Item2, roll1 + roll2));
+
                         ship.ApplyProjectile(projectile.Item1, projectile.Item2, roll1 + roll2);
                     }
                     break;

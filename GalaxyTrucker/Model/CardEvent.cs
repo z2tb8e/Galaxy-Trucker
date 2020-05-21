@@ -27,7 +27,7 @@ namespace GalaxyTrucker.Model
 
         public bool RequiresOrder { get; protected set; }
 
-        public event EventHandler<(int, int)> DiceRolled;
+        public event EventHandler<DiceRolledEventArgs> DiceRolled;
 
         public CardEvent(GameStage stage)
         {
@@ -54,9 +54,9 @@ namespace GalaxyTrucker.Model
 
         public virtual void ApplyOption(Ship ship, int option) { }
 
-        protected void OnDiceRolled(int roll1, int roll2)
+        protected void OnDiceRolled(Projectile projectile, Direction direction, int number)
         {
-            DiceRolled?.Invoke(this, (roll1, roll2));
+            DiceRolled?.Invoke(this, new DiceRolledEventArgs(projectile, direction, number));
             _proceedEvent.WaitOne();
         }
     }

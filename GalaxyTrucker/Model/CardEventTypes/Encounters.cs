@@ -72,7 +72,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
             {
                 new OptionOrSubEvent
                 {
-                    Description = $"{string.Join("\n", Penalty.Select(pair => $"{pair.Item1} {pair.Item2}"))}",
+                    Description = $"{string.Join(" \n ", Penalty.Select(pair => $"{pair.Item1} {pair.Item2}"))}",
                     Action = (client, ship) =>
                     {
                         LastResolved = 1;
@@ -119,14 +119,14 @@ namespace GalaxyTrucker.Model.CardEventTypes
             if (option == 0)
             {
                 Random random = new Random();
-                foreach ((Direction, Projectile) pair in Penalty)
+                foreach ((Projectile, Direction) pair in Penalty)
                 {
                     int roll1 = random.Next(6);
                     int roll2 = random.Next(6);
                     //OnDiceRolled sets the thread waiting
-                    await Task.Run(() => OnDiceRolled(roll1, roll2));
+                    await Task.Run(() => OnDiceRolled(pair.Item1, pair.Item2, roll1 + roll2));
                     
-                    ship.ApplyProjectile(pair.Item2, pair.Item1, roll1 + roll2);
+                    ship.ApplyProjectile(pair.Item1, pair.Item2, roll1 + roll2);
                 }
             }
 

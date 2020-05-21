@@ -504,14 +504,14 @@ namespace GalaxyTrucker.Network
                 _pingTimer.Dispose();
                 throw new OutOfSyncException();
             }
-            int count = PlayerInfos.Count;
+            int count = int.Parse(parts[1]);
 
             List<(PlayerColor, int)> values = new List<(PlayerColor, int)>();
 
             for (int i = 0; i < count; ++i)
             {
-                PlayerColor player = Enum.Parse<PlayerColor>(parts[i * 2 + 1]);
-                int cash = int.Parse(parts[(i + 1) * 2]);
+                PlayerColor player = Enum.Parse<PlayerColor>(parts[i * 2 + 2]);
+                int cash = int.Parse(parts[i * 2 + 3]);
                 values.Add((player, cash));
             }
             GameEnded?.Invoke(this, new EndResultEventArgs(values));

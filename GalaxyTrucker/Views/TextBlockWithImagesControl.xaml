@@ -9,6 +9,6 @@
     <UserControl.Resources>
         <utils:ImageToBitmapSourceConverter x:Key="ImageConverter"/>
     </UserControl.Resources>
-    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"  Text="{Binding}" x:Name="mainTextBlock">
+    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="WrapWithOverflow"  Text="{Binding}" x:Name="mainTextBlock">
     </TextBlock>
 </UserControl>

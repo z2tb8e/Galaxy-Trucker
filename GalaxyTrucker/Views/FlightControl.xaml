@@ -26,7 +26,7 @@
             <Button Content="Kör vége" Command="{Binding ReadyCommand}" Margin="10" Width="150" Height="70"/>
         </StackPanel>
 
-        <StackPanel Orientation="Vertical" Grid.Row="1" Grid.Column="0" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="10">
+        <StackPanel Orientation="Vertical" Grid.Row="0" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="10">
             <Label Content="Eddigi pénz" Target="{Binding ElementName=shipCashTextBlock}"/>
             <TextBlock Text="{Binding ShipCash}" x:Name="shipCashTextBlock"/>
         </StackPanel>
@@ -46,7 +46,7 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Button Height="60" Command="{Binding ClickCommand}">
+                        <Button MinHeight="60" Command="{Binding ClickCommand}">
                             <Button.Content>
                                 <local:TextBlockWithImagesControl DataContext="{Binding Description}"/>
                             </Button.Content>
@@ -105,15 +105,15 @@
                 <ColumnDefinition Width="auto"/>
             </Grid.ColumnDefinitions>
 
-            <ItemsControl VerticalAlignment="Center" HorizontalAlignment="Center" Grid.Column="1" Grid.Row="0"  Name="ShipGridColumnHeaders">
+            <ItemsControl Grid.Column="1" Grid.Row="0"  Name="ShipGridColumnHeaders">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal"/>
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Text="{Binding}" Width="60" Height="20"/>
+                        <TextBlock TextAlignment="Center" Text="{Binding}" Width="60"/>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
@@ -151,10 +151,15 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <ItemsControl VerticalAlignment="Center" HorizontalAlignment="Center" Grid.Column="0" Grid.Row="1" Name="ShipGridRowHeaders">
+            <ItemsControl Grid.Column="0" Grid.Row="1" Name="ShipGridRowHeaders">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Vertical"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Text="{Binding}" Width="20" Height="60"/>
+                        <TextBlock Padding="0 25 0 0" Height="60" Text="{Binding}"/>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

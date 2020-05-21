@@ -391,7 +391,7 @@ namespace GalaxyTrucker.Network
             _serverStage = ServerStage.PastFlight;
             while (!_connections.All(conn => conn.Value.Cash.HasValue));
 
-            StringBuilder endResult = new StringBuilder($"EndResult");
+            StringBuilder endResult = new StringBuilder($"EndResult,{_connections.Count}");
             foreach (PlayerColor player in _connections.Keys.OrderByDescending(key => _connections[key].Cash.Value))
             {
                 endResult.Append($",{player},{_connections[player].Cash.Value}");

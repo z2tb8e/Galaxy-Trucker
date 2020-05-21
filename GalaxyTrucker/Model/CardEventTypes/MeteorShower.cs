@@ -81,7 +81,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
             int roll2 = random.Next(6);
 
             //OnDiceRolled sets the thread waiting
-            await Task.Run(() => OnDiceRolled(roll1, roll2));
+            await Task.Run(() => OnDiceRolled(projectile.Item1, projectile.Item2, roll1 + roll2));
 
             ship.ApplyProjectile(projectile.Item1, projectile.Item2, roll1 + roll2);
             LastResolved = (-1 * LastResolved) + 1;
