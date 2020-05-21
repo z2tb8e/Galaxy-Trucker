@@ -11,6 +11,8 @@ namespace GalaxyTrucker.ViewModels
 {
     public class LobbyViewModel : NotifyBase
     {
+        #region fields
+
         private const int DefaultPort = 11000;
         private const string DefaultIp = "192.168.1.110";
         private const string DefaultName = "Teszt";
@@ -27,6 +29,8 @@ namespace GalaxyTrucker.ViewModels
         private string _connectionStatus;
 
         private readonly GTTcpClient _client;
+
+        #endregion
 
         #region properties
 
@@ -188,9 +192,15 @@ namespace GalaxyTrucker.ViewModels
 
         #endregion
 
+        #region events
+
         public event EventHandler<bool> BackToMenu;
 
         public event EventHandler<bool> BuildingStarted;
+
+        #endregion
+
+        #region ctor
 
         public LobbyViewModel(GTTcpClient client, PlayerListViewModel playerList)
         {
@@ -240,6 +250,25 @@ namespace GalaxyTrucker.ViewModels
                 Task.Factory.StartNew(() => Server.StartBuildStage(), TaskCreationOptions.LongRunning);
             });
         }
+
+        #endregion
+
+        #region event handlers
+
+        private void PlayerList_LostConnection(object sender, EventArgs e)
+        {
+            UnsubscribeFromEvents();
+        }
+
+        private void Client_BuildingBegun(object sender, EventArgs e)
+        {
+            UnsubscribeFromEvents();
+            BuildingStarted?.Invoke(this, Server != null);
+        }
+
+        #endregion
+
+        #region private methods
 
         private async void Connect()
         {
@@ -291,21 +320,12 @@ namespace GalaxyTrucker.ViewModels
             }
         }
 
-        private void PlayerList_LostConnection(object sender, EventArgs e)
-        {
-            UnsubscribeFromEvents();
-        }
-
-        private void Client_BuildingBegun(object sender, EventArgs e)
-        {
-            UnsubscribeFromEvents();
-            BuildingStarted?.Invoke(this, Server != null);
-        }
-
         private void UnsubscribeFromEvents()
         {
             _client.BuildingBegun -= Client_BuildingBegun;
             _playerList.LostConnection -= PlayerList_LostConnection;
         }
+
+        #endregion
     }
 }

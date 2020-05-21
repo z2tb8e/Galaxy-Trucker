@@ -14,6 +14,8 @@ namespace GalaxyTrucker.ViewModels
 {
     public class BuildViewModel : NotifyBase
     {
+        #region fields
+
         private readonly PlayerListViewModel _playerList;
         private readonly GTTcpClient _client;
         private readonly Ship _ship;
@@ -27,6 +29,10 @@ namespace GalaxyTrucker.ViewModels
         private bool _lastPickResolved;
 
         private ObservableCollection<BuildPartViewModel> _pickableParts;
+
+        #endregion
+
+        #region properties
 
         public PlayerListViewModel PlayerList { get { return _playerList; } }
 
@@ -148,7 +154,15 @@ namespace GalaxyTrucker.ViewModels
             }
         }
 
+        #endregion
+
+        #region events
+
         public event EventHandler FlightBegun;
+
+        #endregion
+
+        #region ctor
 
         public BuildViewModel(GTTcpClient client, PlayerListViewModel playerList, ShipLayout layout)
         {
@@ -270,7 +284,7 @@ namespace GalaxyTrucker.ViewModels
             param => AddAlien(param as string));
         }
 
-        #region private methods
+        #endregion
 
         #region client event handlers
 
@@ -344,6 +358,8 @@ namespace GalaxyTrucker.ViewModels
 
         #endregion
 
+        #region misc event handlers
+
         /// <summary>
         /// Method called through the PlayerListViewModel when the player loses connection to the server
         /// </summary>
@@ -368,6 +384,10 @@ namespace GalaxyTrucker.ViewModels
             BuildPartViewModel origin = PickableParts.First(p => p.BuildRow == removedPart.BuildRow && p.BuildColumn == removedPart.BuildColumn);
             origin.IsValidField = true;
         }
+
+        #endregion
+
+        #region private methods
 
         private void AddAlien(string alien)
         {

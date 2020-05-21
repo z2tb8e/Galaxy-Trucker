@@ -15,6 +15,8 @@ using GalaxyTrucker.Properties;
 
 namespace GalaxyTrucker.Network
 {
+    #region helper classes
+
     public class PartAvailability
     {
         public Semaphore Semaphore { get; }
@@ -74,6 +76,8 @@ namespace GalaxyTrucker.Network
             OptionSent = new AutoResetEvent(false);
         }
     }
+
+    #endregion
 
     public class GTTcpListener
     {
@@ -263,6 +267,8 @@ namespace GalaxyTrucker.Network
 
         #region private methods
 
+        #region stage transitions
+
         private void BuildStage()
         {
             while (!_connections.All(conn => conn.Value.IsReady && !conn.Value.HasMessage)) ;
@@ -404,6 +410,10 @@ namespace GalaxyTrucker.Network
             while (_connections.Count > 0) ;
             Close();
         }
+
+        #endregion
+
+        #region card resolves
 
         private void ResolveStardust()
         {
@@ -706,13 +716,9 @@ namespace GalaxyTrucker.Network
             return target;
         }
 
-        private void PingTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
-        {
-            foreach (PlayerColor key in _connections.Keys)
-            {
-                WriteMessageToPlayer(key, "Ping");
-            }
-        }
+        #endregion
+
+        #region player notification
 
         private void MovePlayer(PlayerColor player, int distance)
         {
@@ -746,6 +752,10 @@ namespace GalaxyTrucker.Network
                 }
             }
         }
+
+        #endregion
+
+        #region incoming message handling
 
         private void HandleClientMessages(PlayerColor player)
         {
@@ -899,33 +909,6 @@ namespace GalaxyTrucker.Network
         }
 
         /// <summary>
-        /// Method to check if the proceed stage event should be signaled, drawing the next card
-        /// </summary>
-        private void CheckIfProceedStage()
-        {
-            if (!_proceedStageSemaphore.WaitOne(0))
-            {
-                return;
-            }
-            bool proceed = true;
-            foreach(var item in _connections.Values)
-            {
-                proceed &= _serverStage switch
-                {
-                    ServerStage.PastBuild => item.IsReady && item.ReadyToFly,
-                    ServerStage.Flight => item.IsReady || item.Crashed,
-                    ServerStage.PastFlight => item.Cash != null,
-                    _ => item.IsReady
-                };
-            }
-            if (proceed)
-            {
-                _proceedStageEvent.Set();
-            }
-            _proceedStageSemaphore.Release();
-        }
-
-        /// <summary>
         /// Method called when a client sends a message to toggle its readied state
         /// </summary>
         /// <param name="player"></param>
@@ -1032,6 +1015,45 @@ namespace GalaxyTrucker.Network
                 }
             }
             _parts[row, column].Semaphore.Release();
+        }
+
+        #endregion
+
+        #region misc
+
+        private void PingTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            foreach (PlayerColor key in _connections.Keys)
+            {
+                WriteMessageToPlayer(key, "Ping");
+            }
+        }
+
+        /// <summary>
+        /// Method to check if the proceed stage event should be signaled, drawing the next card
+        /// </summary>
+        private void CheckIfProceedStage()
+        {
+            if (!_proceedStageSemaphore.WaitOne(0))
+            {
+                return;
+            }
+            bool proceed = true;
+            foreach (var item in _connections.Values)
+            {
+                proceed &= _serverStage switch
+                {
+                    ServerStage.PastBuild => item.IsReady && item.ReadyToFly,
+                    ServerStage.Flight => item.IsReady || item.Crashed,
+                    ServerStage.PastFlight => item.Cash != null,
+                    _ => item.IsReady
+                };
+            }
+            if (proceed)
+            {
+                _proceedStageEvent.Set();
+            }
+            _proceedStageSemaphore.Release();
         }
 
         private string ReadMessageFromPlayer(PlayerColor player)
@@ -1143,8 +1165,8 @@ namespace GalaxyTrucker.Network
 
         private void ShuffleParts()
         {
-            List<string> parts = Resources.Parts.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None).ToList();
-            parts.Remove(parts.Last());
+            string allParts = Resources.Parts.Trim();
+            List<string> parts = allParts.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None).ToList();
 
             int n = parts.Count;
             while (n > 1)
@@ -1174,8 +1196,8 @@ namespace GalaxyTrucker.Network
                 new List<CardEvent>()
             };
 
-            List<string> cardStrings = Resources.Cards.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None).ToList();
-            cardStrings.Remove(cardStrings.Last());
+            string allCards = Resources.Cards.Trim();
+            List<string> cardStrings = allCards.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None).ToList();
             foreach (string cardString in cardStrings)
             {
                 CardEvent card = cardString.ToCardEvent();
@@ -1210,8 +1232,10 @@ namespace GalaxyTrucker.Network
                 foreach (int stage in deckComposition)
                 {
                     List<CardEvent> stageCards = cardsByStage[stage];
+                    CardEvent item = stageCards[_random.Next(stageCards.Count)];
                     int index = _random.Next(stageCards.Count);
-                    cardList.Add(stageCards[index]);
+                    cardList.Add(item);
+                    stageCards.Remove(item);
                 }
             }
 
@@ -1239,6 +1263,8 @@ namespace GalaxyTrucker.Network
             }
             _logSemaphore.Release();
         }
+
+        #endregion
 
         #endregion
     }

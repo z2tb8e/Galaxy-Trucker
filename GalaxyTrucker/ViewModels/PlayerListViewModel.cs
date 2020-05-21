@@ -8,9 +8,15 @@ namespace GalaxyTrucker.ViewModels
 {
     public class PlayerListViewModel : NotifyBase
     {
+        #region fields
+
         protected readonly GTTcpClient _client;
         private readonly object _lock;
         private ObservableCollection<PlayerInfoViewModel> _connectedPlayers;
+
+        #endregion
+
+        #region properties
 
         public ObservableCollection<PlayerInfoViewModel> ConnectedPlayers
         {
@@ -23,7 +29,15 @@ namespace GalaxyTrucker.ViewModels
             }
         }
 
+        #endregion
+
+        #region events
+
         public event EventHandler LostConnection;
+
+        #endregion
+
+        #region ctor
 
         public PlayerListViewModel(GTTcpClient client)
         {
@@ -36,6 +50,10 @@ namespace GalaxyTrucker.ViewModels
             _client.PlayerDisconnected += Client_PlayerDisconnected;
             _client.ThisPlayerDisconnected += Client_ThisPlayerDisconnected;
         }
+
+        #endregion
+
+        #region public methods
 
         public void SynchronizeListWithClient()
         {
@@ -53,6 +71,10 @@ namespace GalaxyTrucker.ViewModels
             _client.PlayerDisconnected -= Client_PlayerDisconnected;
             _client.ThisPlayerDisconnected -= Client_ThisPlayerDisconnected;
         }
+
+        #endregion
+
+        #region event handlers
 
         private void Client_ThisPlayerReadied(object sender, EventArgs e)
         {
@@ -80,5 +102,7 @@ namespace GalaxyTrucker.ViewModels
         {
             ConnectedPlayers.Add(new PlayerInfoViewModel(new PlayerInfo(e.Color, e.PlayerName, false)));
         }
+
+        #endregion
     }
 }

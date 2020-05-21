@@ -6,17 +6,20 @@ using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
-using System.Windows.Threading;
 
 namespace GalaxyTrucker.ViewModels
 {
     public class FlightViewModel : NotifyBase
     {
+        #region fields
+
         private readonly object _shipPartsLock;
         private readonly object _playerOrderLock;
         private readonly object _optionsLock;
+        private readonly object _popupLock;
         private readonly GTTcpClient _client;
         private readonly PlayerListViewModel _playerList;
         private readonly Ship _ship;
@@ -30,6 +33,26 @@ namespace GalaxyTrucker.ViewModels
         private volatile bool _roundResolved;
         private string _statusMessage;
         private volatile bool _isWaiting;
+        private bool _gameOver;
+        private ObservableCollection<string> _popupMessages;
+
+        #endregion
+
+        #region properties
+
+        public ObservableCollection<string> PopupMessages
+        {
+            get
+            {
+                return _popupMessages;
+            }
+            set
+            {
+                _popupMessages = value;
+                BindingOperations.EnableCollectionSynchronization(_popupMessages, _popupLock);
+                OnPropertyChanged();
+            }
+        }
 
         public int ShipCash { get; set; }
 
@@ -157,7 +180,15 @@ namespace GalaxyTrucker.ViewModels
 
         public DelegateCommand ContinueCommand { get; set; }
 
+        #endregion
+
+        #region events
+
         public event EventHandler GameEnded;
+
+        #endregion
+
+        #region ctor
 
         public FlightViewModel(GTTcpClient client, PlayerListViewModel playerList, Ship ship)
         {
@@ -165,13 +196,17 @@ namespace GalaxyTrucker.ViewModels
             _shipPartsLock = new object();
             _playerOrderLock = new object();
             _optionsLock = new object();
+            _popupLock = new object();
             _client = client;
             _playerList = playerList;
             _ship = ship;
             _isWaiting = false;
+            _gameOver = false;
             CurrentAttributes = new PlayerAttributes();
             OptionsOrSubEvents = new ObservableCollection<OptionOrSubEventViewModel>();
             ShipParts = new ObservableCollection<FlightPartViewModel>();
+            PopupMessages = new ObservableCollection<string>();
+
             foreach (Part p in _ship.Parts)
             {
                 ShipParts.Add(new FlightPartViewModel(p));
@@ -180,7 +215,7 @@ namespace GalaxyTrucker.ViewModels
             {
                 part.PartClickCommand = new DelegateCommand(param =>
                 {
-                    if (!_client.Crashed && part.Highlighted)
+                    if (!_client.Crashed && part.Highlighted && !_gameOver)
                     {
                         _ship.ActivatePart(part.Row, part.Column);
                         foreach(FlightPartViewModel item in ShipParts)
@@ -210,13 +245,13 @@ namespace GalaxyTrucker.ViewModels
             _ship.CashChanged += Ship_CashChanged;
             _client.PlacesChanged += (sender, e) => RefreshTokens();
 
-            SendAttributesCommand = new DelegateCommand(param => !_client.Crashed && RequiresAttributes, param =>
+            SendAttributesCommand = new DelegateCommand(param => !_client.Crashed && RequiresAttributes && !_gameOver, param =>
             {
                 RequiresAttributes = false;
                 _client.UpdateAttributes(_ship.Firepower, _ship.Enginepower, _ship.CrewCount, _ship.StorageCount, _ship.Batteries);
             });
 
-            CrashCommand = new DelegateCommand(param => !_client.Crashed, param =>
+            CrashCommand = new DelegateCommand(param => !_client.Crashed && !_gameOver, param =>
             {
                 MessageBoxResult result = MessageBox.Show("Biztos ki akarsz szállni?",
                                           "Megerősítés",
@@ -228,39 +263,36 @@ namespace GalaxyTrucker.ViewModels
                 }
             });
 
-            ActivatePartCommand = new DelegateCommand(param => !_client.Crashed && _ship.Batteries > 0, param =>
+            ActivatePartCommand = new DelegateCommand(param => !_client.Crashed && _ship.Batteries > 0 && !_gameOver, param =>
             {
                 bool any = _ship.HighlightActivatables();
                 if (!any)
                 {
-                    StatusMessage = "Nincs aktiválható elem!";
+                    AddPopUpMessage("Nincs aktiválható elem!");
                 }
             });
 
-            ReadyCommand = new DelegateCommand(param => !_client.Crashed && _roundResolved && _client.Card.IsResolved(), param =>
+            ReadyCommand = new DelegateCommand(param => !_client.Crashed && _roundResolved && _client.Card.IsResolved() && !_gameOver, param =>
             {
-                try
-                {
-                    _client.ToggleReady(ServerStage.Flight);
-                    _roundResolved = false;
-                    _ship.ResetActivatables();
-                }
-                catch (Exception e)
-                {
-                    StatusMessage = $"Hiba a szerverrel való kommunikáció közben:\n{e.Message}";
-                }
+                _client.ToggleReady(ServerStage.Flight);
+                _roundResolved = false;
+                _ship.ResetActivatables();
             });
 
-            ContinueCommand = new DelegateCommand(param => !_client.Crashed && _isWaiting, param =>
+            ContinueCommand = new DelegateCommand(param => !_client.Crashed && _isWaiting && !_gameOver, param =>
             {
                 _isWaiting = false;
-                _client.Card.ProceedCurrent();
                 StatusMessage = "";
+                _client.Card.ProceedCurrent();
             });
 
             Ship_FlightAttributesChanged(null, null);
             InitializeOrderFields();
         }
+
+        #endregion
+
+        #region ship event handlers
 
         private void Ship_CashChanged(object sender, EventArgs e)
         {
@@ -281,7 +313,7 @@ namespace GalaxyTrucker.ViewModels
         private void Ship_Wrecked(object sender, WreckedSource e)
         {
             _client.CrashPlayer();
-            StatusMessage = $"A hajó nem tud tovább menni: {e.GetDescription()}";
+            AddPopUpMessage($"A hajó nem tud továbbmenni: {e.GetDescription()}");
         }
 
         private void Ship_PartRemoved(object sender, PartRemovedEventArgs e)
@@ -290,19 +322,35 @@ namespace GalaxyTrucker.ViewModels
             removedPart.Remove();
         }
 
+        #endregion
+
+        #region client event handlers
+
         private void Client_GameEnded(object sender, EndResultEventArgs e)
         {
             StringBuilder resultMessage = new StringBuilder();
-            for(int i = 0; i < e.Results.Count; ++i)
+            for (int i = 0; i < e.Results.Count; ++i)
             {
                 resultMessage.AppendLine($"{i + 1}. helyezés: {e.Results[i].Item1.GetDescription()}, {e.Results[i].Item2} pénzzel.");
             }
-            MessageBox.Show(resultMessage.ToString());
-            GameEnded?.Invoke(this, EventArgs.Empty);
+
+            StatusMessage = $"{resultMessage}\n{StatusMessage}";
+
+            CurrentCardDescription = "Vissza a menübe...";
+            CurrentCardToolTip = null;
+
+            SendAttributesCommand = new DelegateCommand(param =>
+            {
+                _playerList.UnsubscribeFromEvents();
+                UnsubscribeFromEvents();
+                GameEnded?.Invoke(this, EventArgs.Empty);
+            });
+            OnPropertyChanged(nameof(SendAttributesCommand));
         }
 
         private void Client_FlightEnded(object sender, EventArgs e)
         {
+            _gameOver = true;
             //from cards such as abandoned ships or encounters
             int fromCards = _ship.Cash;
             //from the stored wares, if player crashed, this value gets cut in half
@@ -345,7 +393,7 @@ namespace GalaxyTrucker.ViewModels
         {
             if (_client.Card.RequiresOrder && !_client.Card.IsResolved())
             {
-                StatusMessage = "Más elhasználta a kártyát mielőtt sorra kerültél volna.";
+                StatusMessage = _client.Crashed ? "Kiszálltál a versenyből." : "Más elhasználta a kártyát mielőtt sorra kerültél volna.";
                 _client.Card.ApplyOption(_ship, -1);
             }
             else if(!_client.Card.IsResolved())
@@ -363,12 +411,12 @@ namespace GalaxyTrucker.ViewModels
         {
             if (_client.Card.RequiresOrder)
             {
-                //StatusMessage = $"{e.GetDescription()} a soron következő játékos!";
+                StatusMessage = $"{e.GetDescription()} a soron következő játékos!";
                 _isPlayersTurn = false;
             }
             else
             {
-                //StatusMessage = $"{e.GetDescription()} az aktuális effekt célpontja!";
+                StatusMessage = $"{e.GetDescription()} az aktuális effekt célpontja!";
                 _client.Card.ApplyOption(_ship, 1);
             }
         }
@@ -377,13 +425,12 @@ namespace GalaxyTrucker.ViewModels
         {
             if (_client.Card.RequiresOrder)
             {
-                //StatusMessage = "Te vagy a soron következő játékos!";
+                StatusMessage = "Te vagy a soron következő játékos!";
                 _isPlayersTurn = true;
             }
             else
             {
-                //StatusMessage = "Te vagy az aktuális effekt célpontja!";
-
+                StatusMessage = "Te vagy az aktuális effekt célpontja!";
                 _client.Card.ApplyOption(_ship, 0);
             }
         }
@@ -391,12 +438,11 @@ namespace GalaxyTrucker.ViewModels
         private void Client_PlayerCrashed(object sender, PlayerColor e)
         {
             RefreshTokens();
-            MessageBox.Show($"{e.GetDescription()} játékos kiszállt a versenyből!");
+            AddPopUpMessage($"{e.GetDescription()} játékos kiszállt a versenyből!");
         }
 
         private void Client_CardPicked(object sender, EventArgs e)
         {
-            StatusMessage = "Új kör";
             OptionsOrSubEvents.Clear();
             CardEvent card = _client.Card;
             CurrentCardDescription = card.GetDescription();
@@ -416,13 +462,17 @@ namespace GalaxyTrucker.ViewModels
                     Description = item.Description,
                     ClickCommand = new DelegateCommand(param =>
                     {
-                        return item.Condition(_ship) && !_client.Crashed &&
+                        return item.Condition(_ship) && !_client.Crashed && !_gameOver &&
                         (!card.RequiresOrder || (card.RequiresOrder && _isPlayersTurn));
                     }
                     , param => item.Action(_client, _ship))
                 });
             }
         }
+
+        #endregion
+
+        #region misc event handlers
 
         private void Card_DiceRolled(object sender, DiceRolledEventArgs e)
         {
@@ -434,6 +484,17 @@ namespace GalaxyTrucker.ViewModels
         {
             StatusMessage = "Megszakadt a kapcsolat a szerverrel!";
             UnsubscribeFromEvents();
+        }
+
+        #endregion
+
+        #region private methods
+
+        private async void AddPopUpMessage(string message)
+        {
+            PopupMessages.Add(message);
+            await Task.Delay(5000);
+            PopupMessages.Remove(message);
         }
 
         private void UnsubscribeFromEvents()
@@ -454,7 +515,7 @@ namespace GalaxyTrucker.ViewModels
         }
 
         /// <summary>
-        /// Method to setup the basic 7*15 hollow square of fields, 
+        /// Method to setup the basic 7x15 hollow square of fields, 
         /// with the first element being the one in the middle on the top, going clockwise
         /// </summary>
         private void InitializeOrderFields()
@@ -504,5 +565,7 @@ namespace GalaxyTrucker.ViewModels
                 PlayerOrderFields[pair.Value.PlaceValue].Token = token;
             }
         }
+
+        #endregion
     }
 }

@@ -175,7 +175,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                 },
                 new OptionOrSubEvent
                 {
-                    Description = $"+ {string.Join(" ", Reward)} -{DayCost} nap",
+                    Description = $"{string.Join(" ", Reward)} -{DayCost} nap",
                     Action = (client, ship) =>
                     {
                         LastResolved = 1;

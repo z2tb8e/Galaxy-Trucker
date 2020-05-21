@@ -11,6 +11,8 @@ namespace GalaxyTrucker
     /// </summary>
     public partial class App : Application
     {
+        #region fields
+
         private MainWindow _mainWindow;
         private GTTcpClient _client;
         private GTTcpListener _listener;
@@ -18,6 +20,8 @@ namespace GalaxyTrucker
         private LobbyViewModel _lobbyViewModel;
         private BuildViewModel _buildViewModel;
         private FlightViewModel _flightViewModel;
+
+        #endregion
 
         public App()
         {
@@ -41,7 +45,7 @@ namespace GalaxyTrucker
             _mainWindow.Show();
         }
 
-        #region Menu event handlers
+        #region menu event handlers
 
         private void Menu_HostGame(object sender, EventArgs e)
         {
@@ -76,21 +80,8 @@ namespace GalaxyTrucker
 
         #endregion
 
-        private void Rules_BackToMenu(object sender, EventArgs e)
-        {
-            Menu();
-        }
 
-        private void PlayerListViewModel_LostConnection(object sender, EventArgs e)
-        {
-            _client.Close();
-            if (_listener != null)
-            {
-                _listener.Close();
-            }
-            MessageBox.Show("A szerverrel való kapcsolat megszakadt!\n");
-            Dispatcher.Invoke(Menu);
-        }
+        #region lobby event handlers
 
         private void LobbyViewModel_BackToMenu(object sender, bool isHost)
         {
@@ -123,6 +114,21 @@ namespace GalaxyTrucker
             });
         }
 
+        #endregion
+
+        #region misc event handlers
+
+        private void PlayerListViewModel_LostConnection(object sender, EventArgs e)
+        {
+            _client.Close();
+            if (_listener != null)
+            {
+                _listener.Close();
+            }
+            MessageBox.Show("A szerverrel való kapcsolat megszakadt!\n");
+            Dispatcher.Invoke(Menu);
+        }
+
         private void BuildViewModel_FlightBegun(object sender, EventArgs e)
         {
             Dispatcher.Invoke(() =>
@@ -139,8 +145,9 @@ namespace GalaxyTrucker
 
         private void FlightViewModel_GameEnded(object sender, EventArgs e)
         {
-            MessageBox.Show("Játék vége, visszatérés a menübe...");
             Dispatcher.Invoke(Menu);
         }
+
+        #endregion
     }
 }

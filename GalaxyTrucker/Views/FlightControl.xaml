@@ -19,6 +19,21 @@
 
         <TextBlock Text="{Binding StatusMessage}" Margin="10" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Top"/>
 
+        <ItemsControl ItemsSource="{Binding PopupMessages}" Grid.Column="0" Grid.Row="1" HorizontalAlignment="Right" Margin="10" VerticalAlignment="Top">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Vertical"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock TextAlignment="Center" Text="{Binding}" Foreground="Red" MinHeight="50" TextWrapping="Wrap" Width="200"/>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        
+        <TextBlock Text="{Binding PopUpMessage}" FontWeight="Bold" Foreground="Red" Grid.Column="0" Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0 60 0 0"/>
+
         <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal" Margin="10" Grid.Row="0" Grid.Column="1">
             <Button Content="Kiszállás a versenyből" Command="{Binding CrashCommand}" Margin="10" Width="150" Height="70"/>
             <Button Content="Elem aktiválása" Command="{Binding ActivatePartCommand}" Margin="10" Width="150" Height="70"/>
