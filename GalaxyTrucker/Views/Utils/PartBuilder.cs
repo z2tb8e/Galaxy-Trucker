@@ -1,8 +1,8 @@
 ﻿using GalaxyTrucker.Model;
 using GalaxyTrucker.Model.PartTypes;
 using System.Drawing;
-using GalaxyTrucker.Exceptions;
 using GalaxyTrucker.Properties;
+using System;
 
 namespace GalaxyTrucker.Views.Utils
 {
@@ -97,7 +97,7 @@ namespace GalaxyTrucker.Views.Utils
             }
             if (partPiece == null)
             {
-                throw new PartBuilderException();
+                throw new ArgumentException();
             }
             g.DrawImage(partPiece, new Point(0, 0));
 

@@ -1,5 +1,4 @@
-﻿using GalaxyTrucker.Exceptions;
-using GalaxyTrucker.Model.PartTypes;
+﻿using GalaxyTrucker.Model.PartTypes;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -138,7 +137,7 @@ namespace GalaxyTrucker.Model
         {
             if(alien != Personnel.EngineAlien && alien != Personnel.LaserAlien)
             {
-                throw new ArgumentException("The Personnel argument is not an alien!");
+                return false;
             }
 
             if ((_hasEngineAlien && alien == Personnel.EngineAlien) || (_hasLaserAlien && alien == Personnel.LaserAlien))
@@ -150,28 +149,10 @@ namespace GalaxyTrucker.Model
             IEnumerable<Part> cabins = _parts.Cast<Part>().Where(p => p is Cabin && !(p is Cockpit));
             foreach(Part cabin in cabins)
             {
-                (Part, Direction)[] neighbours = new (Part, Direction)[]
+                if (cabin.Neighbours.Any(p => (p is EngineCabin && alien == Personnel.EngineAlien) || (p is LaserCabin && alien == Personnel.LaserAlien)))
                 {
-                    (_parts[cabin.Row - 1, cabin.Column], Direction.Top),
-                    (_parts[cabin.Row, cabin.Column + 1], Direction.Right),
-                    (_parts[cabin.Row + 1, cabin.Column], Direction.Bottom),
-                    (_parts[cabin.Row, cabin.Column - 1], Direction.Left)
-                };
-                foreach((Part, Direction) pair in neighbours)
-                {
-                    if(cabin.GetConnector(pair.Item2) != Connector.None)
-                    {
-                        if(alien == Personnel.EngineAlien && pair.Item1 is EngineCabin)
-                        {
-                            ret = true;
-                            cabin.Highlight();
-                        }
-                        else if (alien == Personnel.LaserAlien && pair.Item1 is LaserCabin)
-                        {
-                            ret = true;
-                            cabin.Highlight();
-                        }
-                    }
+                    ret = true;
+                    cabin.Highlight();
                 }
             }
             return ret;
@@ -204,56 +185,44 @@ namespace GalaxyTrucker.Model
         /// <param name="row">The row of the cabin</param>
         /// <param name="column">The column of the cabin</param>
         /// <param name="alien">The type of alien to add</param>
-        public void AddAlien(int row, int column, Personnel alien)
+        public bool AddAlien(int row, int column, Personnel alien)
         {
             if (_hasEngineAlien && alien == Personnel.EngineAlien || _hasLaserAlien && alien == Personnel.LaserAlien)
             {
-                throw new DuplicateAlienException(alien, (row, column));
+                return false;
             }
 
             if (!(_parts[row, column] is Cabin))
-                throw new InvalidIndexException($"Part at ({row},{column}) is not a cabin.");
-
-            else if(_parts[row,column] is Cockpit)
-                throw new InvalidIndexException("The cockpit must have humans as personnel");
-
-            Part[] neighbours = new Part[]
             {
-                _parts[row - 1, column],
-                _parts[row, column + 1],
-                _parts[row + 1, column],
-                _parts[row, column - 1]
-            };
+                return false;
+            }
 
-            if (alien == Personnel.EngineAlien)
+            else if (_parts[row, column] is Cockpit)
             {
-                Part cabin;
-                try
+                return false;
+            }
+
+            if(alien == Personnel.EngineAlien)
+            {
+                if (_parts[row, column].Neighbours.Any(p => p is EngineCabin))
                 {
-                    cabin = neighbours.Cast<Part>().First(x => x is EngineCabin);
+                    (_parts[row, column] as Cabin).Personnel = alien;
                     _hasEngineAlien = true;
-                    (_parts[row, column] as Cabin).Personnel = Personnel.EngineAlien;
-                }
-                catch (Exception)
-                {
-                    throw new InvalidIndexException($"Cabin at ({row},{column}) does not have the required neighbouring alien cabin");
+                    return true;
                 }
             }
-            else if (alien == Personnel.LaserAlien)
+
+            else if(alien == Personnel.LaserAlien)
             {
-                Part cabin;
-                try
+                if (_parts[row, column].Neighbours.Any(p => p is LaserCabin))
                 {
-                    cabin = neighbours.Cast<Part>().First(x => x is LaserCabin);
+                    (_parts[row, column] as Cabin).Personnel = alien;
                     _hasLaserAlien = true;
-                    (_parts[row, column] as Cabin).Personnel = Personnel.LaserAlien;
-                }
-                catch (Exception)
-                {
-                    throw new InvalidIndexException($"Cabin at ({row},{column}) does not have the required neighbouring alien cabin");
+                    return true;
                 }
             }
-            else throw new ArgumentException("Argument is not an alien", nameof(alien));
+
+            return false;
         }
 
         /// <summary>
@@ -447,7 +416,9 @@ namespace GalaxyTrucker.Model
             {
                 int i = 0;
                 while(i < _storages.Count() && _storages[i].Max == max && amountLeft > 0)
+                {
                     _storages[i].RemoveMax();
+                }
                 ++i;
             }
         }
@@ -506,7 +477,9 @@ namespace GalaxyTrucker.Model
         {
             Part current = _parts[row, column];
             if (!(current is IActivatable))
-                throw new InvalidIndexException($"Part at ({row},{column}) is not an activatable part.");
+            {
+                return;
+            }
             switch (current)
             {
                 case LaserDouble l:
@@ -652,7 +625,11 @@ namespace GalaxyTrucker.Model
         /// <param name="column"></param>
         public void RemovePartAtIndex(int row, int column)
         {
-            Part removedPart = _parts[row, column] ?? throw new InvalidIndexException($"Part at ({row},{column}) is null.");
+            Part removedPart = _parts[row, column];
+            if (removedPart == null)
+            {
+                return;
+            }
 
             if (removedPart is Cockpit)
             {
@@ -778,16 +755,12 @@ namespace GalaxyTrucker.Model
         /// <returns>A logical value indicating whether an energy was spent</returns>
         private bool SpendEnergy()
         {
-            Part p;
-            try
-            {
-                p = _parts.Cast<Part>().First(x => x is Battery && (x as Battery).Charges > 0);
-            }
-            catch (Exception)
+            Part battery = _parts.Cast<Part>().FirstOrDefault(p => p is Battery && (p as Battery).Charges > 0);
+            if(battery == null)
             {
                 return false;
             }
-            (p as Battery).UseCharge();
+            (battery as Battery).UseCharge();
             return true;
         }
     }
