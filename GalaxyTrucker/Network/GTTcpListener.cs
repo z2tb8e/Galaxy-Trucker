@@ -121,6 +121,8 @@ namespace GalaxyTrucker.Network
 
         #endregion
 
+        #region ctor
+
         public GTTcpListener(int port, GameStage gameStage, bool doLogging = true)
         {
             _ctr = new CancellationTokenSource();
@@ -145,6 +147,8 @@ namespace GalaxyTrucker.Network
 
             _parts = new PartAvailability[10, 14];
         }
+
+        #endregion
 
         #region public methods
 
@@ -449,37 +453,41 @@ namespace GalaxyTrucker.Network
                 try
                 {
                     _currentPlayer = order[current];
-                    _connections[_currentPlayer].IsWaiting = true;
-                    SignalTargetPlayer(order[current]);
-                    _connections[_currentPlayer].OptionSent.WaitOne();
-                    /*options:
-                     *  0: none
-                     *  1: took the offer
-                     */
-                    _connections[_currentPlayer].IsWaiting = false;
-                    //if the current player didn't crash their ship
+                    //check if the player crashed after picking the card, but before it was their turn
                     if (!_connections[_currentPlayer].Crashed)
                     {
-                        int dayCost = _currentCard switch
+                        _connections[_currentPlayer].IsWaiting = true;
+                        SignalTargetPlayer(order[current]);
+                        _connections[_currentPlayer].OptionSent.WaitOne();
+                        /*options:
+                         *  0: none
+                         *  1: took the offer
+                         */
+                        _connections[_currentPlayer].IsWaiting = false;
+                        //if the current player didn't crash their ship
+                        if (!_connections[_currentPlayer].Crashed)
                         {
-                            AbandonedShip ship => ship.DayCost,
-                            AbandonedStation station => station.DayCost,
-                            _ => throw new InvalidOperationException()
-                        };
-                        switch (_currentOption)
-                        {
-                            case 0:
-                                break;
-                            case 1:
-                                taken = true;
-                                MovePlayer(_currentPlayer, -1 * dayCost);
-                                break;
-                            default:
-                                throw new ArgumentOutOfRangeException($"Invalid option number {_currentOption}.");
-                        }
+                            int dayCost = _currentCard switch
+                            {
+                                AbandonedShip ship => ship.DayCost,
+                                AbandonedStation station => station.DayCost,
+                                _ => throw new InvalidOperationException()
+                            };
+                            switch (_currentOption)
+                            {
+                                case 0:
+                                    break;
+                                case 1:
+                                    taken = true;
+                                    MovePlayer(_currentPlayer, -1 * dayCost);
+                                    break;
+                                default:
+                                    throw new ArgumentOutOfRangeException($"Invalid option number {_currentOption}.");
+                            }
 
-                        LogAsync($"{_currentPlayer} selected option {_currentOption}.");
-                        WriteMessageToPlayer(_currentPlayer, $"OptionPicked,{_currentOption}");
+                            LogAsync($"{_currentPlayer} selected option {_currentOption}.");
+                            WriteMessageToPlayer(_currentPlayer, $"OptionPicked,{_currentOption}");
+                        }
                     }
                     ++current;
                 }
@@ -506,37 +514,42 @@ namespace GalaxyTrucker.Network
                 try
                 {
                     _currentPlayer = order[current];
-                    _connections[_currentPlayer].IsWaiting = true;
-                    SignalTargetPlayer(order[current]);
-                    _connections[_currentPlayer].OptionSent.WaitOne();
-                    /*options:
-                     *  0: none
-                     *  [1..numberOfOffers]: the specific offer
-                     */
-                    _connections[_currentPlayer].IsWaiting = false;
-                    //if the current player didn't their ship
+                    //check if the player crashed after picking the card, but before it was their turn
                     if (!_connections[_currentPlayer].Crashed)
                     {
-                        switch (_currentOption)
+                        _connections[_currentPlayer].IsWaiting = true;
+                        SignalTargetPlayer(order[current]);
+                        _connections[_currentPlayer].OptionSent.WaitOne();
+                        /*options:
+                         *  0: none
+                         *  [1..numberOfOffers]: the specific offer
+                         */
+                        _connections[_currentPlayer].IsWaiting = false;
+                        //if the current player didn't their ship
+                        if (!_connections[_currentPlayer].Crashed)
                         {
-                            case 0:
-                                break;
-                            case int i when (i > 0 && i <= numberOfOffers):
-                                if (!validOffers.Remove(i))
-                                {
-                                    //The offer is already taken
-                                    throw new ArgumentException($"Offer {i} was already taken!");
-                                }
-                                RemoveOption(i);
-                                MovePlayer(_currentPlayer, -1 * (_currentCard as Planets).DayCost);
-                                break;
-                            default:
-                                throw new ArgumentOutOfRangeException($"Invalid option number {_currentOption}.");
-                        }
+                            switch (_currentOption)
+                            {
+                                case 0:
+                                    break;
+                                case int i when (i > 0 && i <= numberOfOffers):
+                                    if (!validOffers.Remove(i))
+                                    {
+                                        //The offer is already taken
+                                        throw new ArgumentException($"Offer {i} was already taken!");
+                                    }
+                                    RemoveOption(i);
+                                    MovePlayer(_currentPlayer, -1 * (_currentCard as Planets).DayCost);
+                                    break;
+                                default:
+                                    throw new ArgumentOutOfRangeException($"Invalid option number {_currentOption}.");
+                            }
 
-                        LogAsync($"{_currentPlayer} selected option {_currentOption}.");
-                        WriteMessageToPlayer(_currentPlayer, $"OptionPicked,{_currentOption}");
+                            LogAsync($"{_currentPlayer} selected option {_currentOption}.");
+                            WriteMessageToPlayer(_currentPlayer, $"OptionPicked,{_currentOption}");
+                        }
                     }
+                    
                     ++current;
                 }
                 catch (KeyNotFoundException)
@@ -577,50 +590,50 @@ namespace GalaxyTrucker.Network
                 try
                 {
                     _currentPlayer = order[current];
-                    _connections[_currentPlayer].IsWaiting = true;
-                    SignalTargetPlayer(order[current]);
-                    _connections[_currentPlayer].OptionSent.WaitOne();
-                    /*options:
-                     *  0: player got beaten
-                     *  1: encounter got beaten
-                     *  2: player could've beaten encounter, but ignored it or draw
-                     */
-                    _connections[_currentPlayer].IsWaiting = false;
-                    //if the current player decides to crash their ship 
-                    if (_connections[_currentPlayer].Crashed)
+                    //check if the player crashed after picking the card, but before it was their turn
+                    if (!_connections[_currentPlayer].Crashed)
                     {
-                        ++current;
-                    }
-                    else
-                    {
-                        int dayCost = _currentCard switch
+                        _connections[_currentPlayer].IsWaiting = true;
+                        SignalTargetPlayer(order[current]);
+                        _connections[_currentPlayer].OptionSent.WaitOne();
+                        /*options:
+                         *  0: player got beaten
+                         *  1: encounter got beaten
+                         *  2: player could've beaten encounter, but ignored it or draw
+                         */
+                        _connections[_currentPlayer].IsWaiting = false;
+                        //if the current player decides to crash their ship 
+                        if (!_connections[_currentPlayer].Crashed)
                         {
-                            Pirates pirate => pirate.DayCost,
-                            Smugglers smuggler => smuggler.DayCost,
-                            Slavers slaver => slaver.DayCost,
-                            _ => throw new InvalidOperationException()
-                        };
+                            int dayCost = _currentCard switch
+                            {
+                                Pirates pirate => pirate.DayCost,
+                                Smugglers smuggler => smuggler.DayCost,
+                                Slavers slaver => slaver.DayCost,
+                                _ => throw new InvalidOperationException()
+                            };
 
-                        switch (_currentOption)
-                        {
-                            case 0:
-                                break;
-                            case 1:
-                                defeated = true;
-                                MovePlayer(_currentPlayer, -1 * dayCost);
-                                break;
-                            case 2:
-                                defeated = true;
-                                break;
-                            default:
-                                throw new ArgumentOutOfRangeException();
+                            switch (_currentOption)
+                            {
+                                case 0:
+                                    break;
+                                case 1:
+                                    defeated = true;
+                                    MovePlayer(_currentPlayer, -1 * dayCost);
+                                    break;
+                                case 2:
+                                    defeated = true;
+                                    break;
+                                default:
+                                    throw new ArgumentOutOfRangeException();
+                            }
+
+                            LogAsync($"{_currentPlayer} selected option {_currentOption}.");
+                            WriteMessageToPlayer(_currentPlayer, $"OptionPicked,{_currentOption}");
                         }
-
-                        LogAsync($"{_currentPlayer} selected option {_currentOption}.");
-                        WriteMessageToPlayer(_currentPlayer, $"OptionPicked,{_currentOption}");
-
-                        ++current;
                     }
+
+                    ++current;
                 }
                 //the current player got disconnected
                 catch (KeyNotFoundException)
@@ -994,7 +1007,7 @@ namespace GalaxyTrucker.Network
             int column = int.Parse(parts[2]);
             _parts[row, column].Semaphore.WaitOne();
 
-            LogAsync($"{player} picked part at ({row},{column}) with response: {(_parts[row, column].IsAvailable ? _parts[row, column].PartString : null)}.");
+            LogAsync($"{player} picked part at ({row},{column}) with response: {(_parts[row, column].IsAvailable ? _parts[row, column].PartString : "null")}.");
             if (!_parts[row, column].IsAvailable)
             {
                 WriteMessageToPlayer(player, "PickPartResult,null");

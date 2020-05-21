@@ -26,9 +26,9 @@
     </UserControl.InputBindings>
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="160"/>
-            <RowDefinition Height="270"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="2*"/>
+            <RowDefinition Height="3*"/>
+            <RowDefinition Height="8*"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="3*"/>
@@ -39,22 +39,13 @@
 
         <Button Content="{Binding ToggleReadyContent}" Command="{Binding ToggleReadyCommand}" Margin="10" Grid.Row="0" Grid.Column="1" Width="200" Height="80" HorizontalAlignment="Right"/>
         <TextBlock Text="{Binding Error}" Foreground="Red" Grid.Row="0" Grid.Column="1" Margin="10" HorizontalAlignment="Left"/>
-        <Button Style="{StaticResource AlienButtonStyle}" Content="Lila űrlény felhelyezése"
-                CommandParameter="LaserAlien" Grid.Row="2" Grid.Column="0" HorizontalAlignment="Left" Margin="666,0,0,0"/>
 
-        <Button Style="{StaticResource AlienButtonStyle}" Content="Barna űrlény felhelyezése"
-                CommandParameter="EngineAlien" Grid.Row="2" Grid.Column="0" HorizontalAlignment="Left" Margin="276,0,0,0"/>
+        <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Button Style="{StaticResource AlienButtonStyle}" Content="Lila űrlény felhelyezése" Margin="30" CommandParameter="LaserAlien"/>
+            <Button Style="{StaticResource AlienButtonStyle}" Content="Barna űrlény felhelyezése" Margin="30" CommandParameter="EngineAlien"/>
+        </StackPanel>
 
         <ItemsControl Name="shipGrid" VerticalAlignment="Center" HorizontalAlignment="Center" ItemsSource="{Binding PickableParts}" Margin="10" Grid.Row="2" Grid.Column="0">
-            <ItemsControl.Style>
-                <Style TargetType="ItemsControl">
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding BuildingEnded}" Value="True">
-                            <Setter Property="Visibility" Value="Collapsed"/>
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </ItemsControl.Style>
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                     <UniformGrid VerticalAlignment="Center" HorizontalAlignment="Center" Rows="10" Columns="14"/>
@@ -62,9 +53,9 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Button Template="{StaticResource DisabledBlackButton}" Width="60" Height="60" Command="{Binding PartClickCommand}" CommandParameter="{Binding}">
+                    <Button Template="{StaticResource DisabledBlackButton}" MinWidth="50" Width="auto" MinHeight="50" Height="auto" Command="{Binding PartClickCommand}" CommandParameter="{Binding}">
                         <Button.Content>
-                            <Image Source="{Binding PartImage, Converter={StaticResource ImageConverter}}" Stretch="Fill"/>
+                            <Image Source="{Binding PartImage, Converter={StaticResource ImageConverter}}"/>
                         </Button.Content>
                         <Button.Style>
                             <Style TargetType="Button">
@@ -85,26 +76,24 @@
                 </Style>
             </ItemsControl.ItemContainerStyle>
         </ItemsControl>
-        <Label Grid.Row="1" Grid.Column="1" HorizontalContentAlignment="Center" HorizontalAlignment="Center" Margin="0,26,0,189"
-               Target="{Binding ElementName=selectedPartButton}" Width="150" Content="Kiválasztott elem"/>
 
-        <Button Command="{Binding RotateSelectedCommand}" CommandParameter="-1" Content="Forgatás balra (Q)"
-                Grid.Row="1" Grid.Column="1" VerticalAlignment="Top" HorizontalAlignment="Left"
-                Width="150" Height="50" Margin="111,130,0,0"/>
-        <Button Command="{Binding RotateSelectedCommand}" CommandParameter="11" Content="Forgatás jobbra (E)"
-                Grid.Row="1" Grid.Column="1" VerticalAlignment="Top" HorizontalAlignment="Left"
-                Width="150" Height="50" Margin="508,130,0,0"/>
-        <Button Template="{StaticResource DisabledBlackButton}" Foreground="Black" Name="selectedPartButton" Grid.Column="1" Grid.Row="1"
-                HorizontalAlignment="Center" Margin="0,60,0,10" Width="200" Height="200" Command="{Binding PutBackSelectedCommand}">
-            <Button.Content>
-                <Image Source="{Binding SelectedPartImage, Converter={StaticResource ImageConverter}}">
-                    <Image.LayoutTransform>
-                        <RotateTransform Angle="{Binding SelectedPartAngle}"/>
-                    </Image.LayoutTransform>
-                </Image>
-            </Button.Content>
-        </Button>
-
+        <StackPanel HorizontalAlignment="Center" Orientation="Horizontal" Margin="10" Grid.Row="1" Grid.Column="1">
+            <Button Command="{Binding RotateSelectedCommand}" CommandParameter="-1" Content="Forgatás balra (Q)" Width="150" Height="50"/>
+            <StackPanel Orientation="Vertical" Margin="20">
+                <Label Grid.Row="1" Grid.Column="1" Target="{Binding ElementName=selectedPartButton}" Margin="0 0 0 0" HorizontalAlignment="Center" Content="Kiválasztott elem"/>
+                <Button Template="{StaticResource DisabledBlackButton}" Foreground="Black" Name="selectedPartButton" Width="150" Height="150" Command="{Binding PutBackSelectedCommand}">
+                    <Button.Content>
+                        <Image Source="{Binding SelectedPartImage, Converter={StaticResource ImageConverter}}" MaxHeight="150" MaxWidth="150" Stretch="Fill" StretchDirection="Both">
+                            <Image.LayoutTransform>
+                                <RotateTransform Angle="{Binding SelectedPartAngle}"/>
+                            </Image.LayoutTransform>
+                        </Image>
+                    </Button.Content>
+                </Button>
+            </StackPanel>
+            <Button Command="{Binding RotateSelectedCommand}" CommandParameter="1" Content="Forgatás jobbra (E)" Width="150" Height="50"/>
+        </StackPanel>
+        
         <ItemsControl VerticalAlignment="Center" HorizontalAlignment="Center" ItemsSource="{Binding ShipParts}" Margin="10" Grid.Row="2" Grid.Column="1">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
@@ -113,7 +102,14 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Button Template="{StaticResource DisabledBlackButton}" Width="60" Height="60" Command="{Binding PartClickCommand}" CommandParameter="{Binding}">
+                    <Button Template="{StaticResource DisabledBlackButton}" MinWidth="50" Width="auto" MinHeight="50" Height="auto" Command="{Binding PartClickCommand}" CommandParameter="{Binding}">
+                        <Button.Content>
+                            <Image Source="{Binding PartImage, Converter={StaticResource ImageConverter}}">
+                                <Image.LayoutTransform>
+                                    <RotateTransform Angle="{Binding Angle}"/>
+                                </Image.LayoutTransform>
+                            </Image>
+                        </Button.Content>
                         <Button.Style>
                             <Style TargetType="Button">
                                 <Style.Triggers>
@@ -121,15 +117,6 @@
                                         <Setter Property="Visibility" Value="Hidden"/>
                                     </DataTrigger>
                                 </Style.Triggers>
-                                <Setter Property="Content">
-                                    <Setter.Value>
-                                        <Image Source="{Binding PartImage, Converter={StaticResource ImageConverter}}">
-                                            <Image.LayoutTransform>
-                                                <RotateTransform Angle="{Binding Angle}"/>
-                                            </Image.LayoutTransform>
-                                        </Image>
-                                    </Setter.Value>
-                                </Setter>
                                 <Setter Property="ToolTip" Value="{Binding PartContentsDescription}"/>
                             </Style>
                         </Button.Style>

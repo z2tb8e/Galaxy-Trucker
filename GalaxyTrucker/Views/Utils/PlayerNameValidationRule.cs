@@ -10,6 +10,10 @@ namespace GalaxyTrucker.Views.Utils
 
         public override ValidationResult Validate(object value, CultureInfo cultureInfo)
         {
+            if(((string)value).Length < 2)
+            {
+                return new ValidationResult(false, "A játékos neve legalább 2 karaktert tartalmazzon!");
+            }
             if(((string)value).All(c => char.IsLetter(c)))
             {
                 return ValidationResult.ValidResult;

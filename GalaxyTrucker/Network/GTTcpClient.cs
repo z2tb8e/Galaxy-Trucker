@@ -202,6 +202,8 @@ namespace GalaxyTrucker.Network
 
         #endregion
 
+        #region ctor
+
         public GTTcpClient()
         {
             PlayerInfos = new Dictionary<PlayerColor, PlayerInfo>();
@@ -212,6 +214,8 @@ namespace GalaxyTrucker.Network
             _pingTimer = new Timer(PingInterval);
             Crashed = false;
         }
+
+        #endregion
 
         #region public methods
 

@@ -14,8 +14,6 @@ namespace GalaxyTrucker.ViewModels
         #region fields
 
         private const int DefaultPort = 11000;
-        private const string DefaultIp = "192.168.1.110";
-        private const string DefaultName = "Teszt";
 
         private readonly PlayerListViewModel _playerList;
         private ObservableCollection<ShipLayout> _layoutOptions;
@@ -210,8 +208,7 @@ namespace GalaxyTrucker.ViewModels
             HostIp = ipHostInfo.AddressList.Where(ip => ip.AddressFamily == AddressFamily.InterNetwork).First().ToString();
             ConnectInProgress = false;
             RemotePort = DefaultPort;
-            RemoteIp = DefaultIp;
-            PlayerName = DefaultName;
+            RemoteIp = HostIp;
             _client = client;
             _client.BuildingBegun += Client_BuildingBegun;
             _playerList.LostConnection += PlayerList_LostConnection;

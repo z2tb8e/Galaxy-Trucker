@@ -121,33 +121,36 @@
         </ComboBox>
 
         <TextBlock Margin="10" Grid.Row="4" Grid.Column="1" TextWrapping="Wrap" Grid.ColumnSpan="3" Text="{Binding Error}"/>
-            <Button Width="100"  Height="30" Grid.Column="3" Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,80"
-                Command="{Binding HostCommand}" Content="Várakozó indítása">
-            <Button.Style>
-                <Style TargetType="Button">
-                    <Setter Property="IsEnabled" Value="False"/>
-                    <Style.Triggers>
-                        <MultiDataTrigger>
-                            <MultiDataTrigger.Conditions>
-                                <Condition Binding="{Binding Path=(Validation.HasError), ElementName=nameTextBox}" Value="False"/>
-                                <Condition Binding="{Binding Path=(Validation.HasError), ElementName=hostPortTextBox}" Value="False"/>
-                            </MultiDataTrigger.Conditions>
-                            <Setter Property="IsEnabled" Value="True"/>
-                        </MultiDataTrigger>
-                        <DataTrigger Binding="{Binding IsConnected}" Value="True">
-                            <Setter Property="IsEnabled" Value="False"/>
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </Button.Style>
-        </Button>
 
-        <Button Height="30" Grid.Column="3" Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,45"
-                IsEnabled="{Binding IsConnected}" Command="{Binding ReadyCommand}" Width="100" Content="Készenlét állítása"/>
-        
-        <Button Height="30" Grid.Column="3" Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,10"
-                Command="{Binding LaunchBuildingCommand}" Width="100" Content="Játék indítása"/>
-        
+        <StackPanel Orientation="Vertical" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="5" Grid.Row="3" Grid.Column="3">
+            <Button Width="100" Height="30" Command="{Binding HostCommand}" Content="Várakozó indítása">
+                <Button.Style>
+                    <Style TargetType="Button">
+                        <Setter Property="IsEnabled" Value="False"/>
+                        <Style.Triggers>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding Path=(Validation.HasError), ElementName=nameTextBox}" Value="False"/>
+                                    <Condition Binding="{Binding Path=(Validation.HasError), ElementName=hostPortTextBox}" Value="False"/>
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="IsEnabled" Value="True"/>
+                            </MultiDataTrigger>
+                            <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                                <Setter Property="IsEnabled" Value="False"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding PlayerName}" Value="{x:Null}">
+                                <Setter Property="IsEnabled" Value="False"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+            
+            <Button Height="30" Margin="0 10 0 0" IsEnabled="{Binding IsConnected}" Command="{Binding ReadyCommand}" Width="100" Content="Készenlét állítása"/>
+
+            <Button Height="30" Margin="0 10 0 0" Command="{Binding LaunchBuildingCommand}" Width="100" Content="Játék indítása"/>
+        </StackPanel>
+
         <TextBlock Margin="10" Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="1" Text="{Binding ConnectionStatus}"></TextBlock>
     </Grid>
 </UserControl>

@@ -80,7 +80,6 @@ namespace GalaxyTrucker
 
         #endregion
 
-
         #region lobby event handlers
 
         private void LobbyViewModel_BackToMenu(object sender, bool isHost)

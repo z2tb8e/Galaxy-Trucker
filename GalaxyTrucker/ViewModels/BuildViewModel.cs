@@ -227,7 +227,7 @@ namespace GalaxyTrucker.ViewModels
 
             foreach(BuildPartViewModel item in PickableParts)
             {
-                item.PartClickCommand = new DelegateCommand(param => !_client.IsReady, param =>
+                item.PartClickCommand = new DelegateCommand(param => !_client.IsReady && !_buildingEnded, param =>
                 {
                     if (!_lastPickResolved)
                     {
