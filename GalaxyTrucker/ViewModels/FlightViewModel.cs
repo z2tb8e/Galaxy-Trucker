@@ -441,8 +441,9 @@ namespace GalaxyTrucker.ViewModels
             AddPopUpMessage($"{e.GetDescription()} játékos kiszállt a versenyből!");
         }
 
-        private void Client_CardPicked(object sender, EventArgs e)
+        private void Client_CardPicked(object sender, int e)
         {
+            AddPopUpMessage($"Új kártya, hátravan még: {e}");
             OptionsOrSubEvents.Clear();
             CardEvent card = _client.Card;
             CurrentCardDescription = card.GetDescription();

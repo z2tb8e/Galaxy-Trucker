@@ -10,6 +10,8 @@ using GalaxyTrucker.Model;
 
 namespace GalaxyTrucker.Network
 {
+    #region helper classes
+
     /// <summary>
     /// Exception thrown when a server message indicates that the client is out of sync with it.
     /// </summary>
@@ -42,6 +44,8 @@ namespace GalaxyTrucker.Network
             IsFlying = true;
         }
     }
+
+    #endregion
 
     public class GTTcpClient
     {
@@ -158,7 +162,7 @@ namespace GalaxyTrucker.Network
         /// <summary>
         /// Event raised when the server sends a message that a card was picked
         /// </summary>
-        public event EventHandler CardPicked;
+        public event EventHandler<int> CardPicked;
 
         /// <summary>
         /// Event raised when the server sends a message that this player received the effects of the current card
@@ -669,8 +673,9 @@ namespace GalaxyTrucker.Network
                 throw new OutOfSyncException();
             }
             Card = parts[1].ToCardEvent();
+            int remainingCount = int.Parse(parts[2]);
             IsReady = false;
-            CardPicked?.Invoke(this, EventArgs.Empty);
+            CardPicked?.Invoke(this, remainingCount);
         }
 
         private void PingTimer_Elapsed(object sender, ElapsedEventArgs e)
