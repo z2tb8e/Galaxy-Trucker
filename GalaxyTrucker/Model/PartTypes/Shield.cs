@@ -4,7 +4,7 @@
     {
         private bool _activated;
 
-        public (Direction, Direction) Directions => (Rotation, (Direction)((int)Rotation + 1));
+        public (Direction, Direction) Directions => (Rotation, (Direction)(((int)Rotation + 1) % 4));
 
         public Shield(Connector Top, Connector Right, Connector Bottom, Connector Left) : base(Top, Right, Bottom, Left)
         {

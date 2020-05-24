@@ -539,6 +539,7 @@ namespace GalaxyTrucker.Network
                 _pingTimer.Dispose();
                 throw new OutOfSyncException();
             }
+            Card.Dispose();
             _serverStage = ServerStage.PastFlight;
             FlightEnded?.Invoke(this, EventArgs.Empty);
         }
@@ -671,6 +672,10 @@ namespace GalaxyTrucker.Network
                 _pingTimer.Stop();
                 _pingTimer.Dispose();
                 throw new OutOfSyncException();
+            }
+            if(Card != null)
+            {
+                Card.Dispose();
             }
             Card = parts[1].ToCardEvent();
             int remainingCount = int.Parse(parts[2]);

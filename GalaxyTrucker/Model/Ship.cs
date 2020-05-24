@@ -20,8 +20,6 @@ namespace GalaxyTrucker.Model
         private bool _hasLaserAlien;
         private int _cash;
 
-        private readonly bool[] _shieldedDirections;
-
         #endregion
 
         #region properties
@@ -101,6 +99,8 @@ namespace GalaxyTrucker.Model
 
         #endregion
 
+        #region ctor
+
         /// <summary>
         /// Constructor for the ship class, setting the fields in which parts can be placed in, as well as placing the cockpit and setting the player colour.
         /// </summary>
@@ -108,7 +108,6 @@ namespace GalaxyTrucker.Model
         /// <param name="color">The color indicating the owner of the ship</param>
         public Ship(ShipLayout layout, PlayerColor color)
         {
-            _shieldedDirections = Enumerable.Repeat(false, 4).ToArray();
             Cash = 0;
             _hasEngineAlien = false;
             _hasLaserAlien = false;
@@ -130,6 +129,8 @@ namespace GalaxyTrucker.Model
                 _ => 11,
             };
         }
+
+        #endregion
 
         #region public methods
 
@@ -160,7 +161,7 @@ namespace GalaxyTrucker.Model
 
         public Part GetCockpit()
         {
-            return _parts.Cast<Part>().First(p => p is Cockpit);
+            return _parts.Cast<Part>().FirstOrDefault(p => p is Cockpit);
         }
 
         public bool IsValidField(int row, int column)
@@ -260,10 +261,6 @@ namespace GalaxyTrucker.Model
                         break;
                 }
             }
-            for (int i = 0; i < 4; ++i)
-            {
-                _shieldedDirections[i] = false;
-            }
             FlightAttributesChanged?.Invoke(this, EventArgs.Empty);
         }
 
@@ -300,15 +297,25 @@ namespace GalaxyTrucker.Model
         /// </summary>
         public void ApplyPandemic()
         {
+            List<Cabin> applicableCabins = new List<Cabin>();
+
             IEnumerable<Cabin> cabins = _parts.Cast<Part>().Where(p => p is Cabin).Select(p => p as Cabin);
             foreach(Cabin item in cabins)
             {
                 if (item.Personnel != Personnel.None &&
                     item.Neighbours.Any(p => p is Cabin && (p as Cabin).Personnel != Personnel.None))
                 {
-                    item.RemoveSinglePersonnel();
+                    //if crew was removed here, and the cabin becomes empty,
+                    //the next cabin would register it as empty, thus not removing their personnel
+                    applicableCabins.Add(item);
                 }
             }
+
+            foreach(Cabin item in applicableCabins)
+            {
+                item.RemoveSinglePersonnel();
+            }
+
             if (HumanCount == 0)
             {
                 Wrecked?.Invoke(this, WreckedSource.OutOfHumans);
@@ -344,10 +351,12 @@ namespace GalaxyTrucker.Model
             int targetRow = partsInLine.First().Row;
             int targetColumn = partsInLine.First().Column;
 
+            HashSet<Direction> shieldedDirections = GetShieldedDirections();
+
             switch (projectile)
             {
                 case Projectile.MeteorSmall:
-                    if(partsInLine.First().GetConnector(dir) != Connector.None && !_shieldedDirections[(int)dir])
+                    if(partsInLine.First().GetConnector(dir) != Connector.None && !shieldedDirections.Contains(dir))
                     {
                         RemovePartAtIndex(targetRow, targetColumn);
                     }
@@ -359,7 +368,7 @@ namespace GalaxyTrucker.Model
                     }
                     break;
                 case Projectile.ShotSmall:
-                    if (!_shieldedDirections[(int)dir])
+                    if (!shieldedDirections.Contains(dir))
                     {
                         RemovePartAtIndex(targetRow, targetColumn);
                     }
@@ -404,23 +413,23 @@ namespace GalaxyTrucker.Model
         /// Method to remove the supplied number of wares from the ship, prioritizing the highest value wares.
         /// </summary>
         /// <param name="count">The number of wares to remove</param>
-        public void RemoveWares(int count)
+        public int RemoveWares(int count)
         {
             if(_storages.Count == 0)
             {
-                return;
+                return 0;
             }
             int amountLeft = count;
-            Ware max;
-            while (amountLeft > 0 && (max = _storages.Max(x => x.Max)) != Ware.Empty)
+            Ware max = _storages.Max(storage => storage.Max);
+            while (amountLeft > 0 && max != Ware.Empty)
             {
-                int i = 0;
-                while(i < _storages.Count() && _storages[i].Max == max && amountLeft > 0)
-                {
-                    _storages[i].RemoveMax();
-                }
-                ++i;
+                Storage storage = _storages.First(st => st.Max == max);
+                storage.RemoveMax();
+                --amountLeft;
+
+                max = _storages.Max(storage => storage.Max);
             }
+            return (count - amountLeft);
         }
 
         /// <summary>
@@ -473,7 +482,7 @@ namespace GalaxyTrucker.Model
         /// </summary>
         /// <param name="row"></param>
         /// <param name="column"></param>
-        public void ActivatePart(int row, int column)
+        public void ActivatePartAt(int row, int column)
         {
             Part current = _parts[row, column];
             if (!(current is IActivatable))
@@ -484,24 +493,32 @@ namespace GalaxyTrucker.Model
             {
                 case LaserDouble l:
                     if (l.Activated)
+                    {
                         return;
-                    if(SpendEnergy())
+                    }
+                    if (SpendEnergy())
+                    {
                         l.Activate();
+                    }
                     break;
                 case EngineDouble e:
                     if (e.Activated)
+                    {
                         return;
+                    }
                     if (SpendEnergy())
+                    {
                         e.Activate();
+                    }
                     break;
                 case Shield s:
                     if (s.Activated)
+                    {
                         return;
+                    }
                     if (SpendEnergy())
                     {
                         s.Activate();
-                        _shieldedDirections[(int)s.Directions.Item1] = true;
-                        _shieldedDirections[(int)s.Directions.Item2] = true;
                     }
                     break;
             }
@@ -689,7 +706,7 @@ namespace GalaxyTrucker.Model
         }
 
         /// <summary>
-        /// Method to actually remove a part from the ship, while removing other references and influences
+        /// Method to actually remove a part from the ship, while removing other references and effects
         /// </summary>
         /// <param name="current"></param>
         /// <param name="neighbours"></param>
@@ -762,6 +779,18 @@ namespace GalaxyTrucker.Model
             }
             (battery as Battery).UseCharge();
             return true;
+        }
+
+        private HashSet<Direction> GetShieldedDirections()
+        {
+            IEnumerable<Shield> activeShields = _parts.Cast<Part>().Where(p => p is Shield && (p as Shield).Activated).Select(p => p as Shield);
+            HashSet<Direction> ret = new HashSet<Direction>();
+            foreach(Shield item in activeShields)
+            {
+                ret.Add(item.Directions.Item1);
+                ret.Add(item.Directions.Item2);
+            }
+            return ret;
         }
     }
 

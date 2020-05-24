@@ -1,6 +1,6 @@
 ﻿namespace GalaxyTrucker.Model
 {
-    interface IActivatable
+    public interface IActivatable
     {
         bool Activated { get; }
 

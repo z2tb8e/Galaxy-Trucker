@@ -25,28 +25,32 @@ namespace GalaxyTrucker.Model.PartTypes
         public void AddWare(Ware ware)
         {
             if (ware <= Min || !CanAdd(ware))
+            {
                 return;
+            }
             for(int i = 0; i < Capacity; ++i)
+            {
                 if(_storage[i] == Min)
                 {
                     _storage[i] = ware;
                     OnContentsChanged();
                     return;
                 }
+            }
         }
 
         public void RemoveMax()
         {
             for(int i = 0; i < Capacity; ++i)
+            {
                 if (_storage[i] == Max)
                 {
                     _storage[i] = Ware.Empty;
                     OnContentsChanged();
                     return;
                 }
+            }
         }
-
-        public Ware GetMaxWare() => _storage.Max();
 
         public override string ToString()
         {

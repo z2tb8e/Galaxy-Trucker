@@ -217,7 +217,7 @@ namespace GalaxyTrucker.ViewModels
                 {
                     if (!_client.Crashed && part.Highlighted && !_gameOver)
                     {
-                        _ship.ActivatePart(part.Row, part.Column);
+                        _ship.ActivatePartAt(part.Row, part.Column);
                         foreach(FlightPartViewModel item in ShipParts)
                         {
                             if (item.Highlighted)

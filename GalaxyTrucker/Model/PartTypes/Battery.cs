@@ -25,12 +25,14 @@
             this.Capacity = Charges = Capacity;
         }
 
-        public void UseCharge()
+        public bool UseCharge()
         {
             if (Charges > 0)
             {
                 --Charges;
+                return true;
             }
+            return false;
         }
 
         public override string ToString()

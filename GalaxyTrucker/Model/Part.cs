@@ -54,6 +54,10 @@ namespace GalaxyTrucker.Model
         /// <param name="leftOrRight">-1, if left, 1, if right</param>
         public virtual void Rotate(int leftOrRight)
         {
+            if(leftOrRight != 1 && leftOrRight != -1)
+            {
+                throw new ArgumentOutOfRangeException();
+            }
             int enumValue = ((int)Rotation + leftOrRight + 4) % 4;
             Rotation = (Direction)enumValue;
         }

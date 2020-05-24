@@ -4,7 +4,7 @@ using System.Threading;
 
 namespace GalaxyTrucker.Model
 {
-    public abstract class CardEvent
+    public abstract class CardEvent : IDisposable
     {
         private readonly AutoResetEvent _proceedEvent;
         private int _lastResolved;
@@ -58,6 +58,11 @@ namespace GalaxyTrucker.Model
         {
             DiceRolled?.Invoke(this, new DiceRolledEventArgs(projectile, direction, number));
             _proceedEvent.WaitOne();
+        }
+
+        public void Dispose()
+        {
+            _proceedEvent.Dispose();
         }
     }
 }
