@@ -55,9 +55,9 @@ namespace GalaxyTrucker.Model
             int spaceBetween = (int)stage + 2;
             for(int i = 0; i < initialOrder.Count; ++i)
             {
-                int spaceValue = StartingValue - (i * spaceBetween);
-                _playerPlaces[spaceValue] = new PlaceProperty(initialOrder[i], spaceValue);
-                _properties.Add(initialOrder[i], _playerPlaces[spaceValue]);
+                int placeValue = StartingValue - (i * spaceBetween);
+                _playerPlaces[placeValue] = new PlaceProperty(initialOrder[i], placeValue);
+                _properties.Add(initialOrder[i], _playerPlaces[placeValue]);
             }
         }
 

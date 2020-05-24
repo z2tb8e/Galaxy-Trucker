@@ -88,7 +88,7 @@ namespace GalaxyTrucker.ViewModels
         public void Remove()
         {
             _part = null;
-            _partImage = null;
+            PartImage = null;
             PartClickCommand = null;
         }
 

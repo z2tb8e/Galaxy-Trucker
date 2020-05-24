@@ -20,14 +20,17 @@ namespace GalaxyTrucker.ViewModels
             }
         }
 
+        public int PlaceValue { get; }
+
         public int Row { get; }
 
         public int Column { get; }
 
-        public OrderFieldViewModel(int row, int column)
+        public OrderFieldViewModel(int row, int column, int placeValue)
         {
             Row = row;
             Column = column;
+            PlaceValue = placeValue;
         }
     }
 }

@@ -318,7 +318,7 @@ namespace GalaxyTrucker.ViewModels
 
         private void Ship_PartRemoved(object sender, PartRemovedEventArgs e)
         {
-            FlightPartViewModel removedPart = ShipParts.First(p => p.Row == e.Row && p.Column == p.Column);
+            FlightPartViewModel removedPart = ShipParts.First(p => p.Row == e.Row && p.Column == e.Column);
             removedPart.Remove();
         }
 
@@ -336,6 +336,7 @@ namespace GalaxyTrucker.ViewModels
 
             StatusMessage = $"{resultMessage}\n{StatusMessage}";
 
+            OptionsOrSubEvents.Clear();
             CurrentCardDescription = "Vissza a menübe...";
             CurrentCardToolTip = null;
 
@@ -523,25 +524,26 @@ namespace GalaxyTrucker.ViewModels
         {
             //Fill up the collection in that order, to make later use easier
             PlayerOrderFields = new ObservableCollection<OrderFieldViewModel>();
+            int placeValue = 0;
             for(int i = 7; i <= 14; ++i)
             {
-                PlayerOrderFields.Add(new OrderFieldViewModel(0, i));
+                PlayerOrderFields.Add(new OrderFieldViewModel(0, i, placeValue++));
             }
             for(int j = 1; j <= 6; ++j)
             {
-                PlayerOrderFields.Add(new OrderFieldViewModel(j, 14));
+                PlayerOrderFields.Add(new OrderFieldViewModel(j, 14, placeValue++));
             }
             for(int i = 13; i >= 0; --i)
             {
-                PlayerOrderFields.Add(new OrderFieldViewModel(6, i));
+                PlayerOrderFields.Add(new OrderFieldViewModel(6, i, placeValue++));
             }
             for(int j = 5; j >= 0; --j)
             {
-                PlayerOrderFields.Add(new OrderFieldViewModel(j, 0));
+                PlayerOrderFields.Add(new OrderFieldViewModel(j, 0, placeValue++));
             }
             for(int i = 0; i < 7; ++i)
             {
-                PlayerOrderFields.Add(new OrderFieldViewModel(0, i));
+                PlayerOrderFields.Add(new OrderFieldViewModel(0, i, placeValue++));
             }
 
             //Put on the tokens
@@ -563,7 +565,7 @@ namespace GalaxyTrucker.ViewModels
                     PlayerColor.Red => Resources.token_red,
                     _ => Resources.token_yellow
                 };
-                PlayerOrderFields[pair.Value.PlaceValue].Token = token;
+                PlayerOrderFields.First(field => field.PlaceValue == pair.Value.PlaceValue).Token = token;
             }
         }
 
