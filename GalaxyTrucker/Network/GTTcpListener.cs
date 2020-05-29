@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -128,6 +129,15 @@ namespace GalaxyTrucker.Network
 
         public GTTcpListener(int port, GameStage gameStage, bool doLogging = true)
         {
+            //check if there's an active listener bound to the given port
+            IPGlobalProperties iPGlobalProperties = IPGlobalProperties.GetIPGlobalProperties();
+            IPEndPoint[] usedEndPoints = iPGlobalProperties.GetActiveTcpListeners();
+            if(usedEndPoints.Any(endpoint => endpoint.Port == port))
+            {
+                //error code for address already being in use
+                throw new SocketException(10048);
+            }
+
             _cts = new CancellationTokenSource();
 
             _gameStage = gameStage;

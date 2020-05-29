@@ -215,10 +215,17 @@ namespace GalaxyTrucker.ViewModels
 
             HostCommand = new DelegateCommand(param => Server == null, param =>
             {
-                Server = new GTTcpListener(Port, SelectedGameStage);
-                Task.Factory.StartNew(() => Server.Start(), TaskCreationOptions.RunContinuationsAsynchronously | TaskCreationOptions.LongRunning);
-                Ip = "127.0.0.1";
-                ConnectCommand.Execute(null);
+                try
+                {
+                    Server = new GTTcpListener(Port, SelectedGameStage);
+                    Task.Factory.StartNew(() => Server.Start(), TaskCreationOptions.RunContinuationsAsynchronously | TaskCreationOptions.LongRunning);
+                    Ip = "127.0.0.1";
+                    ConnectCommand.Execute(null);
+                }
+                catch (SocketException)
+                {
+                    Error = "Az adott port már használatban van!";
+                }
             });
 
             ConnectCommand = new DelegateCommand(param => !ConnectInProgress && !IsConnected, param => Connect());
