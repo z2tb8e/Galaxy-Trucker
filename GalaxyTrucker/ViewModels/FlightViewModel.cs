@@ -2,6 +2,7 @@
 using GalaxyTrucker.Network;
 using GalaxyTrucker.Properties;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Linq;
@@ -272,7 +273,7 @@ namespace GalaxyTrucker.ViewModels
                 }
             });
 
-            ReadyCommand = new DelegateCommand(param => !_client.Crashed && _roundResolved && _client.Card.IsResolved() && !_gameOver, param =>
+            ReadyCommand = new DelegateCommand(param => !_client.Crashed && _roundResolved && _client.Card.IsResolved() && !_gameOver && !_isWaiting, param =>
             {
                 _client.ToggleReady(ServerStage.Flight);
                 _roundResolved = false;
@@ -362,9 +363,9 @@ namespace GalaxyTrucker.ViewModels
             int fromBonus = (_ship.Penalty == 0 && _ship.GetOpenConnectorCount() == 0) ? ((int)_client.GameStage + 1) * 2 : 0;
 
             //-1 if not in list AKA when the player crashed
-            int placement = 4 - _client.PlayerOrder.FindIndex(item => item == _client.Player);
+            int placement =  _client.PlayerOrder.FindIndex(item => item == _client.Player);
 
-            int fromPlacement = placement * ((int)_client.GameStage + 1);
+            int fromPlacement = placement == -1 ? 0 : (3 - placement) * ((int)_client.GameStage + 1);
 
             int sum = fromCards + fromWares + fromPenalty + fromBonus + fromPlacement;
 

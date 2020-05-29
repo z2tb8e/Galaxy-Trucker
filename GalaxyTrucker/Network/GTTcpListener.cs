@@ -260,20 +260,27 @@ namespace GalaxyTrucker.Network
         /// </summary>
         public void Close()
         {
-            _cts.Cancel();
-            Thread.Sleep(500);
-            _pingTimer.Stop();
-            _pingTimer.Dispose();
-            _cts.Dispose();
-            foreach (ConnectionInfo connection in _connections.Values)
+            try
             {
-                if (connection.Client != null)
+                _cts.Cancel();
+                Thread.Sleep(500);
+                _pingTimer.Stop();
+                _pingTimer.Dispose();
+                _cts.Dispose();
+                foreach (ConnectionInfo connection in _connections.Values)
                 {
-                    connection.Client.Close();
+                    if (connection.Client != null)
+                    {
+                        connection.Client.Close();
+                    }
                 }
+                _listener.Stop();
+                LogAsync("Server successfully closed.");
             }
-            _listener.Stop();
-            LogAsync("Server successfully closed.");
+            catch(Exception e)
+            {
+                LogAsync($"Error while closing server: {e.Message}");
+            }
         }
 
         #endregion
