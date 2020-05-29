@@ -259,7 +259,7 @@ namespace GalaxyTrucker.ViewModels
                     if (!_client.IsReady && _buildingEnded)
                     {
                         _ship.FillCabins();
-                        _client.StartFlightStage(_ship.Firepower, _ship.Enginepower, _ship.CrewCount, _ship.StorageCount, _ship.Batteries);
+                        _client.StartFlightStage(_ship.Firepower, _ship.Enginepower, _ship.CrewCount, _ship.StorageSize, _ship.Batteries);
                         return;
                     }
 
@@ -340,18 +340,18 @@ namespace GalaxyTrucker.ViewModels
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void Client_PartPicked(object sender, PartPickedEventArgs e)
+        private void Client_PartPicked(object sender, Part e)
         {
             //If another client just took the part, the Part component is null
             //The part taken event will be raised, so the part won't be removed here
-            if (e.Part == null)
+            if (e == null)
             {
                 MessageBox.Show("Az adott alkatrészt már más elvitte!");
                 return;
             }
             SelectedPart.IsValidField = false;
-            SelectedPart.Part = e.Part;
-            SelectedPart.PartImage = PartBuilder.GetPartImage(e.Part);
+            SelectedPart.Part = e;
+            SelectedPart.PartImage = PartBuilder.GetPartImage(e);
             _lastPickResolved = true;
             OnPropertyChanged(nameof(SelectedPartImage));
         }

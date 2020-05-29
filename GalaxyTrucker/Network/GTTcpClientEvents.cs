@@ -40,28 +40,6 @@ namespace GalaxyTrucker.Network
     }
 
     /// <summary>
-    /// Event args to carry information regarding one player
-    /// </summary>
-    public class PlayerEventArgs : EventArgs
-    {
-        public PlayerColor Player { get; set; }
-
-        public PlayerEventArgs(PlayerColor player) =>
-            Player = player;
-    }
-
-    /// <summary>
-    /// Event args for sending the response of this client picking a part
-    /// </summary>
-    public class PartPickedEventArgs : EventArgs
-    {
-        public Part Part { get; set; }
-
-        public PartPickedEventArgs(Part part) =>
-            Part = part;
-    }
-
-    /// <summary>
     /// Event args for signaling that another player connected
     /// </summary>
     public class PlayerConnectedEventArgs : EventArgs

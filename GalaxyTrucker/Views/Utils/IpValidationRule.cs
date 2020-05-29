@@ -5,9 +5,9 @@ using System.Windows.Controls;
 
 namespace GalaxyTrucker.Views.Utils
 {
-    public class RemoteIpValidationRule : ValidationRule
+    public class IpValidationRule : ValidationRule
     {
-        public RemoteIpValidationRule() { }
+        public IpValidationRule() { }
 
         public override ValidationResult Validate(object value, CultureInfo cultureInfo)
         {

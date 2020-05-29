@@ -23,7 +23,7 @@ namespace GalaxyTrucker.Model
 
         public event EventHandler ContentsChanged;
 
-        protected Part(Connector Top, Connector Right, Connector Bottom, Connector Left)
+        public Part(Connector Top, Connector Right, Connector Bottom, Connector Left)
         {
             _connectors = new Connector[4]
             {

@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace GalaxyTrucker.Model.CardEventTypes
+namespace GalaxyTrucker.Model.CardTypes
 {
-    public class Planets : CardEvent
+    public class Planets : Card
     {
         private readonly bool[] _offersAvailable;
 

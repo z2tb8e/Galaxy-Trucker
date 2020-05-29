@@ -1,4 +1,5 @@
-﻿using GalaxyTrucker.Network;
+﻿using GalaxyTrucker.Model;
+using GalaxyTrucker.Network;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -87,15 +88,15 @@ namespace GalaxyTrucker.ViewModels
             LostConnection?.Invoke(this, EventArgs.Empty);
         }
 
-        private void Client_PlayerDisconnected(object sender, PlayerEventArgs e)
+        private void Client_PlayerDisconnected(object sender, PlayerColor e)
         {
-            PlayerInfoViewModel playerToRemove = ConnectedPlayers.First(item => item.Color == e.Player);
+            PlayerInfoViewModel playerToRemove = ConnectedPlayers.First(item => item.Color == e);
             ConnectedPlayers.Remove(playerToRemove);
         }
 
-        private void Client_PlayerReadied(object sender, PlayerEventArgs e)
+        private void Client_PlayerReadied(object sender, PlayerColor e)
         {
-            ConnectedPlayers.First(info => info.Color == e.Player).IsReady = _client.PlayerInfos[e.Player].IsReady;
+            ConnectedPlayers.First(info => info.Color == e).IsReady = _client.PlayerInfos[e].IsReady;
         }
 
         private void Client_PlayerConnected(object sender, PlayerConnectedEventArgs e)

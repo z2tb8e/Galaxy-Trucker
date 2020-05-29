@@ -4,9 +4,9 @@ using System.Windows.Controls;
 
 namespace GalaxyTrucker.Views.Utils
 {
-    public class RemotePortValidationRule : ValidationRule
+    public class PortValidationRule : ValidationRule
     {
-        public RemotePortValidationRule() { }
+        public PortValidationRule() { }
 
 
         public override ValidationResult Validate(object value, CultureInfo cultureInfo)

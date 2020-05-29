@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GalaxyTrucker.Model.CardEventTypes
+namespace GalaxyTrucker.Model.CardTypes
 {
-    public abstract class Encounter<PenaltyT, RewardT> : CardEvent
+    public abstract class Encounter<PenaltyT, RewardT> : Card
     {
         public int Firepower { get; }
 

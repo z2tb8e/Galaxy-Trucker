@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace GalaxyTrucker.Model.CardEventTypes
+namespace GalaxyTrucker.Model.CardTypes
 {
-    public class AbandonedStation : CardEvent
+    public class AbandonedStation : Card
     {
         public int MinimumCrew { get; }
 

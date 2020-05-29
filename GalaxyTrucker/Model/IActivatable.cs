@@ -2,10 +2,10 @@
 {
     public interface IActivatable
     {
-        bool Activated { get; }
+        public bool Activated { get; }
 
-        void Activate();
+        public void Activate();
 
-        void Deactivate();
+        public void Deactivate();
     }
 }

@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
 
-namespace GalaxyTrucker.Model.CardEventTypes
+namespace GalaxyTrucker.Model.CardTypes
 {
-    public class Stardust : CardEvent
+    public class Stardust : Card
     {
         public Stardust(GameStage stage) : base(stage)
         {
@@ -24,11 +24,6 @@ namespace GalaxyTrucker.Model.CardEventTypes
             return "Csillagpor.";
         }
 
-        public override string ToolTip()
-        {
-            return "Minden nyitott csatlakozó után veszítesz egy napot.";
-        }
-
         public override IEnumerable<OptionOrSubEvent> GetOptionsOrSubEvents()
         {
             return new List<OptionOrSubEvent>
@@ -44,6 +39,11 @@ namespace GalaxyTrucker.Model.CardEventTypes
                     Condition = ship => LastResolved == 0
                 }
             };
+        }
+
+        public override string ToolTip()
+        {
+            return "Minden nyitott csatlakozó után veszítesz egy napot.";
         }
     }
 }

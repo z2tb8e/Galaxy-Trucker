@@ -498,6 +498,16 @@ namespace GalaxyTrucker.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
+        internal static byte[] rules {
+            get {
+                object obj = ResourceManager.GetObject("rules", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
         internal static byte[] ShipLayouts {
             get {
                 object obj = ResourceManager.GetObject("ShipLayouts", resourceCulture);

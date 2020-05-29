@@ -14,7 +14,7 @@ namespace GalaxyTrucker.Model
         private readonly Part[,] _parts;
         private readonly int _penaltyCap;
         private int _penalty;
-        private readonly List<Part> _activatableParts;
+        private readonly List<IActivatable> _activatableParts;
         private readonly List<Storage> _storages;
         private bool _hasEngineAlien;
         private bool _hasLaserAlien;
@@ -52,7 +52,7 @@ namespace GalaxyTrucker.Model
             get
             {
                 int sum = _parts.Cast<Part>().Where(x => x is Laser).Sum(x => (x as Laser).Firepower);
-                sum += sum > 0 && _hasLaserAlien ? 2 : 0;
+                sum += sum > 0 && _hasLaserAlien ? 4 : 0;
                 return sum;
             }
         }
@@ -81,7 +81,7 @@ namespace GalaxyTrucker.Model
             _ => 1
         });
 
-        public int StorageCount => _parts.Cast<Part>().Where(x => x is Storage).Sum(x => (x as Storage).Capacity);
+        public int StorageSize => _parts.Cast<Part>().Where(x => x is Storage).Sum(x => (x as Storage).Capacity);
 
         public int Batteries => _parts.Cast<Part>().Where(x => x is Battery).Sum(x => (x as Battery).Charges);
 
@@ -113,7 +113,7 @@ namespace GalaxyTrucker.Model
             _hasLaserAlien = false;
             (int, int) cockpit;
             (cockpit, _movableFields) = LayoutReader.GetLayout(layout);
-            _activatableParts = new List<Part>();
+            _activatableParts = new List<IActivatable>();
             _storages = new List<Storage>();
             _parts = new Part[11, 11];
             _parts[cockpit.Item1, cockpit.Item2] = new Cockpit(color)
@@ -243,23 +243,9 @@ namespace GalaxyTrucker.Model
         /// </summary>
         public void ResetActivatables()
         {
-            foreach(Part p in _activatableParts)
+            foreach(IActivatable part in _activatableParts)
             {
-                switch (p)
-                {
-                    case Shield s:
-                        if (s.Activated)
-                            s.Deactivate();
-                        break;
-                    case LaserDouble l:
-                        if (l.Activated)
-                            l.Deactivate();
-                        break;
-                    case EngineDouble e:
-                        if (e.Activated)
-                            e.Deactivate();
-                        break;
-                }
+                part.Deactivate();
             }
             FlightAttributesChanged?.Invoke(this, EventArgs.Empty);
         }
@@ -267,25 +253,12 @@ namespace GalaxyTrucker.Model
         public bool HighlightActivatables()
         {
             bool ret = false;
-            foreach (Part p in _activatableParts)
+            foreach (IActivatable part in _activatableParts)
             {
-                switch (p)
+                if (!part.Activated)
                 {
-                    case Shield s:
-                        if (!s.Activated)
-                            s.Highlight();
-                        ret = true;
-                        break;
-                    case LaserDouble l:
-                        if (!l.Activated)
-                            l.Highlight();
-                        ret = true;
-                        break;
-                    case EngineDouble e:
-                        if (!e.Activated)
-                            e.Highlight();
-                        ret = true;
-                        break;
+                    (part as Part).Highlight();
+                    ret = true;
                 }
             }
             return ret;
@@ -613,7 +586,7 @@ namespace GalaxyTrucker.Model
             {
                 if (part is IActivatable)
                 {
-                    _activatableParts.Add(part);
+                    _activatableParts.Add(part as IActivatable);
                 }
                 else if (part is Storage)
                 {
@@ -714,7 +687,7 @@ namespace GalaxyTrucker.Model
         {
             if (current is IActivatable)
             {
-                _activatableParts.Remove(current);
+                _activatableParts.Remove(current as IActivatable);
             }
             else if (current is Storage)
             {

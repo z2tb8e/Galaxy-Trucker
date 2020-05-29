@@ -248,7 +248,7 @@ namespace GalaxyTrucker.ViewModels
             SendAttributesCommand = new DelegateCommand(param => !_client.Crashed && RequiresAttributes && !_gameOver, param =>
             {
                 RequiresAttributes = false;
-                _client.UpdateAttributes(_ship.Firepower, _ship.Enginepower, _ship.CrewCount, _ship.StorageCount, _ship.Batteries);
+                _client.UpdateAttributes(_ship.Firepower, _ship.Enginepower, _ship.CrewCount, _ship.StorageSize, _ship.Batteries);
             });
 
             CrashCommand = new DelegateCommand(param => !_client.Crashed && !_gameOver, param =>
@@ -305,7 +305,7 @@ namespace GalaxyTrucker.ViewModels
             CurrentAttributes.Firepower = _ship.Firepower;
             CurrentAttributes.Enginepower = _ship.Enginepower;
             CurrentAttributes.CrewCount = _ship.CrewCount;
-            CurrentAttributes.StorageSize = _ship.StorageCount;
+            CurrentAttributes.StorageSize = _ship.StorageSize;
             CurrentAttributes.Batteries = _ship.Batteries;
             OnPropertyChanged(nameof(CurrentAttributes));
         }
@@ -362,9 +362,9 @@ namespace GalaxyTrucker.ViewModels
             int fromBonus = (_ship.Penalty == 0 && _ship.GetOpenConnectorCount() == 0) ? ((int)_client.GameStage + 1) * 2 : 0;
 
             //-1 if not in list AKA when the player crashed
-            int placement = _client.PlayerOrder.FindIndex(item => item == _client.Player);
+            int placement = 4 - _client.PlayerOrder.FindIndex(item => item == _client.Player);
 
-            int fromPlacement = (placement + 1) * ((int)_client.GameStage + 1);
+            int fromPlacement = placement * ((int)_client.GameStage + 1);
 
             int sum = fromCards + fromWares + fromPenalty + fromBonus + fromPlacement;
 
@@ -446,7 +446,7 @@ namespace GalaxyTrucker.ViewModels
         {
             AddPopUpMessage($"Új kártya, hátravan még: {e}");
             OptionsOrSubEvents.Clear();
-            CardEvent card = _client.Card;
+            Card card = _client.Card;
             CurrentCardDescription = card.GetDescription();
             CurrentCardToolTip = card.ToolTip();
             RequiresAttributes = card.RequiresAttributes;

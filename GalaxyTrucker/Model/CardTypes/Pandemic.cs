@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
 
-namespace GalaxyTrucker.Model.CardEventTypes
+namespace GalaxyTrucker.Model.CardTypes
 {
-    public class Pandemic : CardEvent
+    public class Pandemic : Card
     {
         public Pandemic(GameStage stage) : base(stage)
         {

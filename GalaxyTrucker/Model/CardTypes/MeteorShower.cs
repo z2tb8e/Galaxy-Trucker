@@ -5,9 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GalaxyTrucker.Model.CardEventTypes
+namespace GalaxyTrucker.Model.CardTypes
 {
-    public class MeteorShower : CardEvent
+    public class MeteorShower : Card
     {
         public IEnumerable<(Projectile, Direction)> Projectiles { get; }
 

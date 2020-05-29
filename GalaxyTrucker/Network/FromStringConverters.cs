@@ -1,9 +1,10 @@
-﻿using GalaxyTrucker.Model.CardEventTypes;
+﻿using GalaxyTrucker.Model;
+using GalaxyTrucker.Model.CardTypes;
 using GalaxyTrucker.Model.PartTypes;
 using System;
 using System.Collections.Generic;
 
-namespace GalaxyTrucker.Model
+namespace GalaxyTrucker.Network
 {
     public static class FromStringConverters
     {
@@ -40,9 +41,9 @@ namespace GalaxyTrucker.Model
             return p;
         }
 
-        public static CardEvent ToCardEvent(this string str)
+        public static Card ToCardEvent(this string str)
         {
-            CardEvent ret;
+            Card ret;
 
             //First character indicates stage
 
@@ -178,13 +179,13 @@ namespace GalaxyTrucker.Model
                     WarzoneEvent<int> event1 = new WarzoneEvent<int>
                     (
                         (CardCheckAttribute)int.Parse("" + str[2]),
-                        (CardEventPenalty)int.Parse("" + str[3]),
+                        (CardPenalty)int.Parse("" + str[3]),
                         int.Parse("" + str[4])
                     );
                     WarzoneEvent<int> event2 = new WarzoneEvent<int>
                     (
                         (CardCheckAttribute)int.Parse("" + str[5]),
-                        (CardEventPenalty)int.Parse("" + str[6]),
+                        (CardPenalty)int.Parse("" + str[6]),
                         int.Parse("" + str[7])
                     );
                     List<(Projectile, Direction)> event3Projectiles = new List<(Projectile, Direction)>();
@@ -196,7 +197,7 @@ namespace GalaxyTrucker.Model
                     WarzoneEvent<List<(Projectile, Direction)>> event3 = new WarzoneEvent<List<(Projectile, Direction)>>
                     (
                         (CardCheckAttribute)int.Parse("" + str[8]),
-                        (CardEventPenalty)int.Parse("" + str[9]),
+                        (CardPenalty)int.Parse("" + str[9]),
                         event3Projectiles
                     );
                     ret = new Warzone(stage, event1, event2, event3);

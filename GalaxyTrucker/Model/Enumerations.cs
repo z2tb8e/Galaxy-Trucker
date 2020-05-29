@@ -104,7 +104,7 @@ namespace GalaxyTrucker.Model
         [Description("legénységszám")]
         CrewCount = 2
     }
-    public enum CardEventPenalty
+    public enum CardPenalty
     {
         [Description("késés")]
         Delay = 0,

@@ -53,7 +53,7 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Button Template="{StaticResource DisabledBlackButton}" MinWidth="50" Width="auto" MinHeight="50" Height="auto" Command="{Binding PartClickCommand}" CommandParameter="{Binding}">
+                    <Button Template="{StaticResource DisabledBlackButton}" Width="60" Height="60" Command="{Binding PartClickCommand}" CommandParameter="{Binding}">
                         <Button.Content>
                             <Image Source="{Binding PartImage, Converter={StaticResource ImageConverter}}"/>
                         </Button.Content>
@@ -83,7 +83,7 @@
                 <Label Grid.Row="1" Grid.Column="1" Target="{Binding ElementName=selectedPartButton}" Margin="0 0 0 0" HorizontalAlignment="Center" Content="Kiválasztott elem"/>
                 <Button Template="{StaticResource DisabledBlackButton}" Foreground="Black" Name="selectedPartButton" Width="150" Height="150" Command="{Binding PutBackSelectedCommand}">
                     <Button.Content>
-                        <Image Source="{Binding SelectedPartImage, Converter={StaticResource ImageConverter}}" MaxHeight="150" MaxWidth="150" Stretch="Fill" StretchDirection="Both">
+                        <Image Source="{Binding SelectedPartImage, Converter={StaticResource ImageConverter}}">
                             <Image.LayoutTransform>
                                 <RotateTransform Angle="{Binding SelectedPartAngle}"/>
                             </Image.LayoutTransform>

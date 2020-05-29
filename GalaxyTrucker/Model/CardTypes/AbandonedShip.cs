@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace GalaxyTrucker.Model.CardEventTypes
+namespace GalaxyTrucker.Model.CardTypes
 {
-    public class AbandonedShip : CardEvent
+    public class AbandonedShip : Card
     {
         public int CrewCost { get; }
 

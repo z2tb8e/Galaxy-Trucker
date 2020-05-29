@@ -4,7 +4,7 @@ using System.Threading;
 
 namespace GalaxyTrucker.Model
 {
-    public abstract class CardEvent : IDisposable
+    public abstract class Card : IDisposable
     {
         private readonly AutoResetEvent _proceedEvent;
         private int _lastResolved;
@@ -29,7 +29,7 @@ namespace GalaxyTrucker.Model
 
         public event EventHandler<DiceRolledEventArgs> DiceRolled;
 
-        public CardEvent(GameStage stage)
+        public Card(GameStage stage)
         {
             RequiresOrder = false;
             RequiresAttributes = false;

@@ -10,13 +10,16 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GalaxyTrucker.Model;
-using GalaxyTrucker.Model.CardEventTypes;
+using GalaxyTrucker.Model.CardTypes;
 using GalaxyTrucker.Properties;
 
 namespace GalaxyTrucker.Network
 {
     #region helper classes
 
+    /// <summary>
+    /// Class used to thread-safely contain a part and information regarding whether it's available
+    /// </summary>
     public class PartAvailability
     {
         public Semaphore Semaphore { get; }
@@ -33,6 +36,9 @@ namespace GalaxyTrucker.Network
         }
     }
 
+    /// <summary>
+    /// Class used to hold information associated with a single connected client
+    /// </summary>
     public class ConnectionInfo
     {
         public TcpClient Client { get; }
@@ -87,10 +93,7 @@ namespace GalaxyTrucker.Network
 
         private readonly TcpListener _listener;
         private readonly ConcurrentDictionary<PlayerColor, ConnectionInfo> _connections;
-        private readonly CancellationTokenSource _ctr;
-
-        private readonly AutoResetEvent _proceedStageEvent;
-        private readonly Semaphore _proceedStageSemaphore;
+        private readonly CancellationTokenSource _cts;
 
         private readonly string _logPath;
         private readonly Semaphore _logSemaphore;
@@ -106,8 +109,8 @@ namespace GalaxyTrucker.Network
         private readonly Semaphore _orderSemaphore;
 
         private readonly PartAvailability[,] _parts;
-        private Stack<CardEvent> _deck;
-        private CardEvent _currentCard;
+        private Stack<Card> _deck;
+        private Card _currentCard;
         private PlayerOrderManager _playerOrderManager;
         private volatile int _currentOption;
         private volatile PlayerColor _currentPlayer;
@@ -125,10 +128,7 @@ namespace GalaxyTrucker.Network
 
         public GTTcpListener(int port, GameStage gameStage, bool doLogging = true)
         {
-            _ctr = new CancellationTokenSource();
-
-            _proceedStageEvent = new AutoResetEvent(false);
-            _proceedStageSemaphore = new Semaphore(1, 1);
+            _cts = new CancellationTokenSource();
 
             _gameStage = gameStage;
             Directory.CreateDirectory("logs");
@@ -152,6 +152,9 @@ namespace GalaxyTrucker.Network
 
         #region public methods
 
+        /// <summary>
+        /// Method to start the lobby stage, allowing connections to be handled
+        /// </summary>
         public void Start()
         {
             try
@@ -205,7 +208,7 @@ namespace GalaxyTrucker.Network
                         LogAsync($"{assignedColor} player with name \"{name}\" connected.");
                     }
                 }
-                Task.Factory.StartNew(() => RefuseFurtherConnections(_ctr.Token), TaskCreationOptions.LongRunning);
+                Task.Factory.StartNew(() => RefuseFurtherConnections(_cts.Token), TaskCreationOptions.LongRunning);
                 shuffle.Wait();
                 makeDeck.Wait();
             }
@@ -223,6 +226,9 @@ namespace GalaxyTrucker.Network
             }
         }
 
+        /// <summary>
+        /// Method to proceed to the build stage
+        /// </summary>
         public void StartBuildStage()
         {
             if (_connections.Count < 2)
@@ -249,13 +255,16 @@ namespace GalaxyTrucker.Network
             BuildStage();
         }
 
+        /// <summary>
+        /// Method to close the client, including all open sockets, and disposing of the required resources
+        /// </summary>
         public void Close()
         {
-            _ctr.Cancel();
+            _cts.Cancel();
             Thread.Sleep(500);
             _pingTimer.Stop();
             _pingTimer.Dispose();
-            _ctr.Dispose();
+            _cts.Dispose();
             foreach (ConnectionInfo connection in _connections.Values)
             {
                 if (connection.Client != null)
@@ -273,10 +282,12 @@ namespace GalaxyTrucker.Network
 
         #region stage transitions
 
+        /// <summary>
+        /// Method to manage the build stage, waiting for the end of building into proceed to the next stage
+        /// </summary>
         private void BuildStage()
         {
             while (!_connections.All(conn => conn.Value.IsReady && !conn.Value.HasMessage)) ;
-            //_proceedStageEvent.WaitOne();
 
             string playerOrder = string.Join(',', _playerOrder);
             foreach (PlayerColor player in _connections.Keys)
@@ -296,10 +307,12 @@ namespace GalaxyTrucker.Network
             BeginFlightStage();
         }
 
+        /// <summary>
+        /// Method to initialize for the flight stage
+        /// </summary>
         private void BeginFlightStage()
         {
             while (!_connections.All(conn => conn.Value.IsReady && !conn.Value.HasMessage && conn.Value.ReadyToFly)) ;
-           // _proceedStageEvent.WaitOne();
 
             _serverStage = ServerStage.Flight;
 
@@ -318,6 +331,9 @@ namespace GalaxyTrucker.Network
             FlightStage();
         }
 
+        /// <summary>
+        /// Method to manage the flight stage, drawing and resolving cards until the end of the stage
+        /// </summary>
         private void FlightStage()
         {
             LogAsync("FlightStage started");
@@ -390,6 +406,9 @@ namespace GalaxyTrucker.Network
             //Flight stage over
         }
 
+        /// <summary>
+        /// Method called after the flight stage, summarizing the results and closing the server
+        /// </summary>
         private void PastFlightStage()
         {
             LogAsync($"Flight stage over, cards left: {_deck.Count}.");
@@ -665,7 +684,7 @@ namespace GalaxyTrucker.Network
                     }
                 }
 
-                if (card.Event1.PenaltyType == CardEventPenalty.Delay)
+                if (card.Event1.PenaltyType == CardPenalty.Delay)
                 {
                     MovePlayer(target.Value, -1 * card.Event1.Penalty);
                 }
@@ -685,7 +704,7 @@ namespace GalaxyTrucker.Network
                     }
                 }
 
-                if (card.Event2.PenaltyType == CardEventPenalty.Delay)
+                if (card.Event2.PenaltyType == CardPenalty.Delay)
                 {
                     MovePlayer(target.Value, -1 * card.Event2.Penalty);
                 }
@@ -733,6 +752,11 @@ namespace GalaxyTrucker.Network
 
         #region player notification
 
+        /// <summary>
+        /// Method to add the given distance to the given player, and notify all players of it
+        /// </summary>
+        /// <param name="player"></param>
+        /// <param name="distance"></param>
         private void MovePlayer(PlayerColor player, int distance)
         {
             LogAsync($"{player} moved {distance}.");
@@ -743,6 +767,10 @@ namespace GalaxyTrucker.Network
             }
         }
 
+        /// <summary>
+        /// Method to notify all players of the given option getting removed
+        /// </summary>
+        /// <param name="option"></param>
         private void RemoveOption(int option)
         {
             foreach(PlayerColor key in _connections.Keys)
@@ -751,6 +779,10 @@ namespace GalaxyTrucker.Network
             }
         }
 
+        /// <summary>
+        /// Method to signal the given player, that they are the target, and notify the others, who the target is
+        /// </summary>
+        /// <param name="target"></param>
         private void SignalTargetPlayer(PlayerColor target)
         {
             LogAsync($"Card {_currentCard} target is {target}.");
@@ -770,6 +802,10 @@ namespace GalaxyTrucker.Network
 
         #region incoming message handling
 
+        /// <summary>
+        /// Main message handling method running on separate threads for each client to minimize response times
+        /// </summary>
+        /// <param name="player"></param>
         private void HandleClientMessages(PlayerColor player)
         {
             string message;
@@ -847,11 +883,21 @@ namespace GalaxyTrucker.Network
             LogAsync($"Handler thread for client {player} finished.");
         }
 
+        /// <summary>
+        /// Method called when a client sends a message to resolve a stardust card, containing the number of open connectors
+        /// </summary>
+        /// <param name="player"></param>
+        /// <param name="parts"></param>
         private void StardustInfoResolve(PlayerColor player, string[] parts)
         {
             _connections[player].OpenConnectors = int.Parse(parts[1]);
         }
 
+        /// <summary>
+        /// Method called when a clients sends a message signaling the amount of cash they collected
+        /// </summary>
+        /// <param name="player"></param>
+        /// <param name="parts"></param>
         private void CashInfoResolve(PlayerColor player, string[] parts)
         {
             int cash = int.Parse(parts[1]);
@@ -953,10 +999,6 @@ namespace GalaxyTrucker.Network
                     WriteMessageToPlayer(key, announcement);
                 }
             }
-            if (_connections[player].IsReady && _serverStage != ServerStage.Lobby)
-            {
-                Task.Run(CheckIfProceedStage);
-            }
         }
 
         /// <summary>
@@ -1034,6 +1076,11 @@ namespace GalaxyTrucker.Network
 
         #region misc
 
+        /// <summary>
+        /// The method called by the pingtimer, pinging each client
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void PingTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             foreach (PlayerColor key in _connections.Keys)
@@ -1043,32 +1090,10 @@ namespace GalaxyTrucker.Network
         }
 
         /// <summary>
-        /// Method to check if the proceed stage event should be signaled, drawing the next card
+        /// Method to read a message from the given player, ending in a hashmark, which is removed from the actual message
         /// </summary>
-        private void CheckIfProceedStage()
-        {
-            if (!_proceedStageSemaphore.WaitOne(0))
-            {
-                return;
-            }
-            bool proceed = true;
-            foreach (var item in _connections.Values)
-            {
-                proceed &= _serverStage switch
-                {
-                    ServerStage.PastBuild => item.IsReady && item.ReadyToFly,
-                    ServerStage.Flight => item.IsReady || item.Crashed,
-                    ServerStage.PastFlight => item.Cash != null,
-                    _ => item.IsReady
-                };
-            }
-            if (proceed)
-            {
-                _proceedStageEvent.Set();
-            }
-            _proceedStageSemaphore.Release();
-        }
-
+        /// <param name="player"></param>
+        /// <returns></returns>
         private string ReadMessageFromPlayer(PlayerColor player)
         {
             try
@@ -1111,6 +1136,11 @@ namespace GalaxyTrucker.Network
             }
         }
 
+        /// <summary>
+        /// Method to send the given message to the given player, in the required, hashmark - closed format
+        /// </summary>
+        /// <param name="player"></param>
+        /// <param name="message"></param>
         private void WriteMessageToPlayer(PlayerColor player, string message)
         {
             try
@@ -1146,16 +1176,13 @@ namespace GalaxyTrucker.Network
                         WriteMessageToPlayer(otherPlayer, $"PlayerDisconnect,{player}");
                     }
                 }
-                else
-                {
-                    if (_connections.IsEmpty)
-                    {
-                        _proceedStageEvent.Set();
-                    }
-                }
             }
         }
 
+        /// <summary>
+        /// Method to refuse all connection attempts
+        /// </summary>
+        /// <param name="token"></param>
         private void RefuseFurtherConnections(CancellationToken token)
         {
             while (true)
@@ -1176,6 +1203,9 @@ namespace GalaxyTrucker.Network
             }
         }
 
+        /// <summary>
+        /// Method to create and shuffle the part collection, using the Fisher-Yates shuffle
+        /// </summary>
         private void ShuffleParts()
         {
             string allParts = Resources.Parts.Trim();
@@ -1200,20 +1230,23 @@ namespace GalaxyTrucker.Network
             }
         }
 
+        /// <summary>
+        /// Method to make the deck for the current gamestage
+        /// </summary>
         private void MakeDeck()
         {
-            List<CardEvent>[] cardsByStage = new List<CardEvent>[3]
+            List<Card>[] cardsByStage = new List<Card>[3]
             {
-                new List<CardEvent>(),
-                new List<CardEvent>(),
-                new List<CardEvent>()
+                new List<Card>(),
+                new List<Card>(),
+                new List<Card>()
             };
 
             string allCards = Resources.Cards.Trim();
             List<string> cardStrings = allCards.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None).ToList();
             foreach (string cardString in cardStrings)
             {
-                CardEvent card = cardString.ToCardEvent();
+                Card card = cardString.ToCardEvent();
                 cardsByStage[(int)card.Stage].Add(card);
             }
 
@@ -1239,23 +1272,23 @@ namespace GalaxyTrucker.Network
                     throw new InvalidEnumArgumentException(nameof(_gameStage), (int)_gameStage, typeof(GameStage));
             }
 
-            List<CardEvent> cardList = new List<CardEvent>();
+            List<Card> cardList = new List<Card>();
             for (int i = 0; i < 4; ++i)
             {
                 foreach (int stage in deckComposition)
                 {
-                    List<CardEvent> stageCards = cardsByStage[stage];
-                    CardEvent item = stageCards[_random.Next(stageCards.Count)];
+                    List<Card> stageCards = cardsByStage[stage];
+                    Card item = stageCards[_random.Next(stageCards.Count)];
                     int index = _random.Next(stageCards.Count);
                     cardList.Add(item);
                     stageCards.Remove(item);
                 }
             }
 
-            _deck = new Stack<CardEvent>();
+            _deck = new Stack<Card>();
             while(cardList.Count > 0)
             {
-                CardEvent item = cardList[_random.Next(cardList.Count)];
+                Card item = cardList[_random.Next(cardList.Count)];
                 _deck.Push(item);
                 cardList.Remove(item);
             }
@@ -1263,6 +1296,10 @@ namespace GalaxyTrucker.Network
             LogAsync($"Deck assembled, cards:\n {string.Join("\n ", _deck)}");
         }
 
+        /// <summary>
+        /// Method to asynchronously write the given message to the end of the logfile
+        /// </summary>
+        /// <param name="message"></param>
         private async void LogAsync(string message)
         {
             if (!_doLogging)

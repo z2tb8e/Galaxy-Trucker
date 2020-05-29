@@ -23,15 +23,11 @@ namespace GalaxyTrucker.Model
 
     public class PlayerOrderManager
     {
-        const int StartingValue = 20;
-        const int LapSize = 40;
+        private const int StartingValue = 20;
+        private const int LapSize = 40;
         private readonly PlaceProperty[] _playerPlaces;
         private readonly Dictionary<PlayerColor, PlaceProperty> _properties;
         private readonly Semaphore _sem;
-
-        public event EventHandler<PlayerColor> PlayerCrashed;
-
-        public event EventHandler PlacesChanged;
 
         public Dictionary<PlayerColor, PlaceProperty> Properties
         {
@@ -40,6 +36,10 @@ namespace GalaxyTrucker.Model
                 return _properties;
             }
         }
+
+        public event EventHandler<PlayerColor> PlayerCrashed;
+
+        public event EventHandler PlacesChanged;
 
         public PlayerOrderManager(List<PlayerColor> initialOrder, GameStage stage)
         {
@@ -63,11 +63,21 @@ namespace GalaxyTrucker.Model
 
         public void AddDistance(PlayerColor player, int value)
         {
+            if (!Properties.ContainsKey(player))
+            {
+                return;
+            }
+
             _sem.WaitOne();
 
+            //if the player moves 0 distance, they crash
             if (value == 0)
             {
+                //remove the player from the grid
+                _playerPlaces[_properties[player].PlaceValue] = null;
+                //OnPlayerCrashed removes the player from the properties list
                 OnPlayerCrashed(player);
+                _sem.Release();
                 return;
             }
 
@@ -93,13 +103,19 @@ namespace GalaxyTrucker.Model
                 {
                     PlaceProperty occupier = _playerPlaces[nextPlace];
 
+                    //if the moving player steps forwards and ups a lap on someone else
                     if(occupier.LapCount < _properties[player].LapCount && !negative)
                     {
+                        //also remove the other player from the grid
+                        _playerPlaces[nextPlace] = null;
                         OnPlayerCrashed(occupier.Player);
                     }
+                    //if the moving player steps backwards and gets upped a lap on
                     else if(occupier.LapCount > _properties[player].LapCount && negative)
                     {
                         OnPlayerCrashed(player);
+                        _sem.Release();
+                        return;
                     }
 
                     nextPlace += negative ? -1 : 1;
@@ -114,9 +130,9 @@ namespace GalaxyTrucker.Model
                         --_properties[player].LapCount;
                     }
                 }
-                _properties[player].PlaceValue = nextPlace;
-                _playerPlaces[nextPlace] = _properties[player];
             }
+            _properties[player].PlaceValue = nextPlace;
+            _playerPlaces[nextPlace] = _properties[player];
             PlacesChanged?.Invoke(this, EventArgs.Empty);
             _sem.Release();
         }
@@ -137,7 +153,6 @@ namespace GalaxyTrucker.Model
             Properties.Remove(player);
             PlayerCrashed?.Invoke(this, player);
             PlacesChanged?.Invoke(this, EventArgs.Empty);
-            _sem.Release();
         }
     }
 }

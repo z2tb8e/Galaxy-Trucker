@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Linq;
 
-namespace GalaxyTrucker.Model.CardEventTypes
+namespace GalaxyTrucker.Model.CardTypes
 {
-    public class Sabotage : CardEvent
+    public class Sabotage : Card
     {
         public Sabotage(GameStage stage) : base(stage)
         {
@@ -16,20 +16,14 @@ namespace GalaxyTrucker.Model.CardEventTypes
             return LastResolved == 1;
         }
 
-        public override string GetDescription()
-        {
-            return "Szabotázs";
-        }
-
-        public override string ToolTip()
-        {
-            return "A játékos a legkevesebb legénységgel (holtverseny esetén az előbb álló) veszít egy alkatrészt." +
-                "\nHáromszor próbál a játék egy véletlen alkatrészt eltávolítani, ha sikerül egyet, akkor tovább nem próbálkozik.";
-        }
-
         public override string ToString()
         {
             return $"{(int)Stage}g";
+        }
+
+        public override string GetDescription()
+        {
+            return "Szabotázs";
         }
 
         /*option
@@ -49,7 +43,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                 {
                     int row = random.Next(6) + random.Next(6);
                     int column = random.Next(6) + random.Next(6);
-                    if(ship.Parts.First(p => p.Row == row && p.Column == column) != null)
+                    if(ship.Parts.FirstOrDefault(p => p != null && p.Row == row && p.Column == column) != null)
                     {
                         ship.RemovePartAtIndex(row, column);
                         break;
@@ -57,6 +51,12 @@ namespace GalaxyTrucker.Model.CardEventTypes
                 }
             }
             LastResolved = 1;
+        }
+
+        public override string ToolTip()
+        {
+            return "A játékos a legkevesebb legénységgel (holtverseny esetén az előbb álló) veszít egy alkatrészt." +
+                "\nHáromszor próbál a játék egy véletlen alkatrészt eltávolítani, ha sikerül egyet, akkor tovább nem próbálkozik.";
         }
     }
 }

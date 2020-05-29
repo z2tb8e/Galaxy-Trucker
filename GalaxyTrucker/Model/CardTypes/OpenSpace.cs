@@ -1,6 +1,6 @@
-﻿namespace GalaxyTrucker.Model.CardEventTypes
+﻿namespace GalaxyTrucker.Model.CardTypes
 {
-    public class OpenSpace : CardEvent
+    public class OpenSpace : Card
     {
         public OpenSpace(GameStage stage) : base(stage)
         {

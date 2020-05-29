@@ -19,8 +19,8 @@ namespace GalaxyTrucker.ViewModels
         private ObservableCollection<ShipLayout> _layoutOptions;
         private ShipLayout _selectedLayout;
         private GameStage _selectedGameStage;
-        private string _remoteIp;
-        private int _remotePort;
+        private string _ip;
+        private int _port;
         private string _playerName;
         private string _error;
         private bool _connectInProgress;
@@ -78,33 +78,33 @@ namespace GalaxyTrucker.ViewModels
             }
         }
 
-        public string RemoteIp
+        public string Ip
         {
             get
             {
-                return _remoteIp;
+                return _ip;
             }
             set
             {
-                if (_remoteIp != value)
+                if (_ip != value)
                 {
-                    _remoteIp = value;
+                    _ip = value;
                     OnPropertyChanged();
                 }
             }
         }
 
-        public int RemotePort
+        public int Port
         {
             get
             {
-                return _remotePort;
+                return _port;
             }
             set
             {
-                if (_remotePort != value)
+                if (_port != value)
                 {
-                    _remotePort = value;
+                    _port = value;
                     OnPropertyChanged();
                 }
             }
@@ -184,7 +184,7 @@ namespace GalaxyTrucker.ViewModels
 
         public DelegateCommand HostCommand { get; set; }
 
-        public DelegateCommand LaunchBuildingCommand { get; set; }
+        public DelegateCommand StartBuildingCommand { get; set; }
 
         #endregion
 
@@ -207,17 +207,17 @@ namespace GalaxyTrucker.ViewModels
             IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
             HostIp = ipHostInfo.AddressList.Where(ip => ip.AddressFamily == AddressFamily.InterNetwork).First().ToString();
             ConnectInProgress = false;
-            RemotePort = DefaultPort;
-            RemoteIp = HostIp;
+            Port = DefaultPort;
+            Ip = HostIp;
             _client = client;
             _client.BuildingBegun += Client_BuildingBegun;
             _playerList.LostConnection += PlayerList_LostConnection;
 
             HostCommand = new DelegateCommand(param => Server == null, param =>
             {
-                Server = new GTTcpListener(RemotePort, SelectedGameStage);
+                Server = new GTTcpListener(Port, SelectedGameStage);
                 Task.Factory.StartNew(() => Server.Start(), TaskCreationOptions.RunContinuationsAsynchronously | TaskCreationOptions.LongRunning);
-                RemoteIp = "127.0.0.1";
+                Ip = "127.0.0.1";
                 ConnectCommand.Execute(null);
             });
 
@@ -241,7 +241,7 @@ namespace GalaxyTrucker.ViewModels
                 BackToMenu?.Invoke(this, Server != null);
             });
 
-            LaunchBuildingCommand = new DelegateCommand(param => Server != null && !Server.NotReadyPlayers.Any() && _client.PlayerInfos.Count > 1,
+            StartBuildingCommand = new DelegateCommand(param => Server != null && !Server.NotReadyPlayers.Any() && _client.PlayerInfos.Count > 1,
                 param =>
             {
                 Task.Factory.StartNew(() => Server.StartBuildStage(), TaskCreationOptions.LongRunning);
@@ -272,11 +272,11 @@ namespace GalaxyTrucker.ViewModels
             try
             {
                 Error = "";
-                IPEndPoint endpoint = new IPEndPoint(IPAddress.Parse(RemoteIp), RemotePort);
+                IPEndPoint endpoint = new IPEndPoint(IPAddress.Parse(Ip), Port);
                 ConnectInProgress = true;
                 Error = "Csatlakozás folyamatban...";
                 await _client.Connect(endpoint, PlayerName);
-                ConnectionStatus = $"Csatlakozva, kapott szín: {EnumHelpers.GetDescription(_client.Player)}\nJáték fázis: {EnumHelpers.GetDescription(_client.GameStage)}";
+                ConnectionStatus = $"Csatlakozva, kapott szín: {EnumHelpers.GetDescription(_client.Player)}\nJátékfázis: {EnumHelpers.GetDescription(_client.GameStage)}";
                 Error = "";
                 _playerList.SynchronizeListWithClient();
                 SelectedGameStage = _client.GameStage;
@@ -307,9 +307,9 @@ namespace GalaxyTrucker.ViewModels
             {
                 Error = "Nem jött létre a kapcsolat az időlimiten belül.";
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                Error = $"Hiba a csatlakozás közben:\n{e.Message}";
+                Error = $"A megadott címen nem található játék!";
             }
             finally
             {

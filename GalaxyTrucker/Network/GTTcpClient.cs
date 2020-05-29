@@ -17,13 +17,22 @@ namespace GalaxyTrucker.Network
     /// </summary>
     public class OutOfSyncException : Exception { }
 
+    /// <summary>
+    /// Exception thrown when the server refuses the attempted connection
+    /// </summary>
     public class ConnectionRefusedException : Exception { }
 
+    /// <summary>
+    /// Exception thrown when the client receives a message which has no associated resolving method
+    /// </summary>
     public class UnknownMessageException : Exception
     {
         public UnknownMessageException(string s) : base(s) { }
     }
 
+    /// <summary>
+    /// Class used to hold information associated with a client connected to the same server
+    /// </summary>
     public class PlayerInfo
     {
         public string Name { get; }
@@ -54,7 +63,7 @@ namespace GalaxyTrucker.Network
 
         private const double PingInterval = 500;
 
-        private readonly TcpClient _client;
+        private TcpClient _client;
         private readonly Timer _pingTimer;
         private readonly List<PlayerColor> _playerOrder;
 
@@ -96,12 +105,15 @@ namespace GalaxyTrucker.Network
 
         public bool Crashed { get; private set; }
 
-        public CardEvent Card { get; private set; }
+        public Card Card { get; private set; }
 
         #endregion
 
         #region events
 
+        /// <summary>
+        /// Event raised when the contained PlayerOrderManager raises the PlacesChanged event
+        /// </summary>
         public event EventHandler PlacesChanged;
 
         /// <summary>
@@ -122,7 +134,7 @@ namespace GalaxyTrucker.Network
         /// <summary>
         /// Event raised when this client receives the answer for picking a part
         /// </summary>
-        public event EventHandler<PartPickedEventArgs> PartPicked;
+        public event EventHandler<Part> PartPicked;
 
         /// <summary>
         /// Event raised when another client picks a part
@@ -137,7 +149,7 @@ namespace GalaxyTrucker.Network
         /// <summary>
         /// Event raised when another player toggles their ready state
         /// </summary>
-        public event EventHandler<PlayerEventArgs> PlayerReadied;
+        public event EventHandler<PlayerColor> PlayerReadied;
 
         /// <summary>
         /// Event raised when this client toggles their ready state
@@ -152,7 +164,7 @@ namespace GalaxyTrucker.Network
         /// <summary>
         /// Event raised when another client disconnects from the server
         /// </summary>
-        public event EventHandler<PlayerEventArgs> PlayerDisconnected;
+        public event EventHandler<PlayerColor> PlayerDisconnected;
 
         /// <summary>
         /// Event raised when this client disconnects from the server
@@ -223,6 +235,12 @@ namespace GalaxyTrucker.Network
 
         #region public methods
 
+        /// <summary>
+        /// Method to attempt a connection to the given endpoint with the given name
+        /// </summary>
+        /// <param name="endPoint"></param>
+        /// <param name="displayName"></param>
+        /// <returns></returns>
         public async Task Connect(IPEndPoint endPoint, string displayName)
         {
             if (displayName.Contains('#'))
@@ -241,6 +259,7 @@ namespace GalaxyTrucker.Network
                 if (colorAndGameStageMessage == "Connection refused")
                 {
                     _client.Close();
+                    _client = new TcpClient();
                     throw new ConnectionRefusedException();
                 }
                 WriteMessageToServer(DisplayName);
@@ -273,6 +292,10 @@ namespace GalaxyTrucker.Network
             }
         }
 
+        /// <summary>
+        /// Method to send the amount of cash the player has to the server
+        /// </summary>
+        /// <param name="cash"></param>
         public void SendCashInfo(int cash)
         {
             if (_serverStage != ServerStage.PastFlight)
@@ -284,6 +307,10 @@ namespace GalaxyTrucker.Network
             WriteMessageToServer($"CashInfo,{cash}");
         }
 
+        /// <summary>
+        /// Method to toggle the player's ready state
+        /// </summary>
+        /// <param name="currentStage"></param>
         public void ToggleReady(ServerStage currentStage)
         {
             if(_serverStage != currentStage)
@@ -300,6 +327,10 @@ namespace GalaxyTrucker.Network
             ThisPlayerReadied?.Invoke(this, EventArgs.Empty);
         }
 
+        /// <summary>
+        /// Method to send the number of open connectors to the server in the case of a stardust card
+        /// </summary>
+        /// <param name="openConnectors"></param>
         public void SendStardustInfo(int openConnectors)
         {
             if (_serverStage != ServerStage.Flight)
@@ -311,6 +342,14 @@ namespace GalaxyTrucker.Network
             WriteMessageToServer($"StardustInfo,{openConnectors}");
         }
 
+        /// <summary>
+        /// Method to send the attributes of the player to the server
+        /// </summary>
+        /// <param name="firepower"></param>
+        /// <param name="enginepower"></param>
+        /// <param name="crewCount"></param>
+        /// <param name="storageSize"></param>
+        /// <param name="batteries"></param>
         public void UpdateAttributes(int firepower, int enginepower, int crewCount, int storageSize, int batteries)
         {
             if (_serverStage != ServerStage.Flight)
@@ -322,6 +361,9 @@ namespace GalaxyTrucker.Network
             WriteMessageToServer($"AttributesUpdate,{firepower},{enginepower},{crewCount},{storageSize},{batteries}");
         }
 
+        /// <summary>
+        /// Method to crash the player
+        /// </summary>
         public void CrashPlayer()
         {
             if (_serverStage != ServerStage.Flight || Crashed)
@@ -334,6 +376,10 @@ namespace GalaxyTrucker.Network
             WriteMessageToServer("PlayerCrash");
         }
 
+        /// <summary>
+        /// Method to send the selected option to the server
+        /// </summary>
+        /// <param name="option"></param>
         public void SendCardOption(int option)
         {
             if (_serverStage != ServerStage.Flight || Crashed)
@@ -345,6 +391,14 @@ namespace GalaxyTrucker.Network
             WriteMessageToServer($"CardOption,{option}");
         }
 
+        /// <summary>
+        /// Method to start the flight stage, sending the attributes to the server with it
+        /// </summary>
+        /// <param name="firepower"></param>
+        /// <param name="enginepower"></param>
+        /// <param name="crewCount"></param>
+        /// <param name="storageSize"></param>
+        /// <param name="batteries"></param>
         public void StartFlightStage(int firepower, int enginepower, int crewCount, int storageSize, int batteries)
         {
             if(_serverStage != ServerStage.PastBuild || IsReady)
@@ -358,6 +412,11 @@ namespace GalaxyTrucker.Network
             ToggleReady(ServerStage.PastBuild);
         }
 
+        /// <summary>
+        /// Method to put back a part to the shared set
+        /// </summary>
+        /// <param name="row"></param>
+        /// <param name="column"></param>
         public void PutBackPart(int row, int column)
         {
             if(_serverStage != ServerStage.Build)
@@ -370,6 +429,11 @@ namespace GalaxyTrucker.Network
             WriteMessageToServer($"PutBackPart,{row},{column}");
         }
 
+        /// <summary>
+        /// Method to pick a part from the shared set
+        /// </summary>
+        /// <param name="row"></param>
+        /// <param name="column"></param>
         public void PickPart(int row, int column)
         {
             if (_serverStage != ServerStage.Build)
@@ -382,6 +446,9 @@ namespace GalaxyTrucker.Network
             WriteMessageToServer($"PickPart,{row},{column}");
         }
 
+        /// <summary>
+        /// Method to close the client and dispose of any unmanaged resources
+        /// </summary>
         public void Close()
         {
             _pingTimer.Stop();
@@ -393,6 +460,9 @@ namespace GalaxyTrucker.Network
 
         #region private methods
 
+        /// <summary>
+        /// Main message handling method running on a separate thread
+        /// </summary>
         private void HandleServerMessages()
         {
             string message;
@@ -683,11 +753,6 @@ namespace GalaxyTrucker.Network
             CardPicked?.Invoke(this, remainingCount);
         }
 
-        private void PingTimer_Elapsed(object sender, ElapsedEventArgs e)
-        {
-            WriteMessageToServer("Ping");
-        }
-
         /// <summary>
         /// Method called when the server sends a message that another player disconnected
         /// </summary>
@@ -705,7 +770,7 @@ namespace GalaxyTrucker.Network
                 _orderManager.Properties.Remove(disconnectedPlayer);
                 PlacesChanged?.Invoke(this, EventArgs.Empty);
             }
-            PlayerDisconnected?.Invoke(this, new PlayerEventArgs(disconnectedPlayer));
+            PlayerDisconnected?.Invoke(this, disconnectedPlayer);
         }
 
         /// <summary>
@@ -842,7 +907,7 @@ namespace GalaxyTrucker.Network
             {
                 picked = parts[1].ToPart();
             }
-            PartPicked?.Invoke(this, new PartPickedEventArgs(picked));
+            PartPicked?.Invoke(this, picked);
         }
 
         /// <summary>
@@ -901,9 +966,23 @@ namespace GalaxyTrucker.Network
         {
             PlayerColor player = Enum.Parse<PlayerColor>(parts[1]);
             PlayerInfos[player].IsReady = !PlayerInfos[player].IsReady;
-            PlayerReadied?.Invoke(this, new PlayerEventArgs(player));
+            PlayerReadied?.Invoke(this, player);
         }
 
+        /// <summary>
+        /// The method called by the pingtimer, pinging the server
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void PingTimer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            WriteMessageToServer("Ping");
+        }
+
+        /// <summary>
+        /// Method to read a message from the server, ending in a hashmark, which is removed from the actual message
+        /// </summary>
+        /// <returns></returns>
         private string ReadMessageFromServer()
         {
             try
@@ -924,6 +1003,10 @@ namespace GalaxyTrucker.Network
             }
         }
 
+        /// <summary>
+        /// Method to send the given message to the server, in the required, hashmark - closed format
+        /// </summary>
+        /// <param name="message"></param>
         private void WriteMessageToServer(string message)
         {
             try

@@ -164,6 +164,25 @@ namespace UnitTests
 
             activatable.Deactivate();
             Assert.False(activatable.Activated);
+
+            //since IActivatable is only an interface, test for each implementing type
+            activatable = new LaserDouble(Connector.None, Connector.None, Connector.None, Connector.None);
+            Assert.False(activatable.Activated);
+
+            activatable.Activate();
+            Assert.True(activatable.Activated);
+
+            activatable.Deactivate();
+            Assert.False(activatable.Activated);
+
+            activatable = new EngineDouble(Connector.None, Connector.None, Connector.None, Connector.None);
+            Assert.False(activatable.Activated);
+
+            activatable.Activate();
+            Assert.True(activatable.Activated);
+
+            activatable.Deactivate();
+            Assert.False(activatable.Activated);
         }
 
         [Fact]

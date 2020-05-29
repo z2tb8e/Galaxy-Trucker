@@ -4,17 +4,17 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GalaxyTrucker.Model.CardEventTypes
+namespace GalaxyTrucker.Model.CardTypes
 {
     public class WarzoneEvent<T>
     {
         public CardCheckAttribute Attribute { get; }
 
-        public CardEventPenalty PenaltyType { get; }
+        public CardPenalty PenaltyType { get; }
 
         public T Penalty { get; }
 
-        public WarzoneEvent(CardCheckAttribute attribute, CardEventPenalty penaltyType, T penalty)
+        public WarzoneEvent(CardCheckAttribute attribute, CardPenalty penaltyType, T penalty)
         {
             Attribute = attribute;
             PenaltyType = penaltyType;
@@ -27,7 +27,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
         }
     }
 
-    public class Warzone : CardEvent
+    public class Warzone : Card
     {
         public WarzoneEvent<int> Event1 { get; }
 
@@ -48,27 +48,22 @@ namespace GalaxyTrucker.Model.CardEventTypes
             return LastResolved == 3;
         }
 
-        public override string GetDescription()
-        {
-            return "Harci övezet";
-        }
-
-        public override string ToolTip()
-        {
-            return "A három esemény mindegyikénél az adott szempont szerint leggyengébb (holtverseny esetén az előrébb álló) játékos a leírt büntetést kapja.";
-        }
-
         public override string ToString()
         {
             StringBuilder sb = new StringBuilder($"{(int)Stage}w");
             sb.Append(Event1.ToString() + Event1.Penalty.ToString());
             sb.Append(Event2.ToString() + Event2.Penalty.ToString());
             sb.Append(Event3.ToString() + Event3.Penalty.Count().ToString());
-            foreach((Projectile, Direction) pair in Event3.Penalty)
+            foreach ((Projectile, Direction) pair in Event3.Penalty)
             {
                 sb.Append(((int)pair.Item1).ToString() + ((int)pair.Item2).ToString());
             }
             return sb.ToString();
+        }
+
+        public override string GetDescription()
+        {
+            return "Harci övezet";
         }
 
         public override IEnumerable<OptionOrSubEvent> GetOptionsOrSubEvents()
@@ -80,7 +75,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                     Description = $"Legkisebb {Event1.Attribute.GetDescription()}, -{Event1.Penalty} {Event1.PenaltyType.GetDescription()}",
                     Action = (client, ship) =>
                     {
-                        client.UpdateAttributes(ship.Firepower, ship.Enginepower, ship.CrewCount, ship.StorageCount, ship.Batteries);
+                        client.UpdateAttributes(ship.Firepower, ship.Enginepower, ship.CrewCount, ship.StorageSize, ship.Batteries);
                         LastResolved = -1;
                     },
                     Condition = ship => LastResolved == 0
@@ -90,7 +85,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                     Description = $"Legkisebb {Event2.Attribute.GetDescription()}, -{Event2.Penalty} {Event2.PenaltyType.GetDescription()}",
                     Action = (client, ship) =>
                     {
-                        client.UpdateAttributes(ship.Firepower, ship.Enginepower, ship.CrewCount, ship.StorageCount, ship.Batteries);
+                        client.UpdateAttributes(ship.Firepower, ship.Enginepower, ship.CrewCount, ship.StorageSize, ship.Batteries);
                         LastResolved = -2;
                     },
                     Condition = ship => LastResolved == 1
@@ -101,7 +96,7 @@ namespace GalaxyTrucker.Model.CardEventTypes
                     $"\n {string.Join(" \n ", Event3.Penalty.Select(pair => $"{pair.Item1} {pair.Item2}"))}",
                     Action = (client, ship) =>
                     {
-                        client.UpdateAttributes(ship.Firepower, ship.Enginepower, ship.CrewCount, ship.StorageCount, ship.Batteries);
+                        client.UpdateAttributes(ship.Firepower, ship.Enginepower, ship.CrewCount, ship.StorageSize, ship.Batteries);
                         LastResolved = -3;
                     },
                     Condition = ship => LastResolved == 2
@@ -130,21 +125,21 @@ namespace GalaxyTrucker.Model.CardEventTypes
             switch (LastResolved)
             {
                 case -1:
-                    if(Event1.PenaltyType == CardEventPenalty.Crew)
+                    if(Event1.PenaltyType == CardPenalty.Crew)
                     {
                         ship.RemovePersonnel(Event1.Penalty);
                     }
-                    else if(Event1.PenaltyType == CardEventPenalty.Wares)
+                    else if(Event1.PenaltyType == CardPenalty.Wares)
                     {
                         ship.RemoveWares(Event1.Penalty);
                     }
                     break;
                 case -2:
-                    if (Event2.PenaltyType == CardEventPenalty.Crew)
+                    if (Event2.PenaltyType == CardPenalty.Crew)
                     {
                         ship.RemovePersonnel(Event2.Penalty);
                     }
-                    else if (Event2.PenaltyType == CardEventPenalty.Wares)
+                    else if (Event2.PenaltyType == CardPenalty.Wares)
                     {
                         ship.RemoveWares(Event2.Penalty);
                     }
@@ -165,6 +160,11 @@ namespace GalaxyTrucker.Model.CardEventTypes
                     break;
             }
             LastResolved = -1 * LastResolved;
+        }
+
+        public override string ToolTip()
+        {
+            return "A három esemény mindegyikénél az adott szempont szerint leggyengébb (holtverseny esetén az előrébb álló) játékos a leírt büntetést kapja.";
         }
     }
 }

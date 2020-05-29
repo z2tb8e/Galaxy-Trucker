@@ -31,8 +31,9 @@
         <TextBlock Grid.Row="0" Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="50">
             Galaxis Roncserbi
         </TextBlock>
-        <Button Grid.Row="1" Content="Új játék hosztolása" Click="Host_Click"/>
+        <Button Grid.Row="1" Content="Új játék indítása" Click="Host_Click"/>
         <Button Grid.Row="2" Content="Csatlakozás játékhoz" Click="Connect_Click"/>
-        <Button Grid.Row="3" Content="Bezárás" Click="Exit_Click"/>
+        <Button Grid.Row="3" Content="Szabályok" Click="Rules_Click"/>
+        <Button Grid.Row="4" Content="Bezárás" Click="Exit_Click"/>
     </Grid>
 </UserControl>

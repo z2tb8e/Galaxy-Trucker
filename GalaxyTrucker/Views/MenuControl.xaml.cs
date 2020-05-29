@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -11,7 +13,6 @@ namespace GalaxyTrucker.Views
     {
         public event EventHandler ConnectClick;
         public event EventHandler HostClick;
-        public event EventHandler RulesClick;
 
         public MenuControl()
         {
@@ -30,7 +31,20 @@ namespace GalaxyTrucker.Views
 
         private void Rules_Click(object sender, RoutedEventArgs e)
         {
-            RulesClick?.Invoke(this, EventArgs.Empty);
+            try
+            {
+                string path = Path.GetTempFileName() + ".pdf";
+                File.WriteAllBytes(path, Properties.Resources.rules);
+                ProcessStartInfo startInfo = new ProcessStartInfo(path)
+                {
+                    UseShellExecute = true
+                };
+                Process.Start(startInfo);
+            }
+            catch (IOException)
+            {
+                MessageBox.Show("Nem sikerült a szabályfájlt létrehozni!");
+            }
         }
 
         private void Exit_Click(object sender, RoutedEventArgs e)
