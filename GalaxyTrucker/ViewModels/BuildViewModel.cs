@@ -391,10 +391,40 @@ namespace GalaxyTrucker.ViewModels
 
         private void AddAlien(string alien)
         {
-            _currentAlien = Enum.Parse<Personnel>(alien);
-            if (!_ship.HighlightCabinsForAlien(_currentAlien))
+            Personnel clickedAlien = Enum.Parse<Personnel>(alien);
+
+            //if an alien type was selected previously, and it was the same alien - deselect it, and remove the highlight
+            if(_currentAlien != Personnel.None && _currentAlien == clickedAlien)
             {
-                MessageBox.Show($"Nincs {_currentAlien.GetDescription()}-nek megfelelő kabin!");
+                _ship.HighlightCabinsForAlien(clickedAlien);
+                _currentAlien = Personnel.None;
+            }
+            //if the other alien type was selected previously, deselect the other, remove the highlight, and select the new
+            else if(_currentAlien != Personnel.None && _currentAlien != clickedAlien)
+            {
+                _ship.HighlightCabinsForAlien(_currentAlien);
+                //only set _currentAlien if there are any cabins applicable
+                if (_ship.HighlightCabinsForAlien(clickedAlien))
+                {
+                    _currentAlien = clickedAlien;
+                }
+                else
+                {
+                    MessageBox.Show($"Nincs {_currentAlien.GetDescription()}-nek megfelelő kabin!");
+                }
+            }
+            //if there was no other alien type selected, select the new
+            else
+            {
+                //only set _currentAlien if there are any cabins applicable
+                if (_ship.HighlightCabinsForAlien(clickedAlien))
+                {
+                    _currentAlien = clickedAlien;
+                }
+                else
+                {
+                    MessageBox.Show($"Nincs {_currentAlien.GetDescription()}-nek megfelelő kabin!");
+                }
             }
         }
 
