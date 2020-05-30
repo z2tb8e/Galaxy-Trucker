@@ -177,45 +177,57 @@ namespace GalaxyTrucker.Network
                 Task makeDeck = new Task(MakeDeck);
                 shuffle.Start();
                 makeDeck.Start();
-                while (_connections.Count < 4 && _serverStage == ServerStage.Lobby)
+                while (_serverStage == ServerStage.Lobby)
                 {
                     if (_listener.Pending())
                     {
-                        TcpClient client = _listener.AcceptTcpClient();
-                        PlayerColor assignedColor = Enum.GetValues(typeof(PlayerColor)).Cast<PlayerColor>()
-                            .First(color => !_connections.ContainsKey(color));
-
-                        ConnectionInfo newConnection = new ConnectionInfo(client);
-
-                        //Send the assigned color and the selected gamestage
-                        byte[] colorAndStageMessage = Encoding.ASCII.GetBytes($"{assignedColor},{_gameStage}#");
-                        newConnection.Stream.Write(colorAndStageMessage, 0, colorAndStageMessage.Length);
-
-                        //Receive the client's display name
-                        StringBuilder name = new StringBuilder();
-                        int character = newConnection.Stream.ReadByte();
-                        while ((char)character != '#')
+                        if(_connections.Count < 4)
                         {
-                            name.Append((char)character);
-                            character = newConnection.Stream.ReadByte();
-                        }
-                        newConnection.DisplayName = name.ToString();
+                            TcpClient client = _listener.AcceptTcpClient();
+                            PlayerColor assignedColor = Enum.GetValues(typeof(PlayerColor)).Cast<PlayerColor>()
+                                .First(color => !_connections.ContainsKey(color));
 
-                        //Send the other connected clients' information
-                        StringBuilder otherPlayers = new StringBuilder($"{_connections.Count}");
-                        string announcement = $"PlayerConnected,{assignedColor},{name}";
-                        foreach (PlayerColor key in _connections.Keys)
+                            ConnectionInfo newConnection = new ConnectionInfo(client);
+
+                            //Send the assigned color and the selected gamestage
+                            byte[] colorAndStageMessage = Encoding.ASCII.GetBytes($"{assignedColor},{_gameStage}#");
+                            newConnection.Stream.Write(colorAndStageMessage, 0, colorAndStageMessage.Length);
+
+                            //Receive the client's display name
+                            StringBuilder name = new StringBuilder();
+                            int character = newConnection.Stream.ReadByte();
+                            while ((char)character != '#')
+                            {
+                                name.Append((char)character);
+                                character = newConnection.Stream.ReadByte();
+                            }
+                            newConnection.DisplayName = name.ToString();
+
+                            //Send the other connected clients' information
+                            StringBuilder otherPlayers = new StringBuilder($"{_connections.Count}");
+                            string announcement = $"PlayerConnected,{assignedColor},{name}";
+                            foreach (PlayerColor key in _connections.Keys)
+                            {
+                                ConnectionInfo connection = _connections[key];
+                                otherPlayers.Append($",{key},{connection.DisplayName},{connection.IsReady}");
+                                WriteMessageToPlayer(key, announcement);
+                            }
+                            byte[] otherPlayersMessage = Encoding.ASCII.GetBytes($"{otherPlayers}#");
+                            newConnection.Stream.Write(otherPlayersMessage, 0, otherPlayersMessage.Length);
+
+                            _connections[assignedColor] = newConnection;
+                            Task.Factory.StartNew(() => HandleClientMessages(assignedColor), TaskCreationOptions.LongRunning);
+                            LogAsync($"{assignedColor} player with name \"{name}\" connected.");
+                        }
+                        else
                         {
-                            ConnectionInfo connection = _connections[key];
-                            otherPlayers.Append($",{key},{connection.DisplayName},{connection.IsReady}");
-                            WriteMessageToPlayer(key, announcement);
+                            TcpClient client = _listener.AcceptTcpClient();
+                            NetworkStream stream = client.GetStream();
+                            byte[] message = Encoding.ASCII.GetBytes("Connection refused#");
+                            stream.Write(message, 0, message.Length);
+                            LogAsync($"Connection refused from {client.Client.RemoteEndPoint} due to lobby being full");
+                            client.Close();
                         }
-                        byte[] otherPlayersMessage = Encoding.ASCII.GetBytes($"{otherPlayers}#");
-                        newConnection.Stream.Write(otherPlayersMessage, 0, otherPlayersMessage.Length);
-
-                        _connections[assignedColor] = newConnection;
-                        Task.Factory.StartNew(() => HandleClientMessages(assignedColor), TaskCreationOptions.LongRunning);
-                        LogAsync($"{assignedColor} player with name \"{name}\" connected.");
                     }
                 }
                 Task.Factory.StartNew(() => RefuseFurtherConnections(_cts.Token), TaskCreationOptions.LongRunning);
