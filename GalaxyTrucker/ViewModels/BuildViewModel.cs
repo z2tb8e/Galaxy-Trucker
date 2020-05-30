@@ -391,40 +391,28 @@ namespace GalaxyTrucker.ViewModels
 
         private void AddAlien(string alien)
         {
+            //deactivate all previously highlighted parts
+            foreach(BuildPartViewModel item in ShipParts.Where(part => part.Highlighted))
+            {
+                item.Part.Highlight();
+            }
             Personnel clickedAlien = Enum.Parse<Personnel>(alien);
 
-            //if an alien type was selected previously, and it was the same alien - deselect it, and remove the highlight
-            if(_currentAlien != Personnel.None && _currentAlien == clickedAlien)
+            //set the current alien to none, so that it remains unset if there are no highlighted cabins later, and it was set previously
+            _currentAlien = Personnel.None;
+            //if the same alien was clicked again return after removing the highlight
+            if(_currentAlien == clickedAlien)
             {
-                _ship.HighlightCabinsForAlien(clickedAlien);
-                _currentAlien = Personnel.None;
+                return;
             }
-            //if the other alien type was selected previously, deselect the other, remove the highlight, and select the new
-            else if(_currentAlien != Personnel.None && _currentAlien != clickedAlien)
+
+            if (_ship.HighlightCabinsForAlien(clickedAlien))
             {
-                _ship.HighlightCabinsForAlien(_currentAlien);
-                //only set _currentAlien if there are any cabins applicable
-                if (_ship.HighlightCabinsForAlien(clickedAlien))
-                {
-                    _currentAlien = clickedAlien;
-                }
-                else
-                {
-                    MessageBox.Show($"Nincs {_currentAlien.GetDescription()}-nek megfelelő kabin!");
-                }
+                _currentAlien = clickedAlien;
             }
-            //if there was no other alien type selected, select the new
             else
             {
-                //only set _currentAlien if there are any cabins applicable
-                if (_ship.HighlightCabinsForAlien(clickedAlien))
-                {
-                    _currentAlien = clickedAlien;
-                }
-                else
-                {
-                    MessageBox.Show($"Nincs {_currentAlien.GetDescription()}-nek megfelelő kabin!");
-                }
+                MessageBox.Show($"Nincs {_currentAlien.GetDescription()}-nek megfelelő kabin!");
             }
         }
 
