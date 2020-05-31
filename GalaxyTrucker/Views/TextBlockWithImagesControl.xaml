@@ -7,7 +7,7 @@
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
     <UserControl.Resources>
-        <utils:ImageToBitmapSourceConverter x:Key="ImageConverter"/>
+        <utils:ImageToByteArrayConverter x:Key="ImageConverter"/>
     </UserControl.Resources>
     <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="WrapWithOverflow"  Text="{Binding}" x:Name="mainTextBlock">
     </TextBlock>
